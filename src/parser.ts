@@ -1,0 +1,215 @@
+import { identity, checkedAllCases } from './utils'
+
+export type ParseResult<T> = { value: T, restInput: string }
+
+export class ParseError extends Error {}
+
+export class Parser<T> {
+
+  constructor(public readonly run: (input: string) => ParseResult<T>) {}
+
+  andThen<U>(restParser: (result: T) => Parser<U>): Parser<U> {
+    return new Parser(input => {
+      const result = this.run(input)
+      return restParser(result.value).run(result.restInput)
+    })
+  }
+
+  map<U>(fn: (value: T) => U): Parser<U> {
+    return this.andThen(value => pure(fn(value)))
+  }
+
+}
+
+// FIXME: try avoid type assertions in here:
+export function sequence<Ts extends unknown[]>(
+  parsers: { [K in keyof Ts]: Parser<Ts[K]> }
+): Parser<Ts> {
+  if (parsers.length === 0) {
+    return pure([]) as unknown as Parser<Ts>
+  } else {
+    const [first, ...rest] = parsers
+    return first.andThen(value => sequence(rest).map(values => [value, ...values])) as Parser<Ts>
+  }
+}
+
+export function pure<T>(value: T): Parser<T> {
+  return new Parser(input => ({ value, restInput: input }))
+}
+
+export function string(str: string): Parser<string> {
+  return new Parser(input => {
+    if (!input.startsWith(str)) {
+      throw new ParseError(`Expected "${str}" at "${input.slice(0, str.length + 5)}..."`)
+    }
+
+    return { value: str, restInput: input.slice(str.length) }
+  })
+}
+
+export function between<T>(open: Parser<unknown>, close: Parser<unknown>, middle: Parser<T>): Parser<T> {
+  return open
+    .andThen(_ => middle)
+    .andThen(value => close.map(_ => value))
+}
+
+export function choice<T>(parserOptions: Parser<T>[]): Parser<T> {
+  return new Parser(input => {
+    for (const parser of parserOptions) {
+      try {
+        return parser.run(input)
+      } catch (error) {
+        if (error instanceof ParseError) {
+          // parser failed ==> try next option
+          continue
+        } else {
+          // Only catch ParseErrors, otherwise we silence true logic errors parsers.
+          throw error
+        }
+      }
+    }
+
+    // NOTE: also happens if all `parserOptions` is empty.
+    throw new ParseError('All choices failed on: ' + input)
+  })
+}
+
+export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
+  return new Parser(input => {
+    try {
+      return parser.run(input)
+    } catch (error) {
+      if (error instanceof ParseError) {
+        // parser failed ==> return `undefined` and consume no characters:
+        return { value: undefined, restInput: input }
+      } else {
+        // Only catch parse errors, otherwise we silence logic errors:
+        throw error
+      }
+    }
+  })
+}
+
+export function satisfy(predicate: (char: string) => boolean): Parser<string> {
+  return new Parser(input => {
+    if (input === '') {
+      throw new ParseError('Unexpected end of input')
+    } else if (!predicate(input[0])) {
+      throw new ParseError('Unexpected ' + input[0] + ' does not satisfy predicate')
+    } else {
+      return { value: input[0], restInput: input.slice(1) }
+    }
+  })
+}
+
+export const anyChar: Parser<string> = satisfy(_ => true)
+
+/**
+ * Needed for recursive parsers. TODO: explain why.
+ */
+export function lazy<T>(createParser: () => Parser<T>): Parser<T> {
+  return pure(null).andThen(createParser)
+}
+
+export namespace Expr {
+
+  export type UnaryOperator<T> = Parser<(inner: T) => T>
+
+  export type BinaryOperator<T> = Parser<(left: T, right: T) => T>
+
+  function prefixOp<T>(
+    operator: UnaryOperator<T>,
+    termParser: Parser<T>
+  ): Parser<T> {
+    return operator.andThen(
+      pre => termParser.map(pre)
+    )
+  }
+
+  function postfixOp<T>(
+    termParser: Parser<T>,
+    operator: UnaryOperator<T>,
+  ): Parser<T> {
+    return termParser.andThen(value =>
+      operator.map(post => post(value))
+    )
+  }
+
+  export function infixOpLeftAssoc<T>(
+    left: T,
+    operatorParser: BinaryOperator<T>,
+    rightParser: Parser<T>,
+  ): Parser<T> {
+    return operatorParser.andThen(op =>
+      rightParser.andThen(right =>
+        choice([
+          infixOpLeftAssoc(op(left, right), operatorParser, rightParser),
+          pure(op(left, right))
+        ])
+      )
+    )
+  }
+
+  export function infixOpRightAssoc<T>(
+    left: T,   
+    operatorParser: BinaryOperator<T>,
+    rightParser: Parser<T>,
+  ): Parser<T> {
+    return operatorParser.andThen(op =>
+      rightParser.andThen(right =>
+        choice([
+          infixOpRightAssoc(right, operatorParser, rightParser),
+          pure(right)
+        ])
+      ).map(right => op(left, right))
+    )
+  } 
+
+  export type Operator<T> = Readonly<
+    | { type: 'prefix', op: Expr.UnaryOperator<T> }
+    | { type: 'postfix', op: Expr.UnaryOperator<T> }
+    | { type: 'infixLeft', op: Expr.BinaryOperator<T> }
+    | { type: 'infixRight', op: Expr.BinaryOperator<T> }
+  >
+
+  function addPrecLevel<T>(
+    termParser: Parser<T>,
+    operator: Operator<T>,
+  ): Parser<T> {
+    switch (operator.type) {
+      case 'prefix': 
+        return prefixOp(
+          optional(operator.op).map(pre => pre ?? identity),
+          termParser,
+        )
+      case 'postfix':
+        return postfixOp(
+          termParser,
+          optional(operator.op).map(pre => pre ?? identity),
+        )
+      case 'infixLeft':
+        return termParser.andThen(left =>
+          choice([
+            infixOpLeftAssoc(left, operator.op, termParser),
+            pure(left)
+          ])
+        )
+      case 'infixRight':
+        return termParser.andThen(left =>
+          choice([
+            infixOpRightAssoc(left, operator.op, termParser),
+            pure(left)
+          ])
+        )
+    }
+    checkedAllCases(operator)
+  }
+
+  export function makeExprParser<T>(
+    termParser: Parser<T>,
+    operators: Operator<T>[],
+  ): Parser<T> {
+    return operators.reduce(addPrecLevel, termParser)
+  }
+
+}

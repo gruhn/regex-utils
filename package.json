@@ -1,0 +1,17 @@
+{
+  "name": "regex-utils",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest --exclude .direnv test/regex-parser.spec.ts"
+  },
+  "author": "Niklas Gruhn",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "vitest": "^3.0.5"
+  },
+  "dependencies": {
+  }
+}
