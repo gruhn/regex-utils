@@ -10,3 +10,9 @@ export function readBenchFile(): [RegExp, RegExp][] {
     })
 }
 
+export function* chunks<T>(n: number, array: T[]): Generator<T[]> {
+  while (array.length > n) {
+    yield array.slice(0, n)
+    array = array.slice(n)
+  }
+}

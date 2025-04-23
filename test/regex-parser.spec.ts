@@ -2,7 +2,7 @@ import { describe, expect, it, bench } from "vitest"
 import { parseRegExp, parseRegexString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
 import * as RE from "../src/extended-regex"
-import { readBenchFile } from './read-bench'
+import { readBenchFile, chunks } from './read-bench'
 
 describe('parseRegexString', () => { 
 
@@ -30,16 +30,14 @@ describe('parseRegexString', () => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
   })
 
-  // it.only('can parse all regex from the benchmark', () => {
-  //   for (const [regex1, regex2] of readBenchFile()) {
-  //     let timeNow = performance.now()
-  //     parseRegExp(regex1)
-  //     console.debug(timeNow - performance.now())
-  //     timeNow = performance.now()
-  //     parseRegExp(regex2)
-  //     console.debug(timeNow - performance.now())
-  //   }
-  // })
+  // for (const chunk of chunks(100, readBenchFile())) {
+  //   it('can parse all regex from the benchmark', () => {
+  //     for (const [regex1, regex2] of chunk) {
+  //       parseRegExp(regex1)
+  //       parseRegExp(regex2)
+  //     }
+  //   })
+  // }
 
 })
 
