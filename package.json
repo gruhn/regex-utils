@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run --exclude .direnv test/regex-parser.spec.ts"
+    "test": "vitest run --exclude .direnv test/stream.spec.ts"
   },
   "author": "Niklas Gruhn",
   "license": "MIT",

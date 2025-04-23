@@ -1,4 +1,4 @@
-import { assert, todo } from "./utils"
+import { assert } from "./utils"
 
 export type CodePointRange = { start: number, end: number }
 
