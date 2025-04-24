@@ -84,6 +84,6 @@ export function parseRegExp(regexp: RegExp): RE.ExtRegex {
   return parseRegexString(regexp.source)
 }
 
-export function toRegExp(regex: RE.ExtRegex): RegExp {
+export function toRegExp(_regex: RE.ExtRegex): RegExp {
   throw 'todo'
 }
