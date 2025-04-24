@@ -33,10 +33,13 @@ function isLiteralChar(char: string): boolean {
 
 const singleCharacter = P.satisfy(isLiteralChar).map(char => RE.literal(CharSet.singleton(char)))
 
+// TODO: allow empty strings, e.g. regex like "(|)"
+// const emptyString = P.string('').map(() => RE.epsilon)
+
 const group = P.between(
   P.string('('),
   P.string(')'),
-  regex()
+  regex(),
 )
 
 function regexTerm() {
@@ -60,6 +63,8 @@ function regex(): P.Parser<RE.ExtRegex> {
   ))
 }
 
+// TODO: start- and end marker are not necessarily at the 
+// beginning/end of the regex:
 const regexWithBounds = P.sequence([
   startMarker,
   regex(),

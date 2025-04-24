@@ -1,5 +1,5 @@
-import { checkedAllCases, assert } from "./utils"
-import * as CharSet from "./char-set"
+import { checkedAllCases, assert } from './utils'
+import * as CharSet from './char-set'
 
 /**
  * TODO

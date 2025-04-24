@@ -2,7 +2,10 @@ import { describe, expect, it, bench } from "vitest"
 import { parseRegExp, parseRegexString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
 import * as RE from "../src/extended-regex"
+import * as StdRegex from "../src/standard-regex"
 import { readBenchFile, chunks } from './read-bench'
+import fc from "fast-check"
+import * as Arb from './arbitrary-regex'
 
 describe('parseRegexString', () => { 
 
@@ -30,14 +33,17 @@ describe('parseRegexString', () => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
   })
 
-  // for (const chunk of chunks(100, readBenchFile())) {
-  //   it('can parse all regex from the benchmark', () => {
-  //     for (const [regex1, regex2] of chunk) {
-  //       parseRegExp(regex1)
-  //       parseRegExp(regex2)
-  //     }
-  //   })
-  // }
+  it('can parse arbitrary regex', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegexString(),
+        regexString => {
+          // Throws error if parsing fails:
+          parseRegexString(regexString)
+        }
+      )
+    )
+  })
 
 })
 

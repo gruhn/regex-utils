@@ -17,8 +17,17 @@ export function singleton(char: string): CharSet {
   return [{ start: codePoint, end: codePoint }]
 }
 
+export function fromArray(chars: string[]): CharSet {
+  const ranges = chars.map(singleton)
+  return ranges.reduce(union, [])
+}
+
 export function isEmpty(set: CharSet): boolean {
   return set.length === 0
+}
+
+export function isSingleton(set: CharSet): boolean {
+  return set.length === 1 && set[0].start === set[0].end
 }
 
 export function includes(set: CharSet, codePoint: number): boolean {
@@ -78,5 +87,26 @@ export function compare(setA: CharSet, setB: CharSet): number {
     const [ firstA, ...restA ] = setA
     const [ firstB, ...restB ] = setB
     return firstA.start - firstB.start || firstA.end - firstB.end || compare(restA, restB)    
+  }
+}
+
+// TODO: can make this more compact using character classes
+// e.g. \d instead of [0-9]
+export function toString(set: CharSet): string {
+  if (isEmpty(set)) {
+    // Contradictory regular expression to encode the empty set:
+    return "$.^"
+  } else if (isSingleton(set)) {
+    return String.fromCodePoint(set[0].start)
+  } else {
+    const rangesAsString = set.map(({ start, end }) => {
+      if (start === end) {
+        return String.fromCodePoint(start)
+      } else {
+        return `${String.fromCodePoint(start)}-${String.fromCodePoint(end)}`
+      }
+    })
+
+    return `[${rangesAsString.join("")}]`
   }
 }
