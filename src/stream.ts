@@ -1,13 +1,15 @@
-type Stream<T> =
+
+// TODO: make this an Iterable instance:
+export type Stream<T> =
   | undefined
   | { head: T, tail: () => Stream<T> }
 
-function cons<T>(head: T, tail: Stream<T>): Stream<T> {
-  return { head, tail: () => tail }
+function cons<T>(head: T, tail: () => Stream<T>): Stream<T> {
+  return { head, tail }
 }
 
 function singleton<T>(value: T): Stream<T> {
-  return cons(value, undefined)
+  return cons(value, () => undefined)
 }
 
 function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
@@ -126,9 +128,16 @@ function zipCons<A>(
     return map(singleton, row)
   else
     return {
-      head: cons(row.head, stripes.head),
+      head: cons(row.head, () => stripes.head),
       tail: () => zipCons(row.tail(), stripes.tail())
     }
+}
+
+export function take<A>(n: number, stream: Stream<A>): Stream<A> {
+  if (n <= 0 || stream === undefined)
+    return undefined
+  else
+    return cons(stream.head, () => take(n - 1, stream.tail()))
 }
 
 export function fromArray<T>(
@@ -143,9 +152,22 @@ export function fromArray<T>(
     }
 }
 
-export function* values<T>(stream: Stream<T>): Iterable<T> {
+export function toArray<T>(stream: Stream<T>): Array<T> {
+  const array: T[] = []
   while (stream !== undefined) {
-    yield stream.head
+    array.push(stream.head)
     stream = stream.tail()
   }
+  return array
 }
+
+export function range(
+  start: number,
+  end: number
+): Stream<number> {
+  if (start >= end)
+    return undefined
+  else
+    return cons(start, () => range(start + 1, end))
+}
+
