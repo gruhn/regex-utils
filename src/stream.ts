@@ -1,33 +1,13 @@
-
 type Stream<T> =
-  | undefined  
-  | { value: T, thunk: () => Stream<T> }
+  | undefined
+  | { head: T, tail: () => Stream<T> }
 
 function cons<T>(head: T, tail: Stream<T>): Stream<T> {
-  return { value: head, thunk: () => tail }
+  return { head, tail: () => tail }
 }
 
 function singleton<T>(value: T): Stream<T> {
   return cons(value, undefined)
-}
-
-/**
- * Takes two streams and combines them element-wise using the given function.
- * The result is an stream that yields the combined elements.
- * If one stream is longer than the other, the remaining elements are ignored.
- */
-function zipWith<A,B,C>(
-  combine: (a: A, b: B) => C,
-  streamA: Stream<A>,
-  streamB: Stream<B>,
-): Stream<C> {
-  if (streamA === undefined || streamB === undefined)
-    return undefined
-  else
-    return {
-      value: combine(streamA.value, streamB.value),
-      thunk: () => zipWith(combine, streamA.thunk(), streamB.thunk()),
-    }
 }
 
 function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
@@ -35,8 +15,8 @@ function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
     return undefined
   else
     return {
-      value: fn(stream.value),
-      thunk: () => map(fn, stream.thunk()),
+      head: fn(stream.head),
+      tail: () => map(fn, stream.tail()),
     }
 }
 
@@ -49,35 +29,53 @@ export function interleave<A>(stream1: Stream<A>, stream2: Stream<A>): Stream<A>
     return stream2
   else
     return {
-      value: stream1.value,
-      thunk: () => interleave(stream2, stream1.thunk())
+      head: stream1.head,
+      tail: () => interleave(stream2, stream1.tail())
     }
 }
 
 export function concat<A>(streams: Stream<Stream<A>>): Stream<A> {
   if (streams === undefined)
     return undefined
-  else if (streams.value === undefined)
-    return concat(streams.thunk())
+  else if (streams.head === undefined)
+    return concat(streams.tail())
   else {
-    const stream = streams.value
+    const stream = streams.head
     return {
-      value: stream.value,
-      thunk: () => concat({ value: stream.thunk(), thunk: streams.thunk })
+      head: stream.head,
+      tail: () => concat({ head: stream.tail(), tail: streams.tail })
     }
   }
 }
 
-// diagonalPairs :: forall a b c. (a -> b -> c) -> [a] -> [b] -> [c]
-// diagonalPairs f left right = concat $ stripe left right
-//   where
-//     stripe :: [a] -> [b] -> [[c]]
-//     stripe []     _      = []
-//     stripe _      []     = []
-//     stripe (a:as) (b:bs) = [f a b] : zipWith (:) (map (f a) bs) (stripe as (b:bs))
-
 /**
- * TODO
+ * This function is useful to create a fair enumeration of 
+ * the cartesian product of two infinite streams, i.e. all 
+ * possible ways to pair up items from the two streams.
+ *
+ * For example, say `streamA` and `streamB` produce all non-
+ * negative integers (0,1,2,3,4,...) then one could start 
+ * by pairing 0 from `streamA` with everything from `streamB`:
+ * 
+ *     (0,0) -> (0,1) -> (0,2) -> (0,3) -> ...
+ *
+ * However, this enumeration is unfair because it never 
+ * produces (1,0) or (2,0) etc. A trick to make it fair
+ * is to enumerate the pairs in a "diagonal" fashion:
+ *
+ *     (0,0) (0,1) (0,2) (0,3) (0,4)
+ *           /     /     /     /
+ *         /     /     /     /
+ *     (1,0) (1,1) (1,2) (1,3)
+ *           /     /     /
+ *         /     /     /
+ *     (2,0) (2,1) (2,2)
+ *           /     /    
+ *         /     /
+ *     (3,0) (3,1)
+ *
+ * Where each stripes is oriented top-right to bottom-left.
+ * This guarantees that every possible pair is produced eventually.
  */
 export function diagonalize<A,B,C>(
   pair: (a: A, b: B) => C,
@@ -87,7 +85,14 @@ export function diagonalize<A,B,C>(
   return concat(stripe(pair, streamA, streamB))
 }
 
-export function stripe<A,B,C>(
+/**
+ * Creates a stream of streams, where each item-stream
+ * is a "diagonal stripe" (see `diagonalize`).
+ * The individual item-streams are always finite but the
+ * outer stream is infinite (unless the input streams are
+ * already finite).
+ */
+function stripe<A,B,C>(
   pair: (a: A, b: B) => C,
   streamA: Stream<A>,
   streamB: Stream<B>,
@@ -96,16 +101,34 @@ export function stripe<A,B,C>(
     return undefined
   } else {
     return {
-      value: singleton(pair(streamA.value, streamB.value)),
-      thunk: () => {
-        return zipWith(
-          cons,
-          map(b => pair(streamA.value, b), streamB.thunk()),
-          stripe(pair, streamA.thunk(), streamB)
+      head: singleton(pair(streamA.head, streamB.head)),
+      tail: () => {
+        return zipCons(
+          map(itemA => pair(itemA, streamB.head), streamA.tail()),
+          stripe(pair, streamA, streamB.tail())
         )
       }
     }
   }
+}
+
+/**
+ * TODO
+ */
+function zipCons<A>(
+  row: Stream<A>,
+  stripes: Stream<Stream<A>>,
+): Stream<Stream<A>> {
+  if (row === undefined)
+    return stripes
+  else if (stripes === undefined)
+    // QUESTION: Can this case happen?
+    return map(singleton, row)
+  else
+    return {
+      head: cons(row.head, stripes.head),
+      tail: () => zipCons(row.tail(), stripes.tail())
+    }
 }
 
 export function fromArray<T>(
@@ -115,14 +138,14 @@ export function fromArray<T>(
     return undefined
   else
     return {
-      value: array[0],
-      thunk: () => fromArray(array.slice(1))
+      head: array[0],
+      tail: () => fromArray(array.slice(1))
     }
 }
 
-export function* toIterable<T>(stream: Stream<T>): Iterable<T> {
+export function* values<T>(stream: Stream<T>): Iterable<T> {
   while (stream !== undefined) {
-    yield stream.value
-    stream = stream.thunk()
+    yield stream.head
+    stream = stream.tail()
   }
 }
