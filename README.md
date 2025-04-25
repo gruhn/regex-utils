@@ -1,16 +1,18 @@
 
 # Regex Utils
 
-Zero-dependency TypeScript library providing rare regex utility functions:
+Zero-dependency TypeScript library for rare regex utilities:
 
 * `intersection(regex1, regex2)` creates a new regular expression that only matches the strings matched by both `regex1` and `regex2`
+* `complement(regex1, regex2)`
+* `size(regex)`
 * `equivalent(regex1, regex2)` ...
 * `findMismatch(regex1, regex2)` ...
-* `enumerate(regex)` produces a (potentially infinite) stream of strings matched by `regex`.
-* `stripPrefix(string, regex)` ...
+* `enumerate(regex)` produces a (potentially infinite) stream of strings that match `regex`.
+* `derivative(string, regex)` ...
 * and more...
 
-Mostly inspired by: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
+Heavily informed by this paper: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
 
 ## Installation
 
@@ -19,6 +21,21 @@ npm install regex-utils
 ```
 
 TODO: how to import TypeScript sources vs. JavaScript bundle.
+
+```typescript
+import { intersection } from 'regex-utils'
+
+// password constraints as 
+const constraints = [
+  /.{12,}/,  // min length 12 letters
+  /[0-9]/,   // at least one number
+  /[A-Z]/,   // at least one upper case letter   
+  /[a-z]/,   // at least one lower case letter
+]
+
+// Combine into a single regex:
+const passwordRegex = constraints.reduce(intersection)
+```
 
 ## Limitations
 

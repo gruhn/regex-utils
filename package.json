@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run --exclude .direnv",
+    "test": "vitest watch --exclude .direnv",
     "bench": "npx ts-node benchmark/run.ts"
   },
   "author": "Niklas Gruhn",

@@ -5,7 +5,7 @@ import * as CharSet from '../src/char-set'
 import { checkedAllCases } from '../src/utils.ts'
 
 // TODO: try larger alphabet:
-export function charSet(): fc.Arbitrary<CharSet.CharSet> {
+export function charSet(): fc.Arbitrary<CharSet.CharClass> {
   // return fc.uniqueArray(
   //   fc.constantFrom('a', 'b', 'c', 'd', 'e', 'f'),
   //   // TODO: regex parser can't handle empty set yet:

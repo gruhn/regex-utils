@@ -266,3 +266,29 @@ function compare(regexA: ExtRegex, regexB: ExtRegex): number {
 function isGreaterThan(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return compare(regexA, regexB) > 0
 }
+
+function derivativeClasses(regex: ExtRegex): CharSet[] {
+  const alphabet = CharSet.fullAlphabet()
+
+  switch (regex.type) {
+    case "epsilon":
+      return [alphabet]
+    case "literal":
+      return [regex.charset, CharSet.difference(alphabet, regex.charset)]
+    case "concat": {
+      if (isNullable(regex)) 
+        throw 'todo'
+      else 
+        return derivativeClasses(regex.left)     
+    }
+    case "union":
+      throw 'todo'
+    case "intersection":
+      throw 'todo'
+    case "star":
+      throw 'todo'
+    case "complement":
+      throw 'todo'
+  }  
+  checkedAllCases(regex)
+}
