@@ -1,4 +1,4 @@
-import { checkedAllCases, assert } from './utils'
+import { checkedAllCases, assert, uniqWith } from './utils'
 import * as CharSet from './char-set'
 
 /**
@@ -30,10 +30,10 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === "concat")
     // (r · s) · t ≈ r · (s · t)
     return concat(left.left, concat(left.right, right))
-  else if (similar(empty, left))
+  else if (equal(empty, left))
     // ∅ · r ≈ ∅
     return empty
-  else if (similar(empty, right))
+  else if (equal(empty, right))
     // r · ∅ ≈ ∅
     return empty
   else if (left.type === "epsilon")
@@ -47,7 +47,7 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
 }
 
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (similar(left, right)) 
+  if (equal(left, right)) 
     // r + r ≈ r
     return left
   else if (isGreaterThan(left, right)) // TODO: this check is re-computed in the recursive call
@@ -56,10 +56,10 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (left.type === "union")
     // (r + s) + t ≈ r + (s + t)
     return union(left.left, union(left.right, right))
-  else if (similar(left, complement(empty)))
+  else if (equal(left, complement(empty)))
     // ¬∅ + r ≈ ¬∅
     return complement(empty)
-  else if (similar(empty, left))
+  else if (equal(empty, left))
     // ∅ + r ≈ r
     return right
   else if (left.type === 'literal' && right.type === 'literal')
@@ -70,7 +70,7 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
 }
 
 export function star(inner: ExtRegex): ExtRegex {
-  if (similar(empty, inner))
+  if (equal(empty, inner))
     // ∅∗ ≈ ε
     return epsilon
   else if (inner.type === "epsilon")
@@ -84,7 +84,7 @@ export function star(inner: ExtRegex): ExtRegex {
 }
 
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (similar(left, right)) 
+  if (equal(left, right)) 
     // r & r ≈ r
     return left 
   else if (isGreaterThan(left, right)) // TODO: this check is re-computed in the recursive call
@@ -93,10 +93,10 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (left.type === "intersection")
     // (r & s) & t ≈ r & (s & t)
     return intersection(left.left, intersection(left.right, right))
-  else if (similar(empty, left))
+  else if (equal(empty, left))
     // ∅ & r ≈ ∅
     return empty 
-  else if (similar(left, complement(empty)))
+  else if (equal(left, complement(empty)))
     // ¬∅ & r ≈ r
     return right 
   else
@@ -146,7 +146,7 @@ export function isEmpty(regex: ExtRegex): boolean {
   return regex.type === 'literal' && CharSet.isEmpty(regex.charset)
 }
 
-function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex {
+export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex {
   switch (regex.type) {
     case "epsilon":
       return empty
@@ -197,7 +197,7 @@ export function derivative(str: string, regex: ExtRegex): ExtRegex {
     const restStr = str.slice(1) 
     const restRegex = codePointDerivative(firstCodePoint, regex)
 
-    if (similar(empty, restRegex)) 
+    if (equal(empty, restRegex)) 
       return empty
     else
       return derivative(restStr, restRegex)
@@ -239,7 +239,7 @@ export function matches(regex: ExtRegex, string: string): boolean {
  * TODO: write property based test to find more examples where this does
  * not detect regex equivalence.
  */
-export function similar(regexA: ExtRegex, regexB: ExtRegex): boolean {
+export function equal(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return compare(regexA, regexB) === 0
 }
 
@@ -267,7 +267,17 @@ function isGreaterThan(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return compare(regexA, regexB) > 0
 }
 
-function derivativeClasses(regex: ExtRegex): CharSet[] {
+function allIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet[]): CharSet.CharSet[] {
+  const result: CharSet.CharSet[] = []
+  for (const classA of classesA) {
+    for (const classB of classesB) {
+      result.push(CharSet.intersection(classA, classB))
+    }
+  }
+  return uniqWith(result, CharSet.compare)
+}
+
+export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
   const alphabet = CharSet.fullAlphabet()
 
   switch (regex.type) {
@@ -277,18 +287,28 @@ function derivativeClasses(regex: ExtRegex): CharSet[] {
       return [regex.charset, CharSet.difference(alphabet, regex.charset)]
     case "concat": {
       if (isNullable(regex)) 
-        throw 'todo'
+        return allIntersections(
+          derivativeClasses(regex.left),
+          derivativeClasses(regex.right)
+        )
       else 
         return derivativeClasses(regex.left)     
     }
     case "union":
-      throw 'todo'
+      return allIntersections(
+        derivativeClasses(regex.left),
+        derivativeClasses(regex.right)
+      )
     case "intersection":
-      throw 'todo'
+      return allIntersections(
+        derivativeClasses(regex.left),
+        derivativeClasses(regex.right)
+      )
     case "star":
-      throw 'todo'
+      return derivativeClasses(regex.inner)
     case "complement":
-      throw 'todo'
+      return derivativeClasses(regex.inner)
   }  
   checkedAllCases(regex)
 }
+
