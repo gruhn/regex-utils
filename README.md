@@ -4,7 +4,7 @@
 Zero-dependency TypeScript library for rare regex utilities:
 
 * `intersection(regex1, regex2)` creates a new regular expression that only matches the strings matched by both `regex1` and `regex2`
-* `complement(regex1, regex2)`
+* `complement(regex)`
 * `size(regex)`
 * `equivalent(regex1, regex2)` ...
 * `findMismatch(regex1, regex2)` ...

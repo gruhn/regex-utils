@@ -1,9 +1,32 @@
-import { assert } from "./utils"
+import { adjacentPairs, assert } from "./utils"
 
 export type CodePointRange = { start: number, end: number }
 
-// TODO: could make this a tree for more efficient lookup
-export type CharSet = CodePointRange[]
+/**
+ * TODO: could make this a tree for more efficient lookup
+ */
+export type CharSet = readonly CodePointRange[]
+
+/**
+ * Ranges in a CharSet should always be: non-empty, sorted and strictly disjoint.
+ * For example, the following ranges are disjoint, but they could be merged into
+ * a single range, so they are not strictly disjoint:
+ * 
+ *     { start: 0, end: 5 }, { start: 6, end: 7 }
+ */
+export function checkInvariants(set: CharSet): void {
+  if (set.length > 0) {
+    assert(!Range.isEmpty(set[0]), 'CharSet contains empty range')
+
+    for (const [prevRange, range] of adjacentPairs(set)) {
+      assert(!Range.isEmpty(range), 'CharSet contains empty range')
+      assert(
+        prevRange.end + 1 < range.start,
+        `Invalid adjacent ranges: ${Range.toString(prevRange)} and ${Range.toString(range)}`
+      )
+    }
+  }
+}
 
 export function fullAlphabet(): CharSet {
   // Full unicode range. TODO: Whether regex dot "." matches all unicode characters
@@ -26,7 +49,18 @@ export function isEmpty(set: CharSet): boolean {
   return set.length === 0
 }
 
+function fromRange(range: CodePointRange): CharSet {
+  if (Range.isEmpty(range)) 
+    return []
+  else 
+    return [range]
+}
+
 export namespace Range {
+
+  export function toString(range: CodePointRange): string {
+    return `${String.fromCodePoint(range.start)}-${String.fromCodePoint(range.end)}`
+  }
 
   export function isEmpty(range: CodePointRange): boolean {
     return range.start > range.end
@@ -90,35 +124,27 @@ export function insertRange(set: CharSet, range: CodePointRange): CharSet {
   }
 }
 
-function deleteRange(set: CharSet, range: CodePointRange): CharSet {
+export function deleteRange(set: CharSet, range: CodePointRange): CharSet {
   if (set.length === 0) {
     return []
   } else {
     const [first, ...rest] = set
 
-    //      |----------| range
-    // |---------| first
-    //           |-----| rangeAfterFirst
-    const rangeAfterFirstEnd = {
-      start: Math.max(first.end, range.start),
-      end: range.end
-    }
+    if (range.end < first.start) {
+      return set
+    } else {
+      const [before, _, after] = Range.subtract(first, range)
 
-    //      |----------| range
-    // |---------| first
-    // |----| firstNotCovered
-    const firstNotCovered = {
-      start: Math.max(first.start, range.end),
-      end: Math.min(first.end, range.start),
+      return [
+        ...fromRange(before),
+        ...deleteRange([
+          ...fromRange(after),
+          ...rest
+        ], range)
+      ]     
     }
-
-    return [
-      ...(Range.isEmpty(firstNotCovered) ? [] : [firstNotCovered]),
-      ...(Range.isEmpty(rangeAfterFirstEnd) ? rest : deleteRange(rest, rangeAfterFirstEnd))
-    ]
   }
 }
-
 
 export function union(setA: CharSet, setB: CharSet): CharSet {
   return setA.reduce(insertRange, setB)
@@ -129,21 +155,40 @@ export function difference(setA: CharSet, setB: CharSet): CharSet {
 }
 
 export function intersection(setA: CharSet, setB: CharSet): CharSet {
-  if (setA.length === 0)
-    return []
-  else if (setB.length === 0)
-    return []
-  else {
+  const result: CodePointRange[] = []
+
+  while (setA.length > 0 && setB.length > 0) {
     const [rangeA, ...restA] = setA
     const [rangeB, ...restB] = setB
 
-    if (rangeA.end < rangeB.start)
-      return intersection(restA, setB)
-    else if (rangeB.end < rangeA.start)
-      return intersection(setA, restB)
+    const interAB = {
+      start: Math.max(rangeA.start, rangeB.start),
+      end: Math.min(rangeA.end, rangeB.end)
+    }
+    const afterA = {
+      start: Math.max(rangeA.start, rangeB.end + 1),
+      end: Math.max(rangeA.end, rangeB.end)
+    }
+    const afterB = {
+      start: Math.max(rangeB.start, rangeA.end + 1),
+      end: Math.max(rangeB.end, rangeA.end)
+    }
+
+    if (!Range.isEmpty(interAB)) 
+      result.push(interAB)   
+
+    if (Range.isEmpty(afterA))
+      setA = restA
     else
-      throw 'todo'
+      setA = [afterA, ...restA]
+    
+    if (Range.isEmpty(afterB))
+      setB = restB
+    else
+      setB = [afterB, ...restB]
   }
+
+  return result
 }
 
 export function compare(setA: CharSet, setB: CharSet): number {
