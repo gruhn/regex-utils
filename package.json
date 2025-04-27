@@ -2,16 +2,21 @@
   "name": "regex-utils",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "type": "module",
   "scripts": {
     "test": "vitest watch --exclude .direnv",
-    "bench": "npx ts-node benchmark/run.ts"
+    "bench": "npm run build && 0x --output-dir prof benchmark/bench.js",
+    "build": "tsc && tsc-alias"
   },
   "author": "Niklas Gruhn",
   "license": "MIT",
   "description": "",
   "devDependencies": {
+    "0x": "^5.8.0",
     "fast-check": "^3.23.2",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.15",
+    "typescript": "^5.8.3",
     "vitest": "^3.0.5"
   }
 }

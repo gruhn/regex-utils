@@ -5,7 +5,7 @@
       "ESNext",
       "dom"
     ], // specifies which default set of type definitions to use ("DOM", "ES6", etc)
-    "outDir": "lib", // .js (as well as .d.ts, .js.map, etc.) files will be emitted into this directory.,
+    "outDir": "dist", // .js (as well as .d.ts, .js.map, etc.) files will be emitted into this directory.,
     "removeComments": true, // Strips all comments from TypeScript files when converting into JavaScript- you rarely read compiled code so this saves space
     "target": "ES6", // Target environment. Most modern browsers support ES6, but you may want to set it to newer or older. (defaults to ES3)
 
@@ -26,12 +26,16 @@
     // Linter Checks
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": false, // accessing index must always check for undefined
-    "noUnusedLocals": true, // Report errors on unused local variables.
-    "noUnusedParameters": true // Report errors on unused parameters in functions
+    "noUnusedLocals": false, // Don't report errors on unused local variables.
+    "noUnusedParameters": false // Don't report errors on unused parameters in functions
   },
-  "include": ["./**/*.ts"],
+  "include": ["./src/*.ts"],
   "exclude": [
     "node_modules/**/*",
     ".direnv/**/*"
-  ]
+  ],
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": false
+  }
 }

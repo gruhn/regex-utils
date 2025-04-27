@@ -2,7 +2,20 @@ import { identity, checkedAllCases } from './utils'
 
 export type ParseResult<T> = { value: T, restInput: string }
 
-export class ParseError extends Error {}
+export class ParseError extends Error {
+
+  constructor(
+    message: string,
+    public readonly restInput: string
+  ) {
+    super(message)
+  }
+
+  toString() {
+    return `${super.toString()}\nInput: "${this.restInput.slice(0, 20)}..."`
+  }
+  
+}
 
 export class Parser<T> {
 
@@ -25,12 +38,16 @@ export class Parser<T> {
 export function sequence<Ts extends unknown[]>(
   parsers: { [K in keyof Ts]: Parser<Ts[K]> }
 ): Parser<Ts> {
-  if (parsers.length === 0) {
-    return pure([]) as unknown as Parser<Ts>
-  } else {
-    const [first, ...rest] = parsers
-    return first.andThen(value => sequence(rest).map(values => [value, ...values])) as Parser<Ts>
-  }
+  return new Parser(input => {
+    let restInput = input
+    const output = []
+    for (const parser of parsers) {
+      const result = parser.run(restInput)
+      restInput = result.restInput
+      output.push(result.value)
+    }
+    return { value: output as Ts, restInput }
+  })
 }
 
 export function pure<T>(value: T): Parser<T> {
@@ -40,7 +57,7 @@ export function pure<T>(value: T): Parser<T> {
 export function string(str: string): Parser<string> {
   return new Parser(input => {
     if (!input.startsWith(str)) {
-      throw new ParseError(`Expected "${str}" at "${input.slice(0, str.length + 5)}..."`)
+      throw new ParseError(`Expected "${str}".`, input)
     }
 
     return { value: str, restInput: input.slice(str.length) }
@@ -60,8 +77,15 @@ export function choice<T>(parserOptions: Parser<T>[]): Parser<T> {
         return parser.run(input)
       } catch (error) {
         if (error instanceof ParseError) {
-          // parser failed ==> try next option
-          continue
+          if (error.restInput === input) {
+            // parser failed but did not consume any characters,
+            // => try next parser
+            continue
+          } else {
+            // parser failed and consumed characters. Don't try next parser
+            // to avoid backtracking by default:
+            throw error
+          }
         } else {
           // Only catch ParseErrors, otherwise we silence true logic errors parsers.
           throw error
@@ -70,7 +94,7 @@ export function choice<T>(parserOptions: Parser<T>[]): Parser<T> {
     }
 
     // NOTE: also happens if all `parserOptions` is empty.
-    throw new ParseError('All choices failed on: ' + input)
+    throw new ParseError('All choices failed.', input)
   })
 }
 
@@ -93,9 +117,9 @@ export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
 export function satisfy(predicate: (char: string) => boolean): Parser<string> {
   return new Parser(input => {
     if (input === '') {
-      throw new ParseError('Unexpected end of input')
+      throw new ParseError('Unexpected end of input', input)
     } else if (!predicate(input[0])) {
-      throw new ParseError('Unexpected ' + input[0] + ' does not satisfy predicate')
+      throw new ParseError('Character does not satisfy predicate', input)
     } else {
       return { value: input[0], restInput: input.slice(1) }
     }

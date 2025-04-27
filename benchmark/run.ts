@@ -1,22 +1,22 @@
-import * as fs from 'fs'
+import fs from 'fs'
 import { parseRegexString } from '../src/regex-parser'
 
-export function readBenchFile(): [string, string][] {
-  return fs.readFileSync('./benchmark/bench.txt', 'utf-8')
-    .trim()
-    .split('\n')
-    .map((line: string) => {
-      const [regex1, regex2] = line.split(/\s{3}/)
-      return [regex1, regex2]
-    })
-}
+// export function readBenchFile(): [string, string][] {
+//   return fs.readFileSync('./benchmark/bench.txt', 'utf-8')
+//     .trim()
+//     .split('\n')
+//     .map((line: string) => {
+//       const [regex1, regex2] = line.split(/\s{3}/)
+//       return [regex1, regex2]
+//     })
+// }
 
-export function* chunks<T>(n: number, array: T[]): Generator<T[]> {
-  while (array.length > n) {
-    yield array.slice(0, n)
-    array = array.slice(n)
-  }
-}
+// export function* chunks<T>(n: number, array: T[]): Generator<T[]> {
+//   while (array.length > n) {
+//     yield array.slice(0, n)
+//     array = array.slice(n)
+//   }
+// }
 
 let worstTime = -Infinity
 
@@ -34,7 +34,10 @@ function bench(str: string) {
   }
 }
 
-for (const [regex1, regex2] of readBenchFile()) {
-  bench(regex1)
-  bench(regex2)
-}
+// bench('(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)a(a|b)bb(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)a(a|b)bb(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)a(a|b)bb(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)a(a|b)bb(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)a(a|b)bb(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)(a|b)')
+bench('aaaaaaaaaaaa')
+
+// for (const [regex1, regex2] of readBenchFile()) {
+//   bench(regex1)
+//   bench(regex2)
+// }

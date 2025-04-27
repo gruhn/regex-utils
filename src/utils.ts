@@ -86,7 +86,7 @@ export function identity<T>(x: T): T {
  * Yields tuples of elements from the two input arrays. Excess elements are ignored., if one
  * of the arrays is longer
  */
-export function* zip<A,B>(arrayA: A[], arrayB: B[]): Generator<[A,B]> {
+export function* zip<A,B>(arrayA: readonly A[], arrayB: readonly B[]): Generator<[A,B]> {
   for (let i = 0; i < Math.min(arrayA.length, arrayB.length); i++) {
     yield [arrayA[i], arrayB[i]]
   }

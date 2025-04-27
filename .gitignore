@@ -1,2 +1,6 @@
 node_modules
 .direnv
+# build output dir:
+dist
+# profiling output dir
+prof

@@ -45,8 +45,8 @@ const group = P.between(
 function regexTerm() {
   return P.choice([
     anySingle, 
-    singleCharacter,
     group,
+    singleCharacter,
   ])
 }
  
@@ -76,7 +76,7 @@ export function parseRegexString(regexStr: string): RE.ExtRegex {
   if (restInput === '') {
     return value
   } else {
-    throw new P.ParseError('Expected end of input. Got: ' + restInput)
+    throw new P.ParseError('Expected end of input.', restInput)
   }
 }
 

@@ -134,8 +134,7 @@ export function plus(regex: ExtRegex): ExtRegex {
 }
 
 export function concatAll(res: ExtRegex[]): ExtRegex {
-  // Reducing right-to-left should trigger fewer normalization steps in `concat`:
-  return res.reduceRight((right, left) => concat(left, right), epsilon)
+  return res.reduce(concat, epsilon)
 }
 
 //////////////////////////////////////////////

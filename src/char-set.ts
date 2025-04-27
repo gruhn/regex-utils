@@ -1,4 +1,4 @@
-import { adjacentPairs, assert } from "./utils"
+import { adjacentPairs, assert, zip } from "./utils"
 
 export type CodePointRange = { start: number, end: number }
 
@@ -199,9 +199,14 @@ export function compare(setA: CharSet, setB: CharSet): number {
   } else if (isEmpty(setB)) {
     return 1
   } else {
-    const [ firstA, ...restA ] = setA
-    const [ firstB, ...restB ] = setB
-    return firstA.start - firstB.start || firstA.end - firstB.end || compare(restA, restB)    
+    for (const [rangeA, rangeB] of zip(setA, setB)) {
+      if (rangeA.start !== rangeB.start) {
+        return rangeA.start - rangeB.start
+      } else if (rangeA.end !== rangeB.end) {
+        return rangeA.end - rangeB.end
+      }
+    }
+    return 0
   }
 }
 
