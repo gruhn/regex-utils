@@ -1,11 +1,51 @@
-import { adjacentPairs, assert, zip } from "./utils"
+import { adjacentPairs, assert, checkedAllCases, hashNums, hashStr, zip } from './utils'
+import * as Range from './code-point-range'
 
-export type CodePointRange = { start: number, end: number }
+type WithHash<T> = T & { hash: number }
 
-/**
- * TODO: could make this a tree for more efficient lookup
- */
-export type CharSet = readonly CodePointRange[]
+type EmptyCharSet = WithHash<{ type: 'empty' }>
+
+// TODO: ensure tree is balanced
+type NonEmptyCharSetWithoutHash =
+  | { type: 'leaf', range: Range.CodePointRange }
+  | { type: 'node', range: Range.CodePointRange, left: NonEmptyCharSet, right: NonEmptyCharSet }
+
+type NonEmptyCharSet = WithHash<NonEmptyCharSetWithoutHash>
+
+export type CharSet = Readonly<EmptyCharSet | NonEmptyCharSet>
+
+export const empty: EmptyCharSet = {
+  type: 'empty',
+  hash: hashStr('empty')
+}
+
+function leaf(range: Range.CodePointRange): NonEmptyCharSet {
+  return {
+    type: 'leaf',
+    range,
+    hash: hashNums([
+      hashStr('leaf'),
+      range.start,
+      range.end
+    ])
+  }
+}
+
+function node({ left, right }: {
+  left: NonEmptyCharSet,
+  right: NonEmptyCharSet,
+}): NonEmptyCharSet {
+  return {
+    type: 'node',
+    range: {
+      start: left.range.start,
+      end: right.range.end
+    },
+    left, 
+    right,
+    hash: hashNums([ hashStr('node'), left.hash, right.hash ])
+  }
+}
 
 /**
  * Ranges in a CharSet should always be: non-empty, sorted and strictly disjoint.
@@ -15,139 +55,147 @@ export type CharSet = readonly CodePointRange[]
  *     { start: 0, end: 5 }, { start: 6, end: 7 }
  */
 export function checkInvariants(set: CharSet): void {
-  if (set.length > 0) {
-    assert(!Range.isEmpty(set[0]), 'CharSet contains empty range')
+  if (set.type === 'empty') {
+    // assert(set.range.start === +Infinity, 'CharSet empty node with invalid range.start')
+    // assert(set.range.end === -Infinity, 'CharSet empty node with invalid range.end')
+    return
+  } else if (set.type === 'leaf') {
+    assert(!Range.isEmpty(set.range), 'NonEmptyCharSet is empty')
+  } else if (set.type === 'node') {   
+    const { range: parentRange, left, right } = set
 
-    for (const [prevRange, range] of adjacentPairs(set)) {
-      assert(!Range.isEmpty(range), 'CharSet contains empty range')
-      assert(
-        prevRange.end + 1 < range.start,
-        `Invalid adjacent ranges: ${Range.toString(prevRange)} and ${Range.toString(range)}`
-      )
-    }
+    assert(!Range.isEmpty(parentRange), 'Empty range node in NonEmptyCharSet')
+    assert(Range.isSubRangeOf(left.range, parentRange), 'left branch not contained in parent range')
+    assert(Range.isSubRangeOf(right.range, parentRange), 'right branch not contained in parent range')
+
+    assert(
+      left.range.end + 1 < right.range.start,
+      `adjacent ranges ${Range.toString(left.range)} and ${Range.toString(right.range)} not strictly disjoint`
+    )
+
+    // TODO: This invariant duplicates information. Can probably be eliminated:
+    assert(left.range.start === parentRange.start)
+    assert(right.range.end === parentRange.end)
+
+    checkInvariants(set.left)
+    checkInvariants(set.right)
+  } else {
+    checkedAllCases(set)
   }
+}
+
+export function singleton(char: string): CharSet {
+  return fromRange(Range.singleton(char))
+}
+
+export function fromArray(chars: string[]): CharSet {
+  return chars.map(singleton).reduce(union, empty)
+}
+
+export function isEmpty(set: CharSet): boolean {
+  return set.type === 'empty'
+}
+
+function fromRange(range: Range.CodePointRange): NonEmptyCharSet {
+  assert(!Range.isEmpty(range))
+  return leaf(range)
 }
 
 export function fullAlphabet(): CharSet {
   // Full unicode range. TODO: Whether regex dot "." matches all unicode characters
   // depends on the regex flags. Should later take that into account.
-  return [{ start: 0, end: 0x10FFFF }]
-}
-
-export function singleton(char: string): CharSet {
-  const codePoint = char.codePointAt(0) 
-  assert(codePoint !== undefined && char.length <= 1, `Invalid character: ${char}`)
-  return [{ start: codePoint, end: codePoint }]
-}
-
-export function fromArray(chars: string[]): CharSet {
-  const ranges = chars.map(singleton)
-  return ranges.reduce(union, [])
-}
-
-export function isEmpty(set: CharSet): boolean {
-  return set.length === 0
-}
-
-function fromRange(range: CodePointRange): CharSet {
-  if (Range.isEmpty(range)) 
-    return []
-  else 
-    return [range]
-}
-
-export namespace Range {
-
-  export function toString(range: CodePointRange): string {
-    return `${String.fromCodePoint(range.start)}-${String.fromCodePoint(range.end)}`
-  }
-
-  export function isEmpty(range: CodePointRange): boolean {
-    return range.start > range.end
-  }
-
-  export function union(rangeA: CodePointRange, rangeB: CodePointRange): CharSet {
-    if (isEmpty(rangeA) || isEmpty(rangeB))
-      return [rangeA, rangeB].filter(r => !isEmpty(r))
-    else if (rangeA.end + 1 < rangeB.start) 
-      return [rangeA, rangeB]
-    else if (rangeB.end + 1 < rangeA.start) 
-      return [rangeB, rangeA]
-    else 
-      return [{
-        start: Math.min(rangeA.start, rangeB.start),
-        end: Math.max(rangeA.end, rangeB.end),
-      }]
-  }
-
-  export function subtract(rangeA: CodePointRange, rangeB: CodePointRange): [CodePointRange, CodePointRange, CodePointRange] {
-    return [
-      { start: Math.min(rangeA.start, rangeB.start), end: Math.min(rangeA.end, rangeB.start - 1) },
-      { start: Math.max(rangeA.start, rangeB.start), end: Math.min(rangeA.end, rangeB.end) },
-      { start: Math.max(rangeA.start, rangeB.end + 1), end: Math.max(rangeA.end, rangeB.end) }
-    ]
-  }
- 
+  return fromRange({ start: 0, end: 0x10FFFF })
 }
 
 export function isSingleton(set: CharSet): boolean {
-  return set.length === 1 && set[0].start === set[0].end
+  return set.type === 'leaf' && set.range.start === set.range.end
 }
 
 export function includes(set: CharSet, codePoint: number): boolean {
-  return set.some(({ start, end }) => codePoint >= start && codePoint <= end)
+  if (set.type === 'empty') {
+    return false
+  } else if (set.type === 'leaf') {
+    return Range.includes(set.range, codePoint)
+  } else if (set.type === 'node') {
+    if (Range.includes(set.left.range, codePoint))
+      return includes(set.left, codePoint)
+    else if (Range.includes(set.right.range, codePoint))
+      return includes(set.right, codePoint)
+    else
+      return false
+  }
+  checkedAllCases(set)
 }
 
-export function insertRange(set: CharSet, range: CodePointRange): CharSet {
-  if (set.length === 0) {
-    return [range]
-  } else {
-    const [first, ...rest] = set
-    
-    if (range.end + 1 < first.start) {
-      // |---| range
-      //        |---| first
-      //               |------------| rest
-      return [range, first, ...rest]
-    } else if (first.end + 1 < range.start) {
-      //       |------| range
-      // |---| first
-      //          |------------| rest
-      return [first, ...insertRange(rest, range)]
-    } else {
-      //   |------| range
-      // |---| first
-      //       |------------| rest
-      const merged = Range.union(first, range)
-      return union(merged, rest)
-    }
-  }
+export function insertRange(set: CharSet, range: Range.CodePointRange): NonEmptyCharSet {
+  if (set.type === 'empty') {
+    return fromRange(range)
+  } else if (set.type === 'leaf') {
+    if (Range.isStrictlyBefore(set.range, range))
+      return node({ left: set, right: leaf(range) })
+    else if (Range.isStrictlyAfter(set.range, range))
+      return node({ left: leaf(range), right: set })
+    else 
+      return leaf({
+        start: Math.min(set.range.start, range.start),
+        end: Math.max(set.range.end, range.end)
+      })
+  } else if (set.type === 'node') {
+    const { left, right } = set
+
+    if (Range.isStrictlyBefore(range, right.range))
+      return node({ left: insertRange(left, range), right })
+    else if (Range.isStrictlyAfter(range, left.range))
+      return node({ left, right: insertRange(right, range) })
+    else
+      // TODO: is this efficient? 
+      return union(
+        insertRange(left, range),
+        insertRange(right, range)
+      )
+  } 
+  checkedAllCases(set)
 }
 
-export function deleteRange(set: CharSet, range: CodePointRange): CharSet {
-  if (set.length === 0) {
-    return []
-  } else {
-    const [first, ...rest] = set
+export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet {
+  if (set.type === 'empty') {
+    return empty
+  } else if (Range.disjoint(set.range, range)) {
+    // Also covers the case where `range` is empty:
+    return set
+  } else if (set.type === 'leaf') {
+    const restRange = Range.difference(set.range, range)
+    if (Range.isEmpty(restRange))
+      return empty
+    else
+      return leaf(restRange)
+  } else if (set.type === 'node') {
+    const newLeft = deleteRange(set.left, range)
+    const newRight = deleteRange(set.right, range)
 
-    if (range.end < first.start) {
-      return set
-    } else {
-      const [before, _, after] = Range.subtract(first, range)
-
-      return [
-        ...fromRange(before),
-        ...deleteRange([
-          ...fromRange(after),
-          ...rest
-        ], range)
-      ]     
-    }
-  }
+    if (newLeft.type === 'empty' && newRight.type === 'empty') 
+      return empty
+    else if (newLeft.type === 'empty')
+      return newRight
+    else if (newRight.type === 'empty')
+      return newLeft
+    else
+      return node({ left: newLeft, right: newRight })
+  } 
+  checkedAllCases(set)
 }
 
 export function union(setA: CharSet, setB: CharSet): CharSet {
-  return setA.reduce(insertRange, setB)
+  if (setA.type === 'empty')
+    return setB
+  else if (setB.type === 'empty')
+    return setB
+  else if (Range.isStrictlyBefore(setA.range, setB.range))
+    return node({ left: setA, right: setB })
+  else if (Range.isStrictlyBefore(setB.range, setA.range))
+    return node({ left: setB, right: setA })
+  else
+    throw 'todo'
 }
 
 export function difference(setA: CharSet, setB: CharSet): CharSet {
@@ -229,4 +277,8 @@ export function toString(set: CharSet): string {
 
     return `[${rangesAsString.join("")}]`
   }
+}
+
+export function hash(set: CharSet): number {
+  return hashNums(set.flatMap(range => [range.start, range.end]))
 }

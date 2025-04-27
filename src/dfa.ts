@@ -85,13 +85,13 @@ function pickChar(set: CharSet): number {
   return set[0].start
 }
 
-export function toStdRegex(dfa: DFA): StdRegex {
-  const regexLabeledTransitions: TransitionMap<StdRegex> = dfa.transitions.map(
-    ([source, charset, target]) => [source, { type: 'literal', charset }, target]
-  )
+// export function toStdRegex(dfa: DFA): StdRegex {
+//   const regexLabeledTransitions: TransitionMap<StdRegex> = dfa.transitions.map(
+//     ([source, charset, target]) => [source, { type: 'literal', charset }, target]
+//   )
 
-  // TODO: normalize DFA by eliminating self-loop on initial state and introducing
-  // a single final state.
+//   // TODO: normalize DFA by eliminating self-loop on initial state and introducing
+//   // a single final state.
 
-  throw 'todo'
-}
+//   throw 'todo'
+// }

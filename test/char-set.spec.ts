@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import * as CharSet from '../src/char-set'
 import fc from 'fast-check'
+import * as Range from '../src/code-point-range'
 
-const arbitraryRange = fc.tuple(fc.nat(30), fc.nat(30))
-  .map(([start, length]) => ({ start, end: start + length }))
+const arbitraryRange: fc.Arbitrary<Range.CodePointRange> =
+  fc.tuple(fc.nat(30), fc.nat(30))
+    .map(([start, length]) => ({ start, end: start + length }))
 
 describe('Range', () => {
 
@@ -13,10 +15,10 @@ describe('Range', () => {
         arbitraryRange,
         arbitraryRange,
         (rangeA, rangeB) => {
-          const [before, intersection, after] = CharSet.Range.subtract(rangeA, rangeB)
+          const [before, intersection, after] = Range.subtract(rangeA, rangeB)
           const joinedBackTogether = [before, intersection, after]
-            .filter(r => !CharSet.Range.isEmpty(r))
-            .reduce(CharSet.insertRange, [])
+            .filter(r => !Range.isEmpty(r))
+            .reduce(CharSet.insertRange, CharSet.empty)
 
           expect(joinedBackTogether).toEqual([rangeA])
         }
@@ -26,8 +28,8 @@ describe('Range', () => {
   
 })
 
-const arbitraryCharSet = fc.array(arbitraryRange)
-  .map(ranges => ranges.reduce(CharSet.insertRange, []))
+const arbitraryCharSet: fc.Arbitrary<CharSet.CharSet> = fc.array(arbitraryRange)
+  .map(ranges => ranges.reduce(CharSet.insertRange, CharSet.empty))
 
 test('insertRange respects invariants', () => {
   fc.assert(

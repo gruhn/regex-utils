@@ -5,13 +5,13 @@ import { ExtRegex } from './extended-regex';
 /**
  * TODO
  */
-export type StdRegex = Readonly<
+export type StdRegex = Readonly<{ hash: number } & (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: StdRegex, right: StdRegex }
   | { type: "union", left: StdRegex, right: StdRegex }
   | { type: "star", inner: StdRegex }
->
+)>
 
 // TODO: make this more compact by using fewer parenthesis and
 // recognizing patterns like "a+" instead of "aa*" etc.

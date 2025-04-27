@@ -64,10 +64,18 @@ export function string(str: string): Parser<string> {
   })
 }
 
+export function char(char: string): Parser<string> {
+  return new Parser(input => {
+    if (input[0] === char) 
+      return { value: char, restInput: input.slice(1) }
+    else 
+      throw new ParseError(`Expected "${char}".`, input)
+  })
+}
+
 export function between<T>(open: Parser<unknown>, close: Parser<unknown>, middle: Parser<T>): Parser<T> {
-  return open
-    .andThen(_ => middle)
-    .andThen(value => close.map(_ => value))
+  return sequence([ open, middle, close ])
+    .map(([_open, value, _close]) => value)
 }
 
 export function choice<T>(parserOptions: Parser<T>[]): Parser<T> {
