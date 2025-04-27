@@ -1,18 +1,28 @@
 import { CharSet, isEmpty } from "./char-set"
-import { codePointDerivative, derivativeClasses, equal, ExtRegex, isNullable } from "./extended-regex"
+import { ExtRegex, codePointDerivative, derivativeClasses, equal, isNullable } from "./extended-regex"
 import { StdRegex } from "./standard-regex"
 import { assert } from "./utils"
 
-export type Transition = [ExtRegex, CharSet, ExtRegex]
+type Transition<Label> = [ExtRegex, Label, ExtRegex]
 
-export type DFA = {
-  startState: ExtRegex
-  finalStates: ExtRegex[]
-  // TODO: more efficient representation:
-  transitions: Transition[]
+// TODO: more efficient representation:
+type TransitionMap<Label> = readonly Transition<Label>[]
+
+function addTransition<Label>(
+  transitionMap: TransitionMap<Label>,
+  transition: Transition<Label>
+): TransitionMap<Label> {
+   // TODO: avoid duplicates
+  return [...transitionMap, transition]
 }
 
-export function fromExtRegex(regex: ExtRegex): DFA {
+export type DFA = Readonly<{
+  startState: ExtRegex
+  finalStates: ExtRegex[]
+  transitions: TransitionMap<CharSet>
+}>
+
+export function fromExtRegex(regex: StdRegex): DFA {
   const { allStates, transitions } = explore(regex, {
     allStates: [regex],
     transitions: []
@@ -25,10 +35,10 @@ export function fromExtRegex(regex: ExtRegex): DFA {
   }
 }
 
-type PartialDFA = {
+type PartialDFA = Readonly<{
   allStates: ExtRegex[]
-  transitions: Transition[]
-}
+  transitions: TransitionMap<CharSet>
+}>
 
 function explore(
   sourceState: ExtRegex,
@@ -52,22 +62,20 @@ function goto(
   if (knownState === undefined)  
     return {
       allStates,
-      transitions: [
-        // QUESTION: can there be duplicates?
-        [sourceState, charSet, targetState],
-        ...transitions
-      ]
+      transitions: addTransition(
+        transitions,
+        [sourceState, charSet, targetState]
+      ),
     }
   else 
     return explore(
       targetState,
       {
         allStates: [targetState, ...allStates],
-        transitions: [
-          // QUESTION: can there be duplicates?
+        transitions: addTransition(
+          transitions,
           [sourceState, charSet, knownState],
-          ...transitions
-        ],
+        ),
       }
     )
 }
@@ -77,6 +85,13 @@ function pickChar(set: CharSet): number {
   return set[0].start
 }
 
-export function toStdRegex(): StdRegex {
+export function toStdRegex(dfa: DFA): StdRegex {
+  const regexLabeledTransitions: TransitionMap<StdRegex> = dfa.transitions.map(
+    ([source, charset, target]) => [source, { type: 'literal', charset }, target]
+  )
+
+  // TODO: normalize DFA by eliminating self-loop on initial state and introducing
+  // a single final state.
+
   throw 'todo'
 }

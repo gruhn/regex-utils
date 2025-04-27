@@ -311,4 +311,3 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
   }  
   checkedAllCases(regex)
 }
-

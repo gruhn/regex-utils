@@ -1,5 +1,6 @@
 import { checkedAllCases } from './utils'
 import * as CharSet from './char-set';
+import { ExtRegex } from './extended-regex';
 
 /**
  * TODO
@@ -29,3 +30,16 @@ export function toString(regex: StdRegex): string {
   }
   checkedAllCases(regex)
 }
+
+export function isStdRegex(regex: ExtRegex): regex is StdRegex {
+  if (regex.type === 'epsilon' || regex.type === 'literal') 
+    return true
+  else if (regex.type === 'concat' || regex.type === 'union')
+    return isStdRegex(regex.left) && isStdRegex(regex.right)
+  else if (regex.type === 'star')
+    return isStdRegex(regex.inner)
+  else if (regex.type === 'complement' || regex.type === 'intersection')
+    return false
+  checkedAllCases(regex)
+}
+
