@@ -57,8 +57,8 @@ function regex(): P.Parser<RE.ExtRegex> {
       { type: 'postfix', op: P.string('*').map(_ => RE.star) },
       { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
-      { type: 'infixLeft', op: P.string('').map(_ => RE.concat) },
-      { type: 'infixLeft', op: P.string('|').map(_ => RE.union) },
+      { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
+      { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
     ]
   ))
 }

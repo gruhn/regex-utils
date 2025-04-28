@@ -75,7 +75,7 @@ export function assert(condition : boolean, failureMessage? : string): asserts c
  *
  */
 export function checkedAllCases(_witness: never): never {
-  throw new Error('This function should never be called')
+  throw new Error('not all cases checked')
 }
 
 export function identity<T>(x: T): T {
@@ -113,10 +113,10 @@ export function uniqWith<T>(array: T[], compare: (l: T, r: T) => number): T[] {
 /**
  * https://stackoverflow.com/a/52171480
  */
-export function hashNums(nums: number[], seed = 0): number {
+export function hashStr(str: string, seed = 0): number {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-  for(let i = 0, ch; i < nums.length; i++) {
-      ch = nums[i];
+  for(let i = 0, ch; i < str.length; i++) {
+      ch = str.charCodeAt(i);
       h1 = Math.imul(h1 ^ ch, 2654435761);
       h2 = Math.imul(h2 ^ ch, 1597334677);
   }
@@ -127,6 +127,11 @@ export function hashNums(nums: number[], seed = 0): number {
 
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
-export function hashStr(str: string, seed = 0): number {
-  return hashNums([...str].map(ch => ch.charCodeAt(0)), seed)
+
+/**
+ * Associatively combines two hashes to one.
+ */
+export function hashAssoc(hash1: number, hash2: number): number {
+  return ((hash1 % 2**32) + (hash2 % 2**32)) % 2**32
 }
+

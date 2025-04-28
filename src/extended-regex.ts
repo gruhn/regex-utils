@@ -1,4 +1,4 @@
-import { hashNums, hashStr, checkedAllCases, assert, uniqWith } from './utils'
+import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith } from './utils'
 import * as CharSet from './char-set'
 
 /**
@@ -19,11 +19,11 @@ function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
     return { ...regex, hash: hashStr(regex.type) }
   else if (regex.type === 'literal')
-    return { ...regex, hash: hashNums([hashStr(regex.type), CharSet.hash(regex.charset)]) }
+    return { ...regex, hash: hashAssoc(hashStr(regex.type), CharSet.hash(regex.charset)) }
   else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.left.hash, regex.right.hash]) }
+    return { ...regex, hash: hashAssoc(hashStr(regex.type), hashAssoc(regex.left.hash, regex.right.hash)) }
   else if (regex.type === 'star' || regex.type === 'complement')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.inner.hash]) }
+    return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.inner.hash) }
   checkedAllCases(regex)  
 }
 
@@ -37,7 +37,7 @@ export function literal(charset: CharSet.CharSet): ExtRegex {
   return withHash({ type: 'literal', charset })
 }
 
-export const empty: ExtRegex = literal([])
+export const empty: ExtRegex = literal(CharSet.empty)
 
 export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === "concat")

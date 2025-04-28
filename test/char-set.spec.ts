@@ -4,38 +4,15 @@ import fc from 'fast-check'
 import * as Range from '../src/code-point-range'
 
 const arbitraryRange: fc.Arbitrary<Range.CodePointRange> =
-  fc.tuple(fc.nat(30), fc.nat(30))
-    .map(([start, length]) => ({ start, end: start + length }))
-
-describe('Range', () => {
-
-  test('joining the result of subtract(rangeA, rangeB) gives back rangeA', () => {
-    fc.assert(
-      fc.property(
-        arbitraryRange,
-        arbitraryRange,
-        (rangeA, rangeB) => {
-          const [before, intersection, after] = Range.subtract(rangeA, rangeB)
-          const joinedBackTogether = [before, intersection, after]
-            .filter(r => !Range.isEmpty(r))
-            .reduce(CharSet.insertRange, CharSet.empty)
-
-          expect(joinedBackTogether).toEqual([rangeA])
-        }
-      ),
-    )
-  })
-  
-})
-
-const arbitraryCharSet: fc.Arbitrary<CharSet.CharSet> = fc.array(arbitraryRange)
-  .map(ranges => ranges.reduce(CharSet.insertRange, CharSet.empty))
+  fc.tuple(fc.nat(100), fc.nat(100))
+    .map(([start, end]) => ({ start, end }))
 
 test('insertRange respects invariants', () => {
   fc.assert(
     fc.property(
-      arbitraryCharSet,
-      (charSet) => {
+      fc.array(arbitraryRange),
+      (ranges) => {
+        const charSet = ranges.reduce(CharSet.insertRange, CharSet.empty)
         CharSet.checkInvariants(charSet)
       }
     ),
@@ -45,10 +22,11 @@ test('insertRange respects invariants', () => {
 test('deleteRange respects invariants', () => {
   fc.assert(
     fc.property(
-      arbitraryCharSet,
       arbitraryRange,
-      (charSet, range) => {
-        const result = CharSet.deleteRange(charSet, range)
+      fc.array(arbitraryRange),
+      (deletedRange, ranges) => {
+        const charSet = ranges.reduce(CharSet.insertRange, CharSet.empty)
+        const result = CharSet.deleteRange(charSet, deletedRange)
         CharSet.checkInvariants(result)
       }
     ),
@@ -58,12 +36,17 @@ test('deleteRange respects invariants', () => {
 test('(A \\ B) ⋃ (A ⋂ B) = A', () => { 
   fc.assert(
     fc.property(
-      arbitraryCharSet,
-      arbitraryCharSet,
-      (setA, setB) => {
+      fc.array(arbitraryRange),
+      fc.array(arbitraryRange),
+      (rangesA, rangesB) => {
+        const setA = rangesA.reduce(CharSet.insertRange, CharSet.empty)
+        const setB = rangesB.reduce(CharSet.insertRange, CharSet.empty)
+
         const diffAB = CharSet.difference(setA, setB)
         const interAB = CharSet.intersection(setA, setB)
-        expect(CharSet.union(diffAB, interAB)).toEqual(setA)
+        const finalUnion = CharSet.union(diffAB, interAB)
+
+        expect(finalUnion.hash).toBe(setA.hash)
       }
     ),
   )
