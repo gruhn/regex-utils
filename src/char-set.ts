@@ -1,5 +1,6 @@
 import { adjacentPairs, assert, checkedAllCases, hashAssoc, hashStr, zip } from './utils'
 import * as Range from './code-point-range'
+import * as Stream from './stream'
 
 type WithHash<T> = T & { hash: number }
 
@@ -268,4 +269,15 @@ export function toString(set: CharSet): string {
     return "$.^"
   else 
     return ranges.map(Range.toString).join('')
+}
+
+export function enumerate(set: CharSet): Stream.Stream<string> {
+  return Stream.concat(Stream.fromArray(
+    [...getRanges(set)].map(
+      range => Stream.map(
+        codePoint => String.fromCodePoint(codePoint),
+        Stream.range(range.start, range.end)
+      )
+    )
+  ))
 }

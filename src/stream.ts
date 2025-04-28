@@ -4,15 +4,15 @@ export type Stream<T> =
   | undefined
   | { head: T, tail: () => Stream<T> }
 
-function cons<T>(head: T, tail: () => Stream<T>): Stream<T> {
+export function cons<T>(head: T, tail: () => Stream<T>): Stream<T> {
   return { head, tail }
 }
 
-function singleton<T>(value: T): Stream<T> {
+export function singleton<T>(value: T): Stream<T> {
   return cons(value, () => undefined)
 }
 
-function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
+export function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
   if (stream === undefined) 
     return undefined
   else
@@ -140,6 +140,13 @@ export function take<A>(n: number, stream: Stream<A>): Stream<A> {
     return cons(stream.head, () => take(n - 1, stream.tail()))
 }
 
+export function takeWhile<A>(predicate: (_: A) => boolean, stream: Stream<A>): Stream<A> {
+  if (stream === undefined || !predicate(stream.head))
+    return undefined
+  else
+    return cons(stream.head, () => takeWhile(predicate, stream.tail()))
+}
+
 export function fromArray<T>(
   array: Array<T>
 ): Stream<T> {
@@ -165,7 +172,7 @@ export function range(
   start: number,
   end: number
 ): Stream<number> {
-  if (start >= end)
+  if (start > end)
     return undefined
   else
     return cons(start, () => range(start + 1, end))

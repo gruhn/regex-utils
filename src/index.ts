@@ -1,4 +1,5 @@
 import * as RE from './extended-regex'
+import * as SRE from './standard-regex'
 import { parseRegExp, toRegExp } from './regex-parser'
 
 /**
@@ -19,8 +20,12 @@ export function complement(regex: RegExp): RegExp {
  * Enumerates the strings that are matched by the given regular expression.
  */
 export function* enumerate(regex: RegExp): Generator<string> {
-  throw 'todo'
-  // return RegexTree.enumerate(RegexTree.fromRegExp(re))
+  let stream = SRE.enumerate(parseRegExp(regex))
+
+  while (stream !== undefined) {
+    yield stream.head 
+    stream = stream.tail()
+  }
 }
 
 /**

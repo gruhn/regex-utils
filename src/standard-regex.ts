@@ -1,6 +1,7 @@
 import { checkedAllCases } from './utils'
 import * as CharSet from './char-set';
 import { ExtRegex } from './extended-regex';
+import * as Stream from './stream';
 
 /**
  * TODO
@@ -43,3 +44,32 @@ export function isStdRegex(regex: ExtRegex): regex is StdRegex {
   checkedAllCases(regex)
 }
 
+
+export function enumerate(regex: StdRegex): Stream.Stream<string> {
+  switch (regex.type) {
+    case 'epsilon':
+      return Stream.singleton('')
+    case 'literal':
+      return CharSet.enumerate(regex.charset)
+    case 'concat':
+      return Stream.diagonalize(
+        (l,r) => l+r,
+        enumerate(regex.left),
+        enumerate(regex.right),
+      )
+    case 'union':
+      return Stream.interleave(
+        enumerate(regex.left),
+        enumerate(regex.right)
+      )
+    case 'star':
+      return Stream.cons(
+        '',
+        () => Stream.diagonalize(
+          (l,r) => l+r,
+          enumerate(regex.inner),
+          enumerate(regex),
+        )
+      )
+  }
+}

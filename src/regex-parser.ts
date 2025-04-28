@@ -1,6 +1,7 @@
 import * as RE from "./extended-regex"
 import * as P from "./parser"
 import * as CharSet from './char-set'
+import { StdRegex } from "./standard-regex"
 
 // TODO:
 // - "\." (escaped dot), "\s" (all whitespace characters)
@@ -71,16 +72,17 @@ const regexWithBounds = P.sequence([
   endMarker,
 ]).map(RE.concatAll)
 
-export function parseRegexString(regexStr: string): RE.ExtRegex {
+export function parseRegexString(regexStr: string): StdRegex {
   const { value, restInput } = regexWithBounds.run(regexStr)
   if (restInput === '') {
+    // TODO: parsing should always return stdandard regex instances:
     return value
   } else {
     throw new P.ParseError('Expected end of input.', restInput)
   }
 }
 
-export function parseRegExp(regexp: RegExp): RE.ExtRegex {
+export function parseRegExp(regexp: RegExp): StdRegex {
   return parseRegexString(regexp.source)
 }
 
