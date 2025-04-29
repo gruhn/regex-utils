@@ -1,9 +1,7 @@
 import { describe, expect, it, bench } from "vitest"
 import { parseRegExp, parseRegexString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
-import * as RE from "../src/extended-regex"
-import * as StdRegex from "../src/standard-regex"
-import { readBenchFile, chunks } from './read-bench'
+import * as RE from "../src/regex"
 import fc from "fast-check"
 import * as Arb from './arbitrary-regex'
 
@@ -33,16 +31,16 @@ describe('parseRegexString', () => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
   })
 
-  it('can parse arbitrary regex', () => {
+  it('inverts RE.toString', () => {
     fc.assert(
       fc.property(
-        Arb.stdRegexString(),
-        regexString => {
-          // Throws error if parsing fails:
-          parseRegexString(regexString)
-        }
-      )
-    )
+        Arb.stdRegex(),
+        (stdRegex) => {
+        const regexStr = RE.toString(stdRegex)
+        const result = parseRegexString(regexStr)
+        expect(result.hash).toBe(stdRegex.hash)
+      }),
+    )   
   })
 
 })

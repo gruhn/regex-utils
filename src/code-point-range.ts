@@ -5,6 +5,13 @@ export type CodePointRange = { start: number, end: number }
 
 export const empty: CodePointRange = { start: +Infinity, end: -Infinity }
 
+export function range(start: number, end: number = start): CodePointRange {
+  if (start > end) 
+    return empty
+  else
+    return { start, end }
+}
+
 export function includes(range: CodePointRange, codePoint: number): boolean {
   return range.start <= codePoint && codePoint <= range.end
 }

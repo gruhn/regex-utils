@@ -31,9 +31,9 @@ export type StdRegex = StdRegexWithoutHash & { hash: number }
 
 export type ExtRegex = ExtRegexWithoutHash & { hash: number }
 
-function withHash(regex: StdRegexWithoutHash): StdRegex
-function withHash(regex: ExtRegexWithoutHash): ExtRegex 
-function withHash(regex: ExtRegexWithoutHash): ExtRegex {
+export function withHash(regex: StdRegexWithoutHash): StdRegex
+export function withHash(regex: ExtRegexWithoutHash): ExtRegex 
+export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
     return { ...regex, hash: hashStr(regex.type) }
   else if (regex.type === 'literal')
@@ -60,7 +60,13 @@ export const empty: StdRegex = literal(CharSet.empty)
 export function concat(left: StdRegex, right: StdRegex): StdRegex
 export function concat(left: ExtRegex, right: ExtRegex): ExtRegex
 export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (left.type === "concat")
+  if (equal(empty, left))
+    // ∅ · r ≈ ∅
+    return empty
+  else if (equal(empty, right))
+    // r · ∅ ≈ ∅
+    return empty
+  else if (left.type === "concat")
     // (r · s) · t ≈ r · (s · t)
     return concat(left.left, concat(left.right, right))
   else if (left.type === "epsilon")
@@ -69,12 +75,6 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (right.type === "epsilon")
     // r · ε ≈ r
     return left
-  else if (equal(empty, left))
-    // ∅ · r ≈ ∅
-    return empty
-  else if (equal(empty, right))
-    // r · ∅ ≈ ∅
-    return empty
   else 
     return withHash({ type: 'concat', left, right })
 }
@@ -82,24 +82,30 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
 export function union(left: StdRegex, right: StdRegex): StdRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (left.type === "union")
-    // (r + s) + t ≈ r + (s + t)
-    return union(left.left, union(left.right, right))
+  // if (left.type === 'union')
+  //   // (r + s) + t ≈ r + (s + t)
+  //   return union(left.left, union(left.right, right))
+  if (equal(left, right)) 
+    // r + r ≈ r
+    return left
+  else if (equal(left, empty))
+    // ∅ + r ≈ r
+    return right
+  else if (equal(empty, right))
+    // r + ∅ ≈ r
+    return left
+  else if (equal(left, complement(empty)))
+    // ¬∅ + r ≈ ¬∅
+    return complement(empty)
+  else if (equal(complement(empty), right))
+    // r + ¬∅ ≈ ¬∅
+    return complement(empty)
+  else if (left.hash > right.hash)
+    // r + s ≈ s + r
+    return union(right, left)
   else if (left.type === 'literal' && right.type === 'literal')
     // R + S ≈ R ∪ S
     return literal(CharSet.union(left.charset, right.charset))
-  else if (equal(complement(empty), left))
-    // ¬∅ + r ≈ ¬∅
-    return complement(empty)
-  else if (equal(empty, left))
-    // ∅ + r ≈ r
-    return right
-  else if (equal(left, right)) 
-    // r + r ≈ r
-    return left
-  else if (left.hash > right.hash) // TODO: this check is re-computed in the recursive call
-    // r + s ≈ s + r
-    return union(right, left)
   else 
     return withHash({ type: 'union', left, right })
 }
@@ -123,19 +129,25 @@ export function star(inner: ExtRegex): ExtRegex {
 export function intersection(left: StdRegex, right: StdRegex): ExtRegex
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (left.type === "intersection")
-    // (r & s) & t ≈ r & (s & t)
-    return intersection(left.left, intersection(left.right, right))
-  else if (equal(empty, left))
+  // if (left.type === "intersection")
+  //   // (r & s) & t ≈ r & (s & t)
+  //   return intersection(left.left, intersection(left.right, right))
+  if (equal(left, empty))
     // ∅ & r ≈ ∅
+    return empty 
+  if (equal(right, empty))
+    // r & ∅ ≈ ∅
     return empty 
   else if (equal(left, complement(empty)))
     // ¬∅ & r ≈ r
     return right 
+  else if (equal(right, complement(empty)))
+    //  r & ¬∅ ≈ r
+    return left 
   else if (equal(left, right)) 
     // r & r ≈ r
     return left 
-  else if (left.hash > right.hash) // TODO: this check is re-computed in the recursive call
+  else if (left.hash > right.hash)
     // r & s ≈ s & r
     return intersection(right, left) 
   else
@@ -154,7 +166,7 @@ export function complement(inner: ExtRegex): ExtRegex {
 // some additional composite constructors ////
 //////////////////////////////////////////////
 
-export const anySingleChar: StdRegex = literal(CharSet.fullAlphabet())
+export const anySingleChar: StdRegex = literal(CharSet.fullUnicode())
 
 export function singleChar(char: string) {
   return literal(CharSet.singleton(char))
@@ -303,7 +315,7 @@ function allIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet
 }
 
 export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
-  const alphabet = CharSet.fullAlphabet()
+  const alphabet = CharSet.fullUnicode()
 
   switch (regex.type) {
     case "epsilon":

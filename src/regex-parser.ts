@@ -1,6 +1,7 @@
 import * as RE from "./regex"
 import * as P from "./parser"
 import * as CharSet from './char-set'
+import * as Range from './code-point-range'
 import { assert } from "./utils"
 
 // TODO:
@@ -8,6 +9,8 @@ import { assert } from "./utils"
 // - "[a-zA-Z]"
 // - "a{3,5}", "a{3,}", "a{,5}"
 // - ...
+// TODO: allow empty strings, e.g. regex like "(|)"
+// const emptyString = P.string('').map(() => RE.epsilon)
 
 const startMarker = P.optional(P.string('^')).map(marker => {
   if (marker === undefined) {
@@ -25,17 +28,38 @@ const endMarker = P.optional(P.string('$')).map(marker => {
   }
 })
 
-const anySingle = P.string('.').map(() => RE.anySingleChar)
+const wildcard = P.string('.').map(() => RE.anySingleChar)
 
 // TODO: there are probably more literal characters:
 function isLiteralChar(char: string): boolean {
   return char.match(/^[a-zA-Z0-9]$/) !== null
 }
 
-const singleCharacter = P.satisfy(isLiteralChar).map(char => RE.literal(CharSet.singleton(char)))
+const singleChar = P.satisfy(isLiteralChar)
 
-// TODO: allow empty strings, e.g. regex like "(|)"
-// const emptyString = P.string('').map(() => RE.epsilon)
+const codePoint = singleChar.map(char => {
+  const result = char.codePointAt(0)!
+  assert(result !== undefined)
+  return result
+})
+
+const codePointRange: P.Parser<Range.CodePointRange> =
+  codePoint.andThen(start =>
+    P.optional(P.string('-').andThen(_ => codePoint))
+     .map(end => Range.range(start, end))
+  )
+
+const charSet = P.choice([
+  P.between(
+    // QUESTION: can brackets be nested?
+    P.string('['),
+    P.string(']'),
+    P.many(codePointRange).map(
+      ranges => ranges.reduce(CharSet.insertRange, CharSet.empty)
+    )
+  ),
+  singleChar.map(CharSet.singleton),
+])
 
 const group = P.between(
   P.string('('),
@@ -45,9 +69,9 @@ const group = P.between(
 
 function regexTerm() {
   return P.choice([
-    anySingle, 
+    wildcard, 
     group,
-    singleCharacter,
+    charSet.map(RE.literal),
   ])
 }
  

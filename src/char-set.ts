@@ -262,13 +262,17 @@ export function compare(setA: CharSet, setB: CharSet): number {
 // TODO: can make this more compact using character classes
 // e.g. \d instead of [0-9]
 export function toString(set: CharSet): string {
-  const ranges = [...getRanges(set)]
+  const str = [...getRanges(set)].map(Range.toString).join('')
 
-  if (ranges.length === 0) 
+  if (str.length === 0) 
     // Contradictory regular expression to encode the empty set:
-    return "($.^)"
-  else 
-    return ranges.map(Range.toString).join('')
+    return "$.^"
+  else if (str.length === 1)
+    // single char doesn't need brackets:
+    return str
+  else
+    // output e.g. "[abc0-9]"
+    return '[' + str  + ']'
 }
 
 export function enumerate(set: CharSet): Stream.Stream<string> {

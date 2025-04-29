@@ -106,6 +106,35 @@ export function choice<T>(parserOptions: Parser<T>[]): Parser<T> {
   })
 }
 
+export function many<T>(parser: Parser<T>): Parser<T[]> {
+  return new Parser(input => {
+    const items: T[] = []
+    let restInput = input
+    while (true) {
+      try {
+        const result = parser.run(restInput)
+        restInput = result.restInput
+        items.push(result.value)
+      } catch (error) {
+        if (error instanceof ParseError) {
+          if (error.restInput === restInput) {
+            // parser failed but did not consume any characters,
+            // => applied parser maximum number of times
+            break
+          } else {
+            // parser failed and consumed characters: 
+            throw error
+          }
+        } else {
+          // Only catch ParseErrors, otherwise we silence true logic errors parsers.
+          throw error
+        }
+      }
+    }
+    return { value: items, restInput }
+  })
+}
+
 export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
   return new Parser(input => {
     try {

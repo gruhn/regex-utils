@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "test": "vitest watch --exclude .direnv",
+    "test": "vitest watch --exclude .direnv --exclude node_modules",
     "bench": "npm run build && 0x --output-dir prof benchmark/bench.js",
     "build": "tsc && tsc-alias"
   },
