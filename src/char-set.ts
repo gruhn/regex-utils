@@ -79,7 +79,7 @@ function fromRange(range: Range.CodePointRange): CharSet {
     return node({ range, left: empty, right: empty })
 }
 
-export function fullAlphabet(): CharSet {
+export function fullUnicode(): CharSet {
   // Full unicode range. TODO: Whether regex dot "." matches all unicode characters
   // depends on the regex flags. Should later take that into account.
   return fromRange({ start: 0, end: 0x10FFFF })
@@ -266,7 +266,7 @@ export function toString(set: CharSet): string {
 
   if (ranges.length === 0) 
     // Contradictory regular expression to encode the empty set:
-    return "$.^"
+    return "($.^)"
   else 
     return ranges.map(Range.toString).join('')
 }

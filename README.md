@@ -3,24 +3,23 @@
 
 Zero-dependency TypeScript library for rare regex utilities:
 
-* `intersection(regex1, regex2)` creates a new regular expression that only matches the strings matched by both `regex1` and `regex2`
-* `complement(regex)`
-* `size(regex)`
-* `equivalent(regex1, regex2)` ...
-* `findMismatch(regex1, regex2)` ...
-* `enumerate(regex)` produces a (potentially infinite) stream of strings that match `regex`.
-* `derivative(string, regex)` ...
-* and more...
-
-Heavily informed by this paper: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
-
-## Installation
+## Install
 
 ```bash
 npm install regex-utils
 ```
 
 TODO: how to import TypeScript sources vs. JavaScript bundle.
+
+## Limitations
+
+* Not full regex syntax supported (yet)
+* Some functions have worst case exponential complexity.
+  Usually just pathological cases. Please report.
+
+## Documentation
+
+### `intersection(re1: RegExp, re1: RegExp): RegExp`
 
 ```typescript
 import { intersection } from 'regex-utils'
@@ -37,24 +36,20 @@ const constraints = [
 const passwordRegex = constraints.reduce(intersection)
 ```
 
-## Limitations
+### `complement(re: RegExp): RegExp`
 
-* Not full regex syntax supported (yet)
-* Some functions have worst case exponential complexity.
-  Usually just pathological cases. Please report.
+### `enumerate(re: RegExp): RegExp`
 
-## Documentation
+### `derivative(re: RegExp): RegExp`
 
-### `intersection(regex1: RegExp, regex2: RegExp): RegExp`
+## Todo Utilities
 
-...
+* recognize regex prone to catastrophic backtracking
+  - https://www.regular-expressions.info/catastrophic.html
+  - https://www.youtube.com/watch?v=DDe-S3uef2w
+* check equivalence of two regex or find counterexample string
 
-### `findMismatch(regex1: RegExp, regex2: RegExp): string | undefined`
+## References
 
-Finds a string matching `regex1` or `regex2` but not both.
-If no such string exists then the two regular expressions are equivalent and the function returns `undefined`.
-
-TODO: attach information whether the returned string matches `regex1` or `regex2`.
-
-### `equivalent(regex1: RegExp, regex2: RegExp): boolean`
+Heavily informed by this paper: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
 

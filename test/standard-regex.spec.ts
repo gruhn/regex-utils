@@ -1,12 +1,12 @@
 import fc from "fast-check"
-import { describe, test, expect } from "vitest"
+import { describe, it, expect } from "vitest"
 import * as SRE from "../src/standard-regex"
 import { stdRegex } from './arbitrary-regex'
 import * as Stream from '../src/stream'
 
 describe('toString', () => {
 
-  test('output is accepted by RegExp constructor', () => {
+  it('output is accepted by RegExp constructor', () => {
     fc.assert(
       fc.property(
         stdRegex(),
@@ -20,9 +20,10 @@ describe('toString', () => {
 
 })
 
+// TODO: how to test that `enumerate` is complete?
 describe('enumerate', () => {
 
-  test('output strings match input regex', () => {
+  it('only produces strings matching the input regex', () => {
     fc.assert(
       fc.property(
         stdRegex(),

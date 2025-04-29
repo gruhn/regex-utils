@@ -1,6 +1,5 @@
 import { CharSet, isEmpty } from "./char-set"
-import { ExtRegex, codePointDerivative, derivativeClasses, equal, isNullable } from "./extended-regex"
-import { StdRegex } from "./standard-regex"
+import { StdRegex, ExtRegex, codePointDerivative, derivativeClasses, equal, isNullable } from "./regex"
 import { assert } from "./utils"
 
 type Transition<Label> = [ExtRegex, Label, ExtRegex]
@@ -81,8 +80,8 @@ function goto(
 }
 
 function pickChar(set: CharSet): number {
-  assert(!isEmpty(set))
-  return set[0].start
+  assert(set.type !== 'empty')
+  return set.range.start
 }
 
 // export function toStdRegex(dfa: DFA): StdRegex {

@@ -1,25 +1,43 @@
 import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith } from './utils'
 import * as CharSet from './char-set'
+import * as Stream from './stream';
 
 /**
  * TODO
  */
-export type ExtRegexWithoutHash =
+type StdRegexWithoutHash = (
+  | { type: "epsilon" }
+  | { type: "literal", charset: CharSet.CharSet }
+  | { type: "concat", left: StdRegex, right: StdRegex }
+  | { type: "union", left: StdRegex, right: StdRegex }
+  | { type: "star", inner: StdRegex }
+)
+
+/**
+ * TODO
+ */
+type ExtRegexWithoutHash = (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: ExtRegex, right: ExtRegex }
   | { type: "union", left: ExtRegex, right: ExtRegex }
-  | { type: "star", inner: ExtRegex }
+  | { type: "star", inner: ExtRegex  }
+  // Extended with intersection and complement operator:
   | { type: "intersection", left: ExtRegex, right: ExtRegex }
   | { type: "complement", inner: ExtRegex }
+)
 
-export type ExtRegex = Readonly<{ hash: number } & ExtRegexWithoutHash>
+export type StdRegex = StdRegexWithoutHash & { hash: number }
 
+export type ExtRegex = ExtRegexWithoutHash & { hash: number }
+
+function withHash(regex: StdRegexWithoutHash): StdRegex
+function withHash(regex: ExtRegexWithoutHash): ExtRegex 
 function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
     return { ...regex, hash: hashStr(regex.type) }
   else if (regex.type === 'literal')
-    return { ...regex, hash: hashAssoc(hashStr(regex.type), CharSet.hash(regex.charset)) }
+    return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.charset.hash) }
   else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
     return { ...regex, hash: hashAssoc(hashStr(regex.type), hashAssoc(regex.left.hash, regex.right.hash)) }
   else if (regex.type === 'star' || regex.type === 'complement')
@@ -31,14 +49,16 @@ function withHash(regex: ExtRegexWithoutHash): ExtRegex {
 ///// primitive composite constructors ///////
 //////////////////////////////////////////////
 
-export const epsilon: ExtRegex = withHash({ type: "epsilon" })
+export const epsilon: StdRegex = withHash({ type: 'epsilon'  })
 
-export function literal(charset: CharSet.CharSet): ExtRegex {
+export function literal(charset: CharSet.CharSet): StdRegex {
   return withHash({ type: 'literal', charset })
 }
 
-export const empty: ExtRegex = literal(CharSet.empty)
+export const empty: StdRegex = literal(CharSet.empty)
 
+export function concat(left: StdRegex, right: StdRegex): StdRegex
+export function concat(left: ExtRegex, right: ExtRegex): ExtRegex
 export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === "concat")
     // (r · s) · t ≈ r · (s · t)
@@ -56,9 +76,11 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r · ∅ ≈ ∅
     return empty
   else 
-    return withHash({ type: "concat", left, right })
+    return withHash({ type: 'concat', left, right })
 }
 
+export function union(left: StdRegex, right: StdRegex): StdRegex
+export function union(left: ExtRegex, right: ExtRegex): ExtRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === "union")
     // (r + s) + t ≈ r + (s + t)
@@ -79,9 +101,11 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r + s ≈ s + r
     return union(right, left)
   else 
-    return withHash({ type: "union", left, right })
+    return withHash({ type: 'union', left, right })
 }
 
+export function star(inner: StdRegex): StdRegex
+export function star(inner: ExtRegex): ExtRegex
 export function star(inner: ExtRegex): ExtRegex {
   if (inner.type === "epsilon")
     // ε∗ ≈ ε
@@ -96,6 +120,8 @@ export function star(inner: ExtRegex): ExtRegex {
     return withHash({ type: "star", inner })
 }
 
+export function intersection(left: StdRegex, right: StdRegex): ExtRegex
+export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === "intersection")
     // (r & s) & t ≈ r & (s & t)
@@ -128,7 +154,7 @@ export function complement(inner: ExtRegex): ExtRegex {
 // some additional composite constructors ////
 //////////////////////////////////////////////
 
-export const anySingleChar: ExtRegex = literal(CharSet.fullAlphabet())
+export const anySingleChar: StdRegex = literal(CharSet.fullAlphabet())
 
 export function singleChar(char: string) {
   return literal(CharSet.singleton(char))
@@ -138,14 +164,20 @@ export function string(str: string) {
   return concatAll([...str].map(singleChar))
 }
 
+export function optional(regex: StdRegex): StdRegex
+export function optional(regex: ExtRegex): ExtRegex
 export function optional(regex: ExtRegex): ExtRegex {
   return union(epsilon, regex)
 }
 
+export function plus(regex: StdRegex): StdRegex
+export function plus(regex: ExtRegex): ExtRegex 
 export function plus(regex: ExtRegex): ExtRegex {
   return concat(regex, star(regex))
 }
 
+export function concatAll(res: StdRegex[]): StdRegex
+export function concatAll(res: ExtRegex[]): ExtRegex
 export function concatAll(res: ExtRegex[]): ExtRegex {
   // Reducing right-to-left should trigger fewer normalization steps in `concat`:
   return res.reduceRight((right, left) => concat(left, right), epsilon)
@@ -159,6 +191,8 @@ export function isEmpty(regex: ExtRegex): boolean {
   return regex.type === 'literal' && CharSet.isEmpty(regex.charset)
 }
 
+export function codePointDerivative(codePoint: number, regex: StdRegex): StdRegex
+export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex
 export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex {
   switch (regex.type) {
     case "epsilon":
@@ -202,6 +236,8 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRege
   checkedAllCases(regex)
 }
 
+export function derivative(str: string, regex: StdRegex): StdRegex
+export function derivative(str: string, regex: ExtRegex): ExtRegex 
 export function derivative(str: string, regex: ExtRegex): ExtRegex {
   const firstCodePoint = str.codePointAt(0)
   if (firstCodePoint === undefined) {
@@ -300,3 +336,82 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
   }  
   checkedAllCases(regex)
 }
+
+
+//////////////////////////////////////////////
+///// exclusive standard regex utils     /////
+//////////////////////////////////////////////
+
+export function toStdRegex(regex: ExtRegex): StdRegex {
+  throw 'todo'
+}
+
+export function toRegExp(regex: StdRegex): RegExp {
+  return new RegExp(toString(regex))
+}
+
+export function toString(regex: StdRegex): string {
+  return '^' + toStringRec(regex) + '$'
+}
+
+// TODO: make this more compact by using fewer parenthesis and
+// recognizing patterns like "a+" instead of "aa*" etc.
+function toStringRec(regex: StdRegex): string {
+  switch (regex.type) {
+    case 'epsilon':
+      return ''
+    case 'literal':
+      return CharSet.toString(regex.charset)
+    case 'concat':
+      return toStringRec(regex.left) + toStringRec(regex.right)
+    case 'union':
+      return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
+    case 'star':
+      return `(${toStringRec(regex.inner)})*`
+  }
+  checkedAllCases(regex)
+}
+
+export function enumerate(regex: StdRegex): Stream.Stream<string> {
+  switch (regex.type) {
+    case 'epsilon':
+      return Stream.singleton('')
+    case 'literal':
+      return CharSet.enumerate(regex.charset)
+    case 'concat':
+      return Stream.diagonalize(
+        (l,r) => l+r,
+        enumerate(regex.left),
+        enumerate(regex.right),
+      )
+    case 'union':
+      return Stream.interleave(
+        enumerate(regex.left),
+        enumerate(regex.right)
+      )
+    case 'star':
+      return Stream.cons(
+        '',
+        () => Stream.diagonalize(
+          (l,r) => l+r,
+          enumerate(regex.inner),
+          enumerate(regex),
+        )
+      )
+  }
+}
+
+// export function isStdRegex(regex: ExtRegex): regex is StdRegex {
+//   if (regex.type === 'epsilon' || regex.type === 'literal') 
+//     return true
+//   else if (regex.type === 'concat' || regex.type === 'union')
+//     return isStdRegex(regex.left) && isStdRegex(regex.right)
+//   else if (regex.type === 'star')
+//     return isStdRegex(regex.inner)
+//   else if (regex.type === 'complement' || regex.type === 'intersection')
+//     return false
+//   checkedAllCases(regex)
+// }
+
+
+

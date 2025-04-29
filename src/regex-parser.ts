@@ -1,7 +1,7 @@
-import * as RE from "./extended-regex"
+import * as RE from "./regex"
 import * as P from "./parser"
 import * as CharSet from './char-set'
-import { StdRegex } from "./standard-regex"
+import { assert } from "./utils"
 
 // TODO:
 // - "\." (escaped dot), "\s" (all whitespace characters)
@@ -51,8 +51,8 @@ function regexTerm() {
   ])
 }
  
-function regex(): P.Parser<RE.ExtRegex> {
-  return P.lazy(() => P.Expr.makeExprParser(
+function regex(): P.Parser<RE.StdRegex> {
+  return P.lazy(() => P.Expr.makeExprParser<RE.StdRegex>(
     regexTerm(),
     [
       { type: 'postfix', op: P.string('*').map(_ => RE.star) },
@@ -70,9 +70,9 @@ const regexWithBounds = P.sequence([
   startMarker,
   regex(),
   endMarker,
-]).map(RE.concatAll)
+]).map<RE.StdRegex>(RE.concatAll)
 
-export function parseRegexString(regexStr: string): StdRegex {
+export function parseRegexString(regexStr: string): RE.StdRegex {
   const { value, restInput } = regexWithBounds.run(regexStr)
   if (restInput === '') {
     // TODO: parsing should always return stdandard regex instances:
@@ -82,10 +82,10 @@ export function parseRegexString(regexStr: string): StdRegex {
   }
 }
 
-export function parseRegExp(regexp: RegExp): StdRegex {
+export function parseRegExp(regexp: RegExp): RE.StdRegex {
+  // TODO: reject other unsupported flags
+  assert(!regexp.unicode, '[regex-utils] unicode mode not supported')
+  assert(!regexp.unicodeSets, '[regex-utils] unicodeSets mode not supported')
   return parseRegexString(regexp.source)
 }
 
-export function toRegExp(_regex: RE.ExtRegex): RegExp {
-  throw 'todo'
-}

@@ -1,26 +1,30 @@
-import * as RE from './extended-regex'
-import * as SRE from './standard-regex'
-import { parseRegExp, toRegExp } from './regex-parser'
+import * as RE from './regex'
+import { parseRegExp } from './regex-parser'
 
 /**
  * Returns a regular expression that matches the union of the languages of the given regular expressions.
  */
-export function intersection(regex1: RegExp, regex2: RegExp): RegExp {
-  return toRegExp(RE.intersection(parseRegExp(regex1), parseRegExp(regex2)))
+export function intersection(re1: RegExp, re2: RegExp): RegExp {
+  const parsed1 = parseRegExp(re1)
+  const parsed2 = parseRegExp(re2)
+  const result = RE.toStdRegex(RE.intersection(parsed1, parsed2))
+  return RE.toRegExp(result)
 }
 
 /**
  * TODO
  */
-export function complement(regex: RegExp): RegExp {
-  return toRegExp(RE.complement(parseRegExp(regex)))
+export function complement(re: RegExp): RegExp {
+  const parsed = parseRegExp(re)
+  const result = RE.toStdRegex(RE.complement(parsed))
+  return RE.toRegExp(result)
 }
 
 /**
  * Enumerates the strings that are matched by the given regular expression.
  */
-export function* enumerate(regex: RegExp): Generator<string> {
-  let stream = SRE.enumerate(parseRegExp(regex))
+export function* enumerate(re: RegExp): Generator<string> {
+  let stream = RE.enumerate(parseRegExp(re))
 
   while (stream !== undefined) {
     yield stream.head 
