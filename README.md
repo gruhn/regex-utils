@@ -1,7 +1,8 @@
 
 # Rare Regex Utils
 
-Zero-dependency TypeScript library for rare regex utilities:
+Zero-dependency TypeScript library for regex utilities that go beyond string matching.
+These are surprisingly hard to come by in any programming language ecosystem.
 
 ## Install
 
@@ -14,6 +15,10 @@ TODO: how to import TypeScript sources vs. JavaScript bundle.
 ## Limitations
 
 * Not full regex syntax supported (yet)
+* Output regex maybe too verbose, e.g.
+  - `(|a)` instead of `a?`
+  - `aaaaaa*` instead of `a{5,}`
+  - `[a-zA-Z]` instead of `\w`
 * Some functions have worst case exponential complexity.
   Usually just pathological cases. Please report.
 
@@ -22,8 +27,8 @@ TODO: how to import TypeScript sources vs. JavaScript bundle.
 ### `intersection(...res: RegExp[]): RegExp`
 
 Takes a sequence of regular expressions and constructs their intersection.
-This is useful to combine several pattern constraints into one. 
-For example, to build a regular expression that can validate passwords on sign-up:
+This is useful to combine several constraints into one. 
+For example, to build a regular expression that can validate a new password:
 
 ```typescript
 import { intersection } from 'rare-regex-utils'

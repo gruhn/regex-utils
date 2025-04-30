@@ -41,3 +41,7 @@ export function* enumerate(re: RegExp): Generator<string> {
 //   //   RegexTree.fromRegExp(re2)
 //   // )
 // }
+
+export function size(re: RegExp): BigInt {
+  return RE.size(parseRegExp(re))
+}
