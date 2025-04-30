@@ -58,22 +58,30 @@ describe('size', () => {
 
   it('returns 1 for ∅ *', () => {
     const regex = RE.star(RE.empty) 
-    expect(RE.size(regex)).toBe(1)
+    expect(RE.size(regex)).toBe(1n)
   })
 
   it('returns 1 for ε*', () => {
     const regex = RE.star(RE.empty) 
-    expect(RE.size(regex)).toBe(1)
+    expect(RE.size(regex)).toBe(1n)
   })
 
-  it('returns Infinity for a*', () => {
+  it('returns undefined for a*', () => {
     const regex = RE.star(RE.singleChar('a')) 
-    expect(RE.size(regex)).toBe(Infinity)
+    expect(RE.size(regex)).toBe(undefined)
   })
 
   it('returns 1 for (a|a)', () => {
     const regex = RE.union(RE.singleChar('a'), RE.singleChar('a')) 
-    expect(RE.size(regex)).toBe(1)
+    expect(RE.size(regex)).toBe(1n)
+  })
+
+  it('returns 26 for ([a-z]|[a-z])', () => {
+    const regex = RE.union(
+      RE.literal(CharSet.charRange('a', 'z')),
+      RE.literal(CharSet.charRange('a', 'z')),
+    )
+    expect(RE.size(regex)).toBe(26n)
   })
 
   it('returns 260 for [a-z][0-9]', () => {
@@ -81,7 +89,27 @@ describe('size', () => {
       RE.literal(CharSet.charRange('a', 'z')),
       RE.literal(CharSet.charRange('0', '9')) 
     )
-    expect(RE.size(regex)).toBe(260)
+    expect(RE.size(regex)).toBe(260n)
+  })
+
+  it('returns 26**60 for [a-z]{60}', () => {
+    const regex = RE.replicate(60, RE.literal(CharSet.charRange('a', 'z')))
+    expect(RE.size(regex)).toBe(26n**60n)
+  })
+
+  it('is same as length of exhausitve enumeration', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        stdRegex => {
+          const predicatedSize = RE.size(stdRegex)
+          fc.pre(predicatedSize !== undefined && predicatedSize <= 100n)
+
+          const allWords = Stream.toArray(RE.enumerate(stdRegex))
+          expect(predicatedSize).toBe(BigInt(allWords.length))
+        }       
+      )
+    )   
   })
 
 })

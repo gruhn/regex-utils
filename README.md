@@ -84,7 +84,7 @@ TODO: show output
 
 > [!TIP]
 > Use the new [Iterator helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/take)
-> to only get a the first N matches. For example: `enumerate(emailRegex).take(100)`.
+> to only get the first N matches, e.g `enumerate(emailRegex).take(100)`.
 
 The generator produces a _fair enumeration_.
 That means every string that matches the regular expression is _eventually_ enumerated.
@@ -97,24 +97,26 @@ because it never produces "batman". A fair enumeration would be:
 "na", "batman", "nana", "nanana", "nananana", "nanananana", ...
 ```
 
-### `size(re: RegExp): number`
+### `size(re: RegExp): bigint | undefined`
 
-Returns the number of strings that match the given `RegExp`.
+Returns the number of strings that match the given `RegExp` or `undefined` if there are infinitely many matches.
 
 ```typescript
 import { size } from 'rare-regex-utils'
 
-size(/^[a-z]$/) === 26
+size(/^[a-z]$/) === 26n
 
-size(/^[a-z][0-9]$/) === 260
+size(/^(a|a)$/) === 1n
 
-size(/^[a-z]*$/) === Infinity
+size(/^[a-z][0-9]$/) === 260n
+
+size(/^[a-z]*$/) === undefined
+
+size(/^[a-z]{60}/) === 7914088058189701615326255069116716194962212229317838559326167922356251403772678373376n 
 ```
 
 > [!NOTE]
-> This function might double count matches sometimes.
-> Also, the combinatorial explosion can quickly cause integer overflow.
-> For example, the size of `/^[0-9]{1000}$/` is 10^1000.
+> Double counting matches might still happen.
 
 ### `derivative(prefix: string, re: RegExp): RegExp`
 

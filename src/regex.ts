@@ -201,6 +201,12 @@ export function intersectAll(res: ExtRegex[]): ExtRegex {
     return res.reduceRight(intersection)
 }
 
+export function replicate(n: number, regex: StdRegex): StdRegex
+export function replicate(n: number, regex: ExtRegex): ExtRegex
+export function replicate(n: number, regex: ExtRegex): ExtRegex {
+  return concatAll(Array(n).fill(regex))
+}
+
 //////////////////////////////////////////////
 /////    derivatives & predicates        /////
 //////////////////////////////////////////////
@@ -419,26 +425,38 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
   }
 }
 
-export function size(regex: StdRegex): number {
+export function size(regex: StdRegex): bigint | undefined {
   switch (regex.type) {
     case 'epsilon':
-      return 1
+      return 1n
     case 'literal':
-      return CharSet.size(regex.charset)
-    case 'concat':
-      return size(regex.left) * size(regex.right)
-    case 'union':
-      return size(regex.left) + size(regex.right)
+      return BigInt(CharSet.size(regex.charset))
+    case 'concat': {
+      const leftSize = size(regex.left)
+      const rightSize = size(regex.right)
+      if (leftSize !== undefined && rightSize !== undefined)
+        return leftSize * rightSize
+      else
+        return undefined
+    }
+    case 'union': {
+      const leftSize = size(regex.left)
+      const rightSize = size(regex.right)
+      if (leftSize !== undefined && rightSize !== undefined)
+        return leftSize + rightSize
+      else
+        return undefined
+    }
     case 'star': {
       const innerSize = size(regex.inner)
-      if (innerSize === 0) 
+      if (innerSize === 0n) 
         // `inner` is empty so `star(inner)` the only match is the empty string:
-        return 1
+        return 1n
       else
         // If `inner` is `epsilon` then `star(inner)` still only matches the empty string,
         // so the return value should only be 1. However, this case should not occur
         // since we normalize that away in the smart constructors.
-        return Infinity
+        return undefined
     }
   }
 }
