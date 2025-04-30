@@ -1,12 +1,12 @@
 
-# Regex Utils
+# Rare Regex Utils
 
 Zero-dependency TypeScript library for rare regex utilities:
 
 ## Install
 
 ```bash
-npm install regex-utils
+npm install rare-regex-utils
 ```
 
 TODO: how to import TypeScript sources vs. JavaScript bundle.
@@ -22,7 +22,7 @@ TODO: how to import TypeScript sources vs. JavaScript bundle.
 ### `intersection(re1: RegExp, re1: RegExp): RegExp`
 
 ```typescript
-import { intersection } from 'regex-utils'
+import { intersection } from 'rare-regex-utils'
 
 // password constraints as 
 const constraints = [

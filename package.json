@@ -1,7 +1,7 @@
 {
-  "name": "regex-utils",
-  "version": "1.0.0",
-  "main": "src/index.ts",
+  "name": "rare-regex-utils",
+  "version": "0.1.0",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "test": "vitest watch --exclude .direnv --exclude node_modules",
