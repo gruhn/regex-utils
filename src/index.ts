@@ -32,16 +32,17 @@ export function* enumerate(re: RegExp): Generator<string> {
 }
 
 /**
- * Checks whether the two given regex are equivalent, i.e. whether they match the same strings.
+ * TODO
  */
-// export function equivalent(re1: RegExp, re2: RegExp): boolean {
-//   throw 'todo'
-//   // return RegexTree.equivalent(
-//   //   RegexTree.fromRegExp(re1),
-//   //   RegexTree.fromRegExp(re2)
-//   // )
-// }
+export function derivative(prefix: string, re: RegExp): RegExp {
+  const parsed = parseRegExp(re)
+  const result = RE.derivative(prefix, parsed)
+  return RE.toRegExp(result)
+}
 
-export function size(re: RegExp): BigInt {
+/**
+ * TODO
+ */
+export function size(re: RegExp): bigint | undefined {
   return RE.size(parseRegExp(re))
 }
