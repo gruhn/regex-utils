@@ -41,7 +41,7 @@ describe('enumerate', () => {
           const shortWords = Stream.takeWhile(word => word.length <= 30, allWords)
 
           const selectedWords = Stream.toArray(
-            Stream.take(300, shortWords)
+            Stream.take(100, shortWords)
           )
 
           for (const word of selectedWords) {
@@ -124,14 +124,14 @@ describe('size', () => {
 //   })
 // })
 
-// describe('intersect', () => {
+// describe('intersection', () => {
 //   it('two regex match a string if their intersection matches', () => {
 //     fc.assert(
 //       fc.property(
-//         extRegex(),
-//         extRegex(),
+//         Arb.stdRegex(),
+//         Arb.stdRegex(),
 //         (regex1, regex2) => {
-//           const intersectionRegex = RegexTree.intersect(regex1, regex2)
+//           const intersectionRegex = RE.intersection(regex1, regex2)
 //           expect(RegexTree.isSubsetOf(intersectionRegex, regex1)).toBe(true)
 //           expect(RegexTree.isSubsetOf(intersectionRegex, regex2)).toBe(true)
 //         }

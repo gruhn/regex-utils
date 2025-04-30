@@ -316,27 +316,53 @@ export function equal(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return regexA.hash === regexB.hash
 }
 
-function allIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet[]): CharSet.CharSet[] {
+// const cache: Map<number, Map<number, CharSet.CharSet[]>> = new Map()
+// let seen: number = 0
+// let total: number = 0
+
+function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet[]): CharSet.CharSet[] {
+  // const hashA = classesA.map(cls => cls.hash).reduce(hashAssoc)
+  // const hashB = classesB.map(cls => cls.hash).reduce(hashAssoc)
+  // let cacheA = cache.get(hashA)
+  // const cachedResult = cacheA?.get(hashB)
+  // if (cachedResult !== undefined) {
+  //   return cachedResult
+  // }
+
   const result: CharSet.CharSet[] = []
   for (const classA of classesA) {
     for (const classB of classesB) {
-      result.push(CharSet.intersection(classA, classB))
+      const inter = CharSet.intersection(classA, classB)
+      if (!CharSet.isEmpty(inter)) {
+        result.push(inter)
+      }
     }
   }
-  return uniqWith(result, CharSet.compare)
+  const finalResult = uniqWith(result, CharSet.compare)
+
+  // if (cacheA === undefined) {
+  //   cacheA = new Map()
+  //   cache.set(hashA, cacheA)
+  // }
+  // cacheA.set(hashB, finalResult)
+
+  return finalResult
 }
 
 export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
-  const alphabet = CharSet.fullUnicode
+  // const alphabet = CharSet.fullUnicode
+  // TEMP:
+  const alphabet = CharSet.charRange('a', 'z')
 
   switch (regex.type) {
     case "epsilon":
       return [alphabet]
     case "literal":
       return [regex.charset, CharSet.difference(alphabet, regex.charset)]
+        .filter(charset => !CharSet.isEmpty(charset))
     case "concat": {
       if (isNullable(regex)) 
-        return allIntersections(
+        return allNonEmptyIntersections(
           derivativeClasses(regex.left),
           derivativeClasses(regex.right)
         )
@@ -344,12 +370,12 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
         return derivativeClasses(regex.left)     
     }
     case "union":
-      return allIntersections(
+      return allNonEmptyIntersections(
         derivativeClasses(regex.left),
         derivativeClasses(regex.right)
       )
     case "intersection":
-      return allIntersections(
+      return allNonEmptyIntersections(
         derivativeClasses(regex.left),
         derivativeClasses(regex.right)
       )
@@ -365,10 +391,6 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
 //////////////////////////////////////////////
 ///// exclusive standard regex utils     /////
 //////////////////////////////////////////////
-
-export function toStdRegex(regex: ExtRegex): StdRegex {
-  throw 'todo'
-}
 
 export function toRegExp(regex: StdRegex): RegExp {
   return new RegExp(toString(regex))
@@ -460,18 +482,3 @@ export function size(regex: StdRegex): bigint | undefined {
     }
   }
 }
-
-// export function isStdRegex(regex: ExtRegex): regex is StdRegex {
-//   if (regex.type === 'epsilon' || regex.type === 'literal') 
-//     return true
-//   else if (regex.type === 'concat' || regex.type === 'union')
-//     return isStdRegex(regex.left) && isStdRegex(regex.right)
-//   else if (regex.type === 'star')
-//     return isStdRegex(regex.inner)
-//   else if (regex.type === 'complement' || regex.type === 'intersection')
-//     return false
-//   checkedAllCases(regex)
-// }
-
-
-

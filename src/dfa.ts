@@ -1,96 +1,169 @@
-import { CharSet, isEmpty } from "./char-set"
-import { StdRegex, ExtRegex, codePointDerivative, derivativeClasses, equal, isNullable } from "./regex"
+import * as CharSet from "./char-set"
+import * as RE from "./regex"
 import { assert } from "./utils"
 
-type Transition<Label> = [ExtRegex, Label, ExtRegex]
-
-// TODO: more efficient representation:
-type TransitionMap<Label> = readonly Transition<Label>[]
-
-function addTransition<Label>(
-  transitionMap: TransitionMap<Label>,
-  transition: Transition<Label>
-): TransitionMap<Label> {
-   // TODO: avoid duplicates
-  return [...transitionMap, transition]
-}
+type TransitionMap<Label> = Map<number, Map<number, Label>>
 
 export type DFA = Readonly<{
-  startState: ExtRegex
-  finalStates: ExtRegex[]
-  transitions: TransitionMap<CharSet>
+  allStates: Map<number, RE.ExtRegex>
+  startState: number
+  finalStates: Set<number>
+  transitions: TransitionMap<CharSet.CharSet>
 }>
 
-export function fromExtRegex(regex: StdRegex): DFA {
-  const { allStates, transitions } = explore(regex, {
-    allStates: [regex],
-    transitions: []
-  })
-
-  return {
-    startState: regex,
-    finalStates: allStates.filter(isNullable),
-    transitions,
+function addTransition<Label>(
+  source: number,
+  label: Label,
+  target: number,
+  transitions: TransitionMap<Label>
+): void {
+  let transitionsFromSource = transitions.get(source)
+  if (transitionsFromSource === undefined) {
+    transitionsFromSource = new Map()
+    transitions.set(source, transitionsFromSource)
   }
+
+  transitionsFromSource.set(target, label) 
 }
 
-type PartialDFA = Readonly<{
-  allStates: ExtRegex[]
-  transitions: TransitionMap<CharSet>
-}>
-
-function explore(
-  sourceState: ExtRegex,
-  partialDFA: PartialDFA,
-): PartialDFA {
-  return derivativeClasses(sourceState).reduce(
-    (dfa, charSet) => goto(sourceState, charSet, dfa), partialDFA
-  )
-}
-
-function goto(
-  sourceState: ExtRegex,
-  charSet: CharSet,
-  { allStates, transitions }: PartialDFA,
-): PartialDFA {
-  const char = pickChar(charSet)
-  const targetState = codePointDerivative(char, sourceState)
-
-  const knownState = allStates.find(s => equal(s, targetState))
-
-  if (knownState === undefined)  
-    return {
-      allStates,
-      transitions: addTransition(
-        transitions,
-        [sourceState, charSet, targetState]
-      ),
-    }
-  else 
-    return explore(
-      targetState,
-      {
-        allStates: [targetState, ...allStates],
-        transitions: addTransition(
-          transitions,
-          [sourceState, charSet, knownState],
-        ),
-      }
-    )
-}
-
-function pickChar(set: CharSet): number {
+function pickChar(set: CharSet.CharSet): number {
   assert(set.type !== 'empty')
   return set.range.start
 }
 
-// export function toStdRegex(dfa: DFA): StdRegex {
-//   const regexLabeledTransitions: TransitionMap<StdRegex> = dfa.transitions.map(
-//     ([source, charset, target]) => [source, { type: 'literal', charset }, target]
-//   )
+function regexToDFA(regex: RE.ExtRegex): DFA {
+  const allStates = new Map([[regex.hash, regex]])
+  const transitions: Map<number, Map<number, CharSet.CharSet>> = new Map()
 
-//   // TODO: normalize DFA by eliminating self-loop on initial state and introducing
-//   // a single final state.
+  const worklist = [regex]
 
-//   throw 'todo'
+  while (true) {
+    const sourceState = worklist.shift()
+    if (sourceState === undefined) {
+      break
+    }
+
+    for (const charSet of RE.derivativeClasses(sourceState)) {
+      const char = pickChar(charSet)
+      const targetState = RE.codePointDerivative(char, sourceState)
+
+      const knownState = allStates.get(targetState.hash)
+
+      if (knownState === undefined) {
+        allStates.set(targetState.hash, targetState)
+        addTransition(sourceState.hash, charSet, targetState.hash, transitions)
+        worklist.push(targetState)
+      } else {
+        addTransition(sourceState.hash, charSet, knownState.hash, transitions)
+      }  
+    }
+  }
+
+  const finalStates = new Set<number>()
+  for (const state of allStates.values()) {
+    if (RE.isNullable(state)) {
+      finalStates.add(state.hash)
+    }
+  } 
+
+  return {
+    allStates,
+    startState: regex.hash,
+    finalStates,
+    transitions,
+  }
+}
+
+type RipStateResult = {
+  predecessors: [number, RE.StdRegex][]
+  selfLoop: RE.StdRegex
+  successors: [number, RE.StdRegex][]
+}
+
+function ripState(state: number, transitions: TransitionMap<RE.StdRegex>): RipStateResult {
+  const selfLoop = transitions.get(state)?.get(state) ?? RE.epsilon
+
+  const successorsMap = transitions.get(state) ?? new Map<number, RE.StdRegex>()
+  // handle self loops separately:
+  successorsMap.delete(state)
+  const successors = [...successorsMap.entries()]
+  transitions.delete(state)
+
+  const predecessors: [number, RE.StdRegex][] = []
+  for (const [source, transitionsFromSource] of transitions) {
+    // handle self loops separately:
+    if (source !== state) {
+      const label = transitionsFromSource.get(state)
+      if (label !== undefined) {
+        predecessors.push([source, label])
+        transitionsFromSource.delete(state)
+      }
+    }
+  }
+
+  return { selfLoop, successors, predecessors }
+}
+
+export function dfaToRegex(dfa: DFA): RE.StdRegex {
+  const transitionsWithRegexLabels: TransitionMap<RE.StdRegex> = new Map(
+    [...dfa.transitions.entries()].map(
+      ([source, transitionsFromSource]) => [ source, new Map(
+          [...transitionsFromSource.entries()].map(
+            ([target, charSet]) => [target, RE.literal(charSet)]
+          )
+      )]
+    )
+  )
+
+  const newStartState = -1
+  addTransition(newStartState, RE.epsilon, dfa.startState, transitionsWithRegexLabels)
+
+  const newFinalState = -2
+  for (const oldFinalState of dfa.finalStates) {
+    addTransition(oldFinalState, RE.epsilon, newFinalState, transitionsWithRegexLabels)
+  }
+
+  for (const state of dfa.allStates.keys()) {
+    const result = ripState(state, transitionsWithRegexLabels)
+
+    for (const [pred, predLabel] of result.predecessors) {
+      for (const [succ, succLabel] of result.successors) {
+        const transitiveLabel = RE.concatAll([
+          predLabel,
+          RE.star(result.selfLoop),
+          succLabel,
+        ])
+
+        const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
+        const combinedLabel = RE.union(transitiveLabel, existingLabel)
+
+        addTransition(pred, combinedLabel, succ, transitionsWithRegexLabels)
+      }
+    }
+  }
+
+  assert(transitionsWithRegexLabels.size === 1)
+  const transitionsFromNewStart = transitionsWithRegexLabels.get(newStartState)
+  assert(transitionsFromNewStart !== undefined)
+  assert(transitionsFromNewStart.size === 1)
+  const finalRegex = transitionsFromNewStart.get(newFinalState)
+  assert(finalRegex !== undefined)
+
+  return finalRegex
+}
+
+export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
+  // TODO: can this round-trip through DFA construction be avoided?
+  const dfa = regexToDFA(regex)
+  return dfaToRegex(dfa)
+}
+
+// function printTrans<Label>(trans: TransitionMap<Label>) {
+//   console.debug('=========trans===========')
+//   for (const [source, succs] of trans.entries()) {
+//     for (const [target, label] of succs) {
+//       // console.debug(source, target, CharSet.toString(label))
+//       console.debug(source, target, label)
+//     }
+//   }
 // }

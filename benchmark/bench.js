@@ -46,3 +46,4 @@ for (const regex of readBenchFile()) {
   count++
 }
 console.log('time: ', performance.now() - startTime)
+

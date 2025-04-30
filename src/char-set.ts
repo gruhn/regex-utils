@@ -79,7 +79,7 @@ export function fromRange(range: Range.CodePointRange): CharSet {
     return node({ range, left: empty, right: empty })
 }
 
-export function charRange(startChar: string, endChar: string): Range.CharSet {
+export function charRange(startChar: string, endChar: string) {
   const start = startChar.codePointAt(0)
   const end = endChar.codePointAt(0)
   assert(start !== undefined && startChar.length <= 1)

@@ -1,4 +1,5 @@
 import * as RE from './regex'
+import * as DFA from './dfa'
 import { parseRegExp } from './regex-parser'
 
 /**
@@ -6,7 +7,7 @@ import { parseRegExp } from './regex-parser'
  */
 export function intersection(...res: RegExp[]): RegExp {
   const parsed = res.map(parseRegExp)   
-  const result = RE.toStdRegex(RE.intersectAll(parsed))
+  const result = DFA.toStdRegex(RE.intersectAll(parsed))
   return RE.toRegExp(result)
 }
 
@@ -15,7 +16,7 @@ export function intersection(...res: RegExp[]): RegExp {
  */
 export function complement(re: RegExp): RegExp {
   const parsed = parseRegExp(re)
-  const result = RE.toStdRegex(RE.complement(parsed))
+  const result = DFA.toStdRegex(RE.complement(parsed))
   return RE.toRegExp(result)
 }
 
