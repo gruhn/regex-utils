@@ -19,18 +19,18 @@ export function literal(): fc.Arbitrary<RE.StdRegex> {
   return charSet().map(RE.literal)
 }
 
-function concat(size: number): fc.Arbitrary<RE.StdRegex> {
-  return fc.tuple(stdRegex(size), stdRegex(size))
+function concat(childArb: () => fc.Arbitrary<RE.StdRegex>): fc.Arbitrary<RE.StdRegex> {
+  return fc.tuple(childArb(), childArb())
     .map(([ left, right ]) => RE.concat(left, right))
 }
 
-function union(size: number): fc.Arbitrary<RE.StdRegex> {
-  return fc.tuple(stdRegex(size), stdRegex(size))
+function union(childArb: () => fc.Arbitrary<RE.StdRegex>): fc.Arbitrary<RE.StdRegex> {
+  return fc.tuple(childArb(), childArb())
     .map(([ left, right ]) => RE.union(left, right))
 }
 
-function star(size: number): fc.Arbitrary<RE.StdRegex> {
-  return stdRegex(size).map(inner => RE.star(inner))
+function star(innerArb: () => fc.Arbitrary<RE.StdRegex>): fc.Arbitrary<RE.StdRegex> {
+  return innerArb().map(inner => RE.star(inner))
 }
 
 export function stdRegex(size = 100): fc.Arbitrary<RE.StdRegex> {
@@ -38,9 +38,20 @@ export function stdRegex(size = 100): fc.Arbitrary<RE.StdRegex> {
     return literal()
   else
     return fc.oneof(
-      star(Math.floor(size/2)),
-      concat(Math.floor(size/2)),
-      union(Math.floor(size/2)),
+      star(() => stdRegex(Math.floor(size/2))),
+      concat(() => stdRegex(Math.floor(size/2))),
+      union(() => stdRegex(Math.floor(size/2))),
+      literal(),
+    )
+}
+
+export function stdRegexNoStar(size = 100): fc.Arbitrary<RE.StdRegex> {
+  if (size <= 0)
+    return literal()
+  else
+    return fc.oneof(
+      concat(() => stdRegexNoStar(Math.floor(size/2))),
+      union(() => stdRegexNoStar(Math.floor(size/2))),
       literal(),
     )
 }

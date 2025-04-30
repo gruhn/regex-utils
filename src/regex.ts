@@ -106,8 +106,31 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (left.type === 'literal' && right.type === 'literal')
     // R + S ≈ R ∪ S
     return literal(CharSet.union(left.charset, right.charset))
-  else 
-    return withHash({ type: 'union', left, right })
+
+  // else if (left.type === 'concat') {
+  //   if (right.type === 'concat')
+  //     if (equal(left.left, right.left))
+  //       // TODO
+  //       return concat(left.left, union(left.right, right.right))
+  //     else if (left.right.hash === right.right.hash)
+  //       // TODO
+  //       return concat(union(left.left, right.left), left.right)
+  //   else if (equal(right, left.left))
+  //     // TODO
+  //     return concat(left.left, optional(left.right))
+  //   else if (equal(right, left.right))
+  //     // TODO
+  //     return concat(optional(left.left), left.right)
+  // } else if (right.type === 'concat') {
+  //   if (right.left.hash === left.hash)
+  //     // TODO
+  //     return concat(right.left, optional(right.right))
+  //   else if (right.right.hash === left.hash)
+  //     // TODO
+  //     return concat(optional(right.left), right.right)
+  // }
+
+  return withHash({ type: 'union', left, right })
 }
 
 export function star(inner: StdRegex): StdRegex
@@ -357,11 +380,11 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
   switch (regex.type) {
     case "epsilon":
       return [alphabet]
-    case "literal":
+    case "literal": 
       return [regex.charset, CharSet.difference(alphabet, regex.charset)]
-        .filter(charset => !CharSet.isEmpty(charset))
+        .filter(charset => !CharSet.isEmpty(charset))   
     case "concat": {
-      if (isNullable(regex)) 
+      if (isNullable(regex.left))
         return allNonEmptyIntersections(
           derivativeClasses(regex.left),
           derivativeClasses(regex.right)

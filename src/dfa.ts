@@ -145,11 +145,17 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
   assert(transitionsWithRegexLabels.size === 1)
   const transitionsFromNewStart = transitionsWithRegexLabels.get(newStartState)
   assert(transitionsFromNewStart !== undefined)
-  assert(transitionsFromNewStart.size === 1)
-  const finalRegex = transitionsFromNewStart.get(newFinalState)
-  assert(finalRegex !== undefined)
 
-  return finalRegex
+  if (transitionsFromNewStart.size === 0) {
+    // All connections to final states have been deleted, 
+    // thus the DFA matches no strings:
+    return RE.empty
+  } else {
+    assert(transitionsFromNewStart.size === 1)
+    const finalRegex = transitionsFromNewStart.get(newFinalState)
+    assert(finalRegex !== undefined)
+    return finalRegex
+  }
 }
 
 export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
