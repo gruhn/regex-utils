@@ -3,8 +3,9 @@ import { describe, it, expect } from "vitest"
 import * as RE from "../src/regex"
 import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
-import { toRegExp } from "../dist/regex"
-import { parseRegExp } from "../dist/regex-parser"
+import * as CharSet from '../src/char-set'
+import { toRegExp } from "../src/regex"
+import { parseRegExp } from "../src/regex-parser"
 
 describe('toString', () => {
 
@@ -22,9 +23,11 @@ describe('toString', () => {
 
 })
 
-// TODO: how to test that `enumerate` is complete?
 describe('enumerate', () => {
   
+  // TODO: also test that `enumerate` is complete by matching with 
+  // the complement.
+
   it('only produces strings matching the input regex', () => {
     fc.assert(
       fc.property(
@@ -47,6 +50,38 @@ describe('enumerate', () => {
         }
       ),
     )
+  })
+
+})
+
+describe('size', () => {
+
+  it('returns 1 for ∅ *', () => {
+    const regex = RE.star(RE.empty) 
+    expect(RE.size(regex)).toBe(1)
+  })
+
+  it('returns 1 for ε*', () => {
+    const regex = RE.star(RE.empty) 
+    expect(RE.size(regex)).toBe(1)
+  })
+
+  it('returns Infinity for a*', () => {
+    const regex = RE.star(RE.singleChar('a')) 
+    expect(RE.size(regex)).toBe(Infinity)
+  })
+
+  it('returns 1 for (a|a)', () => {
+    const regex = RE.union(RE.singleChar('a'), RE.singleChar('a')) 
+    expect(RE.size(regex)).toBe(1)
+  })
+
+  it('returns 260 for [a-z][0-9]', () => {
+    const regex = RE.concat(
+      RE.literal(CharSet.charRange('a', 'z')),
+      RE.literal(CharSet.charRange('0', '9')) 
+    )
+    expect(RE.size(regex)).toBe(260)
   })
 
 })

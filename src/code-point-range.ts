@@ -49,6 +49,10 @@ export function singleton(char: string): CodePointRange {
   return { start: codePoint, end: codePoint }
 }
 
+export function size(range: CodePointRange): number {
+  return range.end + 1 - range.start
+}
+
 export function isEmpty(range: CodePointRange): boolean {
   return range.start > range.end
 }

@@ -72,18 +72,22 @@ export function isEmpty(set: CharSet): boolean {
   return set.type === 'empty'
 }
 
-function fromRange(range: Range.CodePointRange): CharSet {
+export function fromRange(range: Range.CodePointRange): CharSet {
   if (Range.isEmpty(range))
     return empty
   else
     return node({ range, left: empty, right: empty })
 }
 
-export function fullUnicode(): CharSet {
-  // Full unicode range. TODO: Whether regex dot "." matches all unicode characters
-  // depends on the regex flags. Should later take that into account.
-  return fromRange({ start: 0, end: 0x10FFFF })
+export function charRange(startChar: string, endChar: string): Range.CharSet {
+  const start = startChar.codePointAt(0)
+  const end = endChar.codePointAt(0)
+  assert(start !== undefined && startChar.length <= 1)
+  assert(end !== undefined && endChar.length <= 1)
+  return fromRange(Range.range(start, end))
 }
+
+export const fullUnicode = fromRange({ start: 0, end: 0x10FFFF })
 
 export function isSingleton(set: CharSet): boolean {
   return (
@@ -284,4 +288,12 @@ export function enumerate(set: CharSet): Stream.Stream<string> {
       )
     )
   ))
+}
+
+export function size(set: CharSet): number {
+  if (set.type === 'empty') {
+    return 0
+  } else {
+    return Range.size(set.range) + size(set.left) + size(set.right)
+  } 
 }

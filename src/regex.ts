@@ -126,8 +126,6 @@ export function star(inner: ExtRegex): ExtRegex {
     return withHash({ type: "star", inner })
 }
 
-export function intersection(left: StdRegex, right: StdRegex): ExtRegex
-export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
   // if (left.type === "intersection")
   //   // (r & s) & t ≈ r & (s & t)
@@ -166,7 +164,7 @@ export function complement(inner: ExtRegex): ExtRegex {
 // some additional composite constructors ////
 //////////////////////////////////////////////
 
-export const anySingleChar: StdRegex = literal(CharSet.fullUnicode())
+export const anySingleChar: StdRegex = literal(CharSet.fullUnicode)
 
 export function singleChar(char: string) {
   return literal(CharSet.singleton(char))
@@ -193,6 +191,14 @@ export function concatAll(res: ExtRegex[]): ExtRegex
 export function concatAll(res: ExtRegex[]): ExtRegex {
   // Reducing right-to-left should trigger fewer normalization steps in `concat`:
   return res.reduceRight((right, left) => concat(left, right), epsilon)
+}
+
+export function intersectAll(res: ExtRegex[]): ExtRegex {
+  if (res.length === 0)
+    // TODO: is that correct?
+    return star(literal(CharSet.fullUnicode))
+  else
+    return res.reduceRight(intersection)
 }
 
 //////////////////////////////////////////////
@@ -315,7 +321,7 @@ function allIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet
 }
 
 export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
-  const alphabet = CharSet.fullUnicode()
+  const alphabet = CharSet.fullUnicode
 
   switch (regex.type) {
     case "epsilon":
@@ -399,7 +405,7 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
     case 'union':
       return Stream.interleave(
         enumerate(regex.left),
-        enumerate(regex.right)
+        enumerate(regex.right),
       )
     case 'star':
       return Stream.cons(
@@ -410,6 +416,30 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
           enumerate(regex),
         )
       )
+  }
+}
+
+export function size(regex: StdRegex): number {
+  switch (regex.type) {
+    case 'epsilon':
+      return 1
+    case 'literal':
+      return CharSet.size(regex.charset)
+    case 'concat':
+      return size(regex.left) * size(regex.right)
+    case 'union':
+      return size(regex.left) + size(regex.right)
+    case 'star': {
+      const innerSize = size(regex.inner)
+      if (innerSize === 0) 
+        // `inner` is empty so `star(inner)` the only match is the empty string:
+        return 1
+      else
+        // If `inner` is `epsilon` then `star(inner)` still only matches the empty string,
+        // so the return value should only be 1. However, this case should not occur
+        // since we normalize that away in the smart constructors.
+        return Infinity
+    }
   }
 }
 

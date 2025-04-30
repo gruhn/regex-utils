@@ -4,10 +4,9 @@ import { parseRegExp } from './regex-parser'
 /**
  * Returns a regular expression that matches the union of the languages of the given regular expressions.
  */
-export function intersection(re1: RegExp, re2: RegExp): RegExp {
-  const parsed1 = parseRegExp(re1)
-  const parsed2 = parseRegExp(re2)
-  const result = RE.toStdRegex(RE.intersection(parsed1, parsed2))
+export function intersection(...res: RegExp[]): RegExp {
+  const parsed = res.map(parseRegExp)   
+  const result = RE.toStdRegex(RE.intersectAll(parsed))
   return RE.toRegExp(result)
 }
 
@@ -35,10 +34,10 @@ export function* enumerate(re: RegExp): Generator<string> {
 /**
  * Checks whether the two given regex are equivalent, i.e. whether they match the same strings.
  */
-export function equivalent(re1: RegExp, re2: RegExp): boolean {
-  throw 'todo'
-  // return RegexTree.equivalent(
-  //   RegexTree.fromRegExp(re1),
-  //   RegexTree.fromRegExp(re2)
-  // )
-}
+// export function equivalent(re1: RegExp, re2: RegExp): boolean {
+//   throw 'todo'
+//   // return RegexTree.equivalent(
+//   //   RegexTree.fromRegExp(re1),
+//   //   RegexTree.fromRegExp(re2)
+//   // )
+// }

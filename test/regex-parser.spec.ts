@@ -24,6 +24,10 @@ describe('parseRegexString', () => {
     expect(result).toEqual(expected)
   })
 
+  it('can parse email regex', () => {
+    parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
+  })
+
   it.each([
     ['a+*'],
     ['(a'],
