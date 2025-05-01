@@ -103,10 +103,10 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
 export function union(left: StdRegex, right: StdRegex): StdRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
-  // if (left.type === 'union')
-  //   // (r + s) + t ≈ r + (s + t)
-  //   return union(left.left, union(left.right, right))
-  if (equal(left, right)) 
+  if (left.type === 'union')
+    // (r + s) + t ≈ r + (s + t)
+    return union(left.left, union(left.right, right))
+  else if (equal(left, right))
     // r + r ≈ r
     return left
   else if (equal(left, empty))
@@ -121,12 +121,18 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (equal(complement(empty), right))
     // r + ¬∅ ≈ ¬∅
     return complement(empty)
-  else if (left.hash > right.hash)
-    // r + s ≈ s + r
-    return union(right, left)
+  // else if (left.hash > right.hash)
+  //   // r + s ≈ s + r
+  //   return union(right, left)
   else if (left.type === 'literal' && right.type === 'literal')
     // R + S ≈ R ∪ S
     return literal(CharSet.union(left.charset, right.charset))
+  else if (right.type === 'union' && equal(left, right.left))
+    // r + (r + s) = r + s
+    return union(left, right.right)
+  else if (right.type === 'union' && equal(left, right.right))
+    // r + (s + r) = r + s
+    return union(left, right.left)
 
   // else if (left.type === 'concat') {
   //   if (right.type === 'concat')
@@ -192,8 +198,8 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (left.hash > right.hash)
     // r & s ≈ s & r
     return intersection(right, left) 
-  else
-    return withHash({ type: "intersection", left, right })
+
+  return withHash({ type: "intersection", left, right })
 }
 
 export function complement(inner: ExtRegex): ExtRegex {
@@ -459,13 +465,13 @@ export function toRegExp(regex: StdRegex): RegExp {
   return new RegExp(toString(regex))
 }
 
-export function toString(regex: StdRegex): string {
+export function toString(regex: ExtRegex): string {
   return '^' + toStringRec(regex) + '$'
 }
 
 // TODO: make this more compact by using fewer parenthesis and
 // recognizing patterns like "a+" instead of "aa*" etc.
-function toStringRec(regex: StdRegex): string {
+function toStringRec(regex: ExtRegex): string {
   switch (regex.type) {
     case 'epsilon':
       return ''
@@ -477,6 +483,10 @@ function toStringRec(regex: StdRegex): string {
       return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
     case 'star':
       return `(${toStringRec(regex.inner)})*`
+    case 'complement':
+      return `¬(${toStringRec(regex.inner)})`
+    case 'intersection':
+      return `(${toStringRec(regex.left)}∩${toStringRec(regex.right)})`
   }
   checkedAllCases(regex)
 }
