@@ -74,18 +74,40 @@ This can be useful for testing regular expressions.
 ```typescript
 import { enumerate } from 'rare-regex-utils'
 
-const emailRegex = /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/
+const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
 
 for (const matchedStr of enumerate(emailRegex)) {
   console.log(matchedStr)
 }
 ```
 ```
-TODO: show output
+a@a.aa
+b@a.aa
+aa@a.aa
+c@a.aa
+ba@a.aa
+a@b.aa
+d@a.aa
+ca@a.aa
+b@b.aa
+ab@a.aa
+e@a.aa
+da@a.aa
+c@b.aa
+bb@a.aa
+aa@b.aa
+f@a.aa
+ea@a.aa
+d@b.aa
+cb@a.aa
+ba@b.aa
+a@aa.aa
+g@a.aa
+...
 ```
 
 > [!WARNING]
-> If the regular expression matches infinitely many strings then a loop like this won't terminate.
+> If the regular expression matches infinitely many strings then a loop like above won't terminate.
 
 > [!TIP]
 > Use the new [Iterator helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/take)
@@ -93,13 +115,14 @@ TODO: show output
 
 The generator produces a _fair enumeration_.
 That means every string that matches the regular expression is _eventually_ enumerated.
-To illustrate, an _unfair enumeration_ of `/^((na)+|batman)$/` would be:
+To illustrate, an unfair enumeration of `/^(a+|b+)$/` would be:
 ```
-"na", "nana", "nanana", "nananana", "nanananana", ...
+"a", "aa", "aaa", "aaaa", "aaaaa", ...
 ```
-because it never produces "batman". A fair enumeration would be:
+because it never produces any strings of b's.
+A possible fair enumeration is:
 ```
-"na", "batman", "nana", "nanana", "nananana", "nanananana", ...
+"a", "b", "aa", "bb", "aaa", "bbb", "aaaa", "bbbb", ...
 ```
 
 ### `size(re: RegExp): bigint | undefined`

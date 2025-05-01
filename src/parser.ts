@@ -8,11 +8,7 @@ export class ParseError extends Error {
     message: string,
     public readonly restInput: string
   ) {
-    super(message)
-  }
-
-  toString() {
-    return `${super.toString()}\nInput: "${this.restInput.slice(0, 20)}..."`
+    super(`${message}\nInput: "${restInput.slice(0, 20)}..."`)
   }
   
 }
@@ -32,6 +28,12 @@ export class Parser<T> {
     return this.andThen(value => pure(fn(value)))
   }
 
+}
+
+export function failure(message: string) {
+  return new Parser(input => {
+    throw new ParseError(message, input)
+  })
 }
 
 // FIXME: try avoid type assertions in here:

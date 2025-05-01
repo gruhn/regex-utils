@@ -94,7 +94,7 @@ describe('size', () => {
   })
 
   it('returns 26**60 for [a-z]{60}', () => {
-    const regex = RE.replicate(60, RE.literal(CharSet.charRange('a', 'z')))
+    const regex = RE.replicate(0, 60, RE.literal(CharSet.charRange('a', 'z')))
     expect(RE.size(regex)).toBe(26n**60n)
   })
 

@@ -87,8 +87,6 @@ export function charRange(startChar: string, endChar: string) {
   return fromRange(Range.range(start, end))
 }
 
-export const fullUnicode = fromRange({ start: 0, end: 0x10FFFF })
-
 export function isSingleton(set: CharSet): boolean {
   return (
     set.type === 'node'
@@ -263,6 +261,10 @@ export function compare(setA: CharSet, setB: CharSet): number {
   return setA.hash - setB.hash
 }
 
+export function isSpecialChar(char: string): boolean {
+  return char.match(/^[.^$*+?()[\]{\|]$/) !== null
+}
+
 // TODO: can make this more compact using character classes
 // e.g. \d instead of [0-9]
 export function toString(set: CharSet): string {
@@ -273,7 +275,7 @@ export function toString(set: CharSet): string {
     return "$.^"
   else if (str.length === 1)
     // single char doesn't need brackets:
-    return str
+    return isSpecialChar(str) ? '\\' + str : str
   else
     // output e.g. "[abc0-9]"
     return '[' + str  + ']'
@@ -297,3 +299,78 @@ export function size(set: CharSet): number {
     return Range.size(set.range) + size(set.left) + size(set.right)
   } 
 }
+
+////////////////////////////////////////////////////////////
+//////////////// Specific Character Classes //////////////// 
+////////////////////////////////////////////////////////////
+
+export const fullUnicode = fromRange({ start: 0, end: 0x10FFFF })
+
+/**
+ * Equivalent to the dot ".". Whether or not the dot matches
+ * line terminators like \n depends on the dotAll-flag attached to 
+ * a regular expression. For example, this regex matches
+ * line terminators `/./s` but this one doesn't `/./`.
+ */
+export const wildcard = (options: { dotAll: boolean }) => {
+  if (options.dotAll)
+    return fullUnicode
+  else
+    return difference(
+      fullUnicode,
+      fromArray(['\r', '\n', '\u2028', '\u2029'])
+    )
+}
+
+/**
+ * Equivalent to \d
+ */
+export const digitChars = charRange('0', '9')
+
+/**
+ * Equivalent to \D
+ */
+export const nonDigitChars = difference(fullUnicode, digitChars)
+
+/**
+ * Equivalent to \w
+ */
+export const wordChars = [
+  charRange('a', 'z'),
+  charRange('A', 'Z'),
+  singleton('_')
+].reduce(union)
+
+
+/**
+ * Equivalent to \W
+ */
+export const nonWordChars = difference(fullUnicode, wordChars)
+
+/**
+ * Equivalent to \s
+ */
+export const whiteSpaceChars = [
+  singleton('\f'),
+  singleton('\n'),
+  singleton('\r'),
+  singleton('\t'),
+  singleton('\v'),
+  singleton('\u0020'),
+  singleton('\u00a0'),
+  singleton('\u1680'),
+  charRange('\u2000', '\u200a'),
+  singleton('\u2028'),
+  singleton('\u2029'),
+  singleton('\u202f'),
+  singleton('\u205f'),
+  singleton('\u3000'),
+  singleton('\ufeff'),
+].reduce(union)
+
+
+/**
+ * Equivalent to \s
+ */
+export const nonWhiteSpaceChars = difference(fullUnicode, whiteSpaceChars)
+

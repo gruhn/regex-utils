@@ -4,6 +4,19 @@ import * as CharSet from './char-set'
 import * as Range from './code-point-range'
 import { assert } from "./utils"
 
+const regExpFlags = [
+  'hasIndices',
+  'global',
+  'ignoreCase',
+  'multiline',
+  'dotAll',
+  'unicode',
+  'unicodeSets',
+  'sticky',
+] as const
+
+type RegExpFlag = typeof regExpFlags[number]
+
 // TODO:
 // - "\." (escaped dot), "\s" (all whitespace characters)
 // - "[a-zA-Z]"
@@ -28,14 +41,11 @@ const endMarker = P.optional(P.string('$')).map(marker => {
   }
 })
 
-const wildcard = P.string('.').map(() => RE.anySingleChar)
+const wildcard = P.string('.').map(
+  () => RE.literal(CharSet.wildcard({ dotAll: false }))
+)
 
-// TODO: there are probably more literal characters:
-function isLiteralChar(char: string): boolean {
-  return char.match(/^[a-zA-Z0-9]$/) !== null
-}
-
-const singleChar = P.satisfy(isLiteralChar)
+const singleChar = P.satisfy(char => !CharSet.isSpecialChar(char))
 
 const codePoint = singleChar.map(char => {
   const result = char.codePointAt(0)!
@@ -43,10 +53,34 @@ const codePoint = singleChar.map(char => {
   return result
 })
 
-const codePointRange: P.Parser<Range.CodePointRange> =
+const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar => {
+  switch (escapedChar) {
+    case 'w': return CharSet.wordChars
+    case 'W': return CharSet.nonWordChars
+    case 's': return CharSet.whiteSpaceChars
+    case 'S': return CharSet.nonWhiteSpaceChars
+    case 'd': return CharSet.digitChars
+    case 'D': return CharSet.nonDigitChars
+    case 't': return CharSet.singleton('\t') // horizontal tab
+    case 'r': return CharSet.singleton('\r') // carriage return
+    case 'n': return CharSet.singleton('\n') // line feed
+    case 'v': return CharSet.singleton('\v') // vertical tab
+    case 'f': return CharSet.singleton('\f') // form feed
+    case '0': return CharSet.singleton('\0') // NUL character
+    case 'b': throw new Error('\b word-boundary assertion not supported')
+    case 'c': throw new Error('\cX control characters not supported')
+    case 'x': throw new Error('\\x not supported')
+    case 'u': throw new Error('\\u not supported')
+    case 'p': throw new Error('\\p not supported')
+    case 'P': throw new Error('\\P not supported')
+    default: return CharSet.singleton(escapedChar) // match character literally
+  }
+})
+
+const codePointRange: P.Parser<CharSet.CharSet> =
   codePoint.andThen(start =>
     P.optional(P.string('-').andThen(_ => codePoint))
-     .map(end => Range.range(start, end))
+     .map(end => CharSet.fromRange({ start, end: end ?? start }))
   )
 
 const charSet = P.choice([
@@ -54,8 +88,8 @@ const charSet = P.choice([
     // QUESTION: can brackets be nested?
     P.string('['),
     P.string(']'),
-    P.many(codePointRange).map(
-      ranges => ranges.reduce(CharSet.insertRange, CharSet.empty)
+    P.many(P.choice([escapeSequence, codePointRange])).map(
+      sets => sets.reduce(CharSet.union, CharSet.empty)
     )
   ),
   singleChar.map(CharSet.singleton),
@@ -98,6 +132,7 @@ function regexTerm() {
   return P.choice([
     wildcard, 
     group,
+    escapeSequence.map(RE.literal),
     charSet.map(RE.literal),
   ])
 }
@@ -124,7 +159,9 @@ const regexWithBounds = P.sequence([
   endMarker,
 ]).map<RE.StdRegex>(RE.concatAll)
 
-export function parseRegexString(regexStr: string): RE.StdRegex {
+export function parseRegexString(
+  regexStr: string,
+): RE.StdRegex {
   const { value, restInput } = regexWithBounds.run(regexStr)
   if (restInput === '') {
     // TODO: parsing should always return stdandard regex instances:
@@ -135,9 +172,10 @@ export function parseRegexString(regexStr: string): RE.StdRegex {
 }
 
 export function parseRegExp(regexp: RegExp): RE.StdRegex {
-  // TODO: reject other unsupported flags
-  assert(!regexp.unicode, '[regex-utils] unicode mode not supported')
-  assert(!regexp.unicodeSets, '[regex-utils] unicodeSets mode not supported')
+  for (const flag of regExpFlags) {
+    assert(!regexp[flag], `[regex-utils] RegExp flags not supported`)
+  }
+
   return parseRegexString(regexp.source)
 }
 
