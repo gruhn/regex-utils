@@ -32,12 +32,7 @@ export function complement(re: RegExp): RegExp {
  * Enumerates the strings that are matched by the given regular expression.
  */
 export function* enumerate(re: RegExp): Generator<string> {
-  let stream = RE.enumerate(parseRegExp(re))
-
-  while (stream !== undefined) {
-    yield stream.head 
-    stream = stream.tail()
-  }
+  yield* RE.enumerate(parseRegExp(re))
 }
 
 /**

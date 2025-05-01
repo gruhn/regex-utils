@@ -134,17 +134,20 @@ import { size } from 'rare-regex-utils'
 
 size(/^[a-z]$/) === 26n
 
-size(/^(a|a)$/) === 1n
-
 size(/^[a-z][0-9]$/) === 260n
 
+// this one has infinitely many matches:
 size(/^[a-z]*$/) === undefined
 
+// that's why the return type if `bigint`;
 size(/^[a-z]{60}/) === 7914088058189701615326255069116716194962212229317838559326167922356251403772678373376n 
 ```
 
-> [!NOTE]
-> Double counting matches might still happen.
+> [!TIP]
+> Double counting is often avoided. 
+> For example, `size(/^(hello|hello)$/)` is only `1n` and not `2n`.
+> But it probably still happens.
+> The value should always be an upper bound though.
 
 ### `derivative(prefix: string, re: RegExp): RegExp`
 

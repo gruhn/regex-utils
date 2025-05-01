@@ -39,9 +39,7 @@ describe('enumerate', () => {
           // and also blow up memory use:
           const shortWords = Stream.takeWhile(word => word.length <= 30, allWords)
 
-          const selectedWords = Stream.toArray(
-            Stream.take(100, shortWords)
-          )
+          const selectedWords = [...Stream.take(100, shortWords)]
 
           for (const word of selectedWords) {
             expect(word).toMatch(regexp)
@@ -68,9 +66,7 @@ describe('enumerate', () => {
           // long words are likely result of repitiion and are less interesting to test
           // and also blow up memory:
           const shortWords = Stream.takeWhile(word => word.length <= 30, allComplementWords)
-          const selectedWords = Stream.toArray(
-            Stream.take(100, shortWords)
-          )
+          const selectedWords = [...Stream.take(100, shortWords)]
 
           for (const complementWord of selectedWords) {
             expect(complementWord).not.toMatch(regexp)
@@ -133,7 +129,7 @@ describe('size', () => {
           const predicatedSize = RE.size(stdRegex)
           fc.pre(predicatedSize !== undefined && predicatedSize <= 100n)
 
-          const allWords = Stream.toArray(RE.enumerate(stdRegex))
+          const allWords = [...RE.enumerate(stdRegex)]
           expect(predicatedSize).toBe(BigInt(allWords.length))
         }       
       )
@@ -141,7 +137,6 @@ describe('size', () => {
   })
 
 })
-
 
 // describe('equivalent', () => {
 //   it('every regex is equivalent to itself', () => {
@@ -153,18 +148,3 @@ describe('size', () => {
 //   })
 // })
 
-// describe('intersection', () => {
-//   it('two regex match a string if their intersection matches', () => {
-//     fc.assert(
-//       fc.property(
-//         Arb.stdRegex(),
-//         Arb.stdRegex(),
-//         (regex1, regex2) => {
-//           const intersectionRegex = RE.intersection(regex1, regex2)
-//           expect(RegexTree.isSubsetOf(intersectionRegex, regex1)).toBe(true)
-//           expect(RegexTree.isSubsetOf(intersectionRegex, regex2)).toBe(true)
-//         }
-//       )
-//     )   
-//   })
-// })

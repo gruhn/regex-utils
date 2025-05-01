@@ -395,7 +395,15 @@ function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet
       }
     }
   }
-  const finalResult = uniqWith(result, CharSet.compare)
+  const finalResult = uniqWith(result, CharSet.compare) 
+
+  // console.debug({
+  //   classesA: classesA.map(CharSet.toString),
+  //   classesB: classesB.map(CharSet.toString),
+  //   result: result.map(CharSet.toString),
+  //   result2: result.toSorted(CharSet.compare).map(CharSet.toString),
+  //   finalResult: finalResult.map(CharSet.toString),
+  // })
 
   // if (cacheA === undefined) {
   //   cacheA = new Map()

@@ -32,12 +32,34 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
       const targetState = RE.codePointDerivative(char, sourceState)
       const knownState = allStates.get(targetState.hash)
 
+      // console.debug(
+      //   'derivativeClasses:',
+      //   RE.toString(sourceState),
+      //   RE.derivativeClasses(sourceState)
+      //     .map(CharSet.toString),
+      //   String.fromCodePoint(char),
+      //   char,
+      //   RE.toString(targetState),
+      // )
+
       if (knownState === undefined) {
         allStates.set(targetState.hash, targetState)
-        Table.set(sourceState.hash, targetState.hash, charSet, transitions)
+        Table.setWith(
+          sourceState.hash,
+          targetState.hash,
+          charSet,
+          transitions,
+          () => { throw new Error('transition already exists') }
+        )
         worklist.push(targetState)
       } else {
-        Table.set(sourceState.hash, knownState.hash, charSet, transitions)
+        Table.setWith(
+          sourceState.hash,
+          knownState.hash,
+          charSet,
+          transitions,
+          CharSet.union
+        )
       }  
     }
   }
@@ -91,11 +113,23 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
   const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
 
   const newStartState = -1
-  Table.set(newStartState, dfa.startState, RE.epsilon, transitionsWithRegexLabels)
+  Table.setWith(
+    newStartState,
+    dfa.startState,
+    RE.epsilon,
+    transitionsWithRegexLabels,
+    () => { throw new Error('transition already exists') }
+  )
 
   const newFinalState = -2
   for (const oldFinalState of dfa.finalStates) {
-    Table.set(oldFinalState, newFinalState, RE.epsilon, transitionsWithRegexLabels)
+    Table.setWith(
+      oldFinalState,
+      newFinalState,
+      RE.epsilon,
+      transitionsWithRegexLabels,
+      () => { throw new Error('transition already exists') }
+    )
   }
 
   for (const state of dfa.allStates.keys()) {
@@ -112,7 +146,13 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
         const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
         const combinedLabel = RE.union(transitiveLabel, existingLabel)
 
-        Table.set(pred, succ, combinedLabel, transitionsWithRegexLabels)
+        Table.setWith(
+          pred,
+          succ,
+          combinedLabel,
+          transitionsWithRegexLabels,
+          RE.union,
+        )
       }
     }
   }

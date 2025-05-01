@@ -34,7 +34,17 @@ function node({ left, right, range }: {
     // on the structure of tree and how it's balanced. 
     // We only want the hash to identify the ranges stored inside, 
     // so it's cheap to detect when two `CharSet`s are equal.
-    hash: [left.hash, range.start, range.end, right.hash].reduce(hashAssoc)
+    hash: [
+      left.hash,
+      // Can't use `start` / `end` directly. Otherwise, different
+      // ranges with same sum easily map to same hash, e.g.
+      // 
+      //     hashAssoc(10, 20) === hashAssoc(5, 25)
+      // 
+      hashStr('start' + range.start),
+      hashStr('end'+ range.end),
+      right.hash
+    ].reduce(hashAssoc)
   }
 }
 

@@ -104,8 +104,8 @@ export function* adjacentPairs<T>(array: readonly T[]): Generator<[T,T]> {
  * Removes duplicates from `array` according to `compare`.
  */
 export function uniqWith<T>(array: T[], compare: (l: T, r: T) => number): T[] {
-  return array.toSorted(compare).filter((item, index) => {
-    const prevItem = array[index-1]
+  return array.toSorted(compare).filter((item, index, arraySorted) => {
+    const prevItem = arraySorted[index-1]
     return prevItem === undefined || compare(prevItem, item) !== 0
   })
 }

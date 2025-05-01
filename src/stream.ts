@@ -1,25 +1,57 @@
 
 // TODO: make this an Iterable instance:
-export type Stream<T> =
-  | undefined
-  | { head: T, tail: () => Stream<T> }
+export type Stream<T> = Iterable<T> & (
+  | { type: 'nil' }
+  | { type: 'cons', head: T, tail: () => Stream<T> }
+)
+
+
+function iterator<T>(stream: Stream<T>): Iterator<T> {
+  return {
+    next(): IteratorResult<T> {
+      if (stream.type === 'nil') {
+        return { done: true, value: undefined }
+      } else {
+        const { head, tail } = stream
+        stream = tail()
+        return { done: false, value: head }
+      }
+    }
+  }
+}
+
+function nil<T>(): Stream<T> {
+  return {
+    type: 'nil', 
+    [Symbol.iterator]() {
+      return iterator(this)
+    }
+  }
+}
 
 export function cons<T>(head: T, tail: () => Stream<T>): Stream<T> {
-  return { head, tail }
+  return {
+    type: 'cons',
+    head,
+    tail,
+    [Symbol.iterator]() {
+      return iterator(this)
+    }
+  }
 }
 
 export function singleton<T>(value: T): Stream<T> {
-  return cons(value, () => undefined)
+  return cons<T>(value, nil)
 }
 
 export function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
-  if (stream === undefined) 
-    return undefined
+  if (stream.type === 'nil') 
+    return nil()
   else
-    return {
-      head: fn(stream.head),
-      tail: () => map(fn, stream.tail()),
-    }
+    return cons(
+      fn(stream.head),
+      () => map(fn, stream.tail()),
+    )
 }
 
 /**
@@ -27,26 +59,26 @@ export function map<A,B>(fn: (a: A) => B, stream: Stream<A>): Stream<B> {
  * the remaining elements are appended to the end.
  */
 export function interleave<A>(stream1: Stream<A>, stream2: Stream<A>): Stream<A> {
-  if (stream1 === undefined)
+  if (stream1.type === 'nil')
     return stream2
   else
-    return {
-      head: stream1.head,
-      tail: () => interleave(stream2, stream1.tail())
-    }
+    return cons(
+      stream1.head,
+      () => interleave(stream2, stream1.tail())
+    )
 }
 
 export function concat<A>(streams: Stream<Stream<A>>): Stream<A> {
-  if (streams === undefined)
-    return undefined
-  else if (streams.head === undefined)
+  if (streams.type === 'nil')
+    return nil()
+  else if (streams.head.type === 'nil')
     return concat(streams.tail())
   else {
     const stream = streams.head
-    return {
-      head: stream.head,
-      tail: () => concat({ head: stream.tail(), tail: streams.tail })
-    }
+    return cons(
+      stream.head,
+      () => concat(cons(stream.tail(), streams.tail))
+    )
   }
 }
 
@@ -99,18 +131,18 @@ function stripe<A,B,C>(
   streamA: Stream<A>,
   streamB: Stream<B>,
 ): Stream<Stream<C>> {
-  if (streamA === undefined || streamB === undefined) {
-    return undefined
+  if (streamA.type === 'nil' || streamB.type === 'nil') {
+    return nil()
   } else {
-    return {
-      head: singleton(pair(streamA.head, streamB.head)),
-      tail: () => {
+    return cons(
+      singleton(pair(streamA.head, streamB.head)),
+      () => {
         return zipCons(
           map(itemA => pair(itemA, streamB.head), streamA.tail()),
           stripe(pair, streamA, streamB.tail())
         )
       }
-    }
+    )
   }
 }
 
@@ -121,28 +153,28 @@ function zipCons<A>(
   row: Stream<A>,
   stripes: Stream<Stream<A>>,
 ): Stream<Stream<A>> {
-  if (row === undefined)
+  if (row.type === 'nil')
     return stripes
-  else if (stripes === undefined)
+  else if (stripes.type === 'nil')
     // QUESTION: Can this case happen?
     return map(singleton, row)
   else
-    return {
-      head: cons(row.head, () => stripes.head),
-      tail: () => zipCons(row.tail(), stripes.tail())
-    }
+    return cons(
+      cons(row.head, () => stripes.head),
+      () => zipCons(row.tail(), stripes.tail())
+    )
 }
 
 export function take<A>(n: number, stream: Stream<A>): Stream<A> {
-  if (n <= 0 || stream === undefined)
-    return undefined
+  if (n <= 0 || stream.type === 'nil')
+    return nil()
   else
     return cons(stream.head, () => take(n - 1, stream.tail()))
 }
 
 export function takeWhile<A>(predicate: (_: A) => boolean, stream: Stream<A>): Stream<A> {
-  if (stream === undefined || !predicate(stream.head))
-    return undefined
+  if (stream.type === 'nil' || !predicate(stream.head))
+    return nil()
   else
     return cons(stream.head, () => takeWhile(predicate, stream.tail()))
 }
@@ -151,21 +183,12 @@ export function fromArray<T>(
   array: Array<T>
 ): Stream<T> {
   if (array.length === 0)
-    return undefined
+    return nil()
   else
-    return {
-      head: array[0],
-      tail: () => fromArray(array.slice(1))
-    }
-}
-
-export function toArray<T>(stream: Stream<T>): Array<T> {
-  const array: T[] = []
-  while (stream !== undefined) {
-    array.push(stream.head)
-    stream = stream.tail()
-  }
-  return array
+    return cons(
+      array[0],
+      () => fromArray(array.slice(1))
+    )
 }
 
 export function range(
@@ -173,7 +196,7 @@ export function range(
   end: number
 ): Stream<number> {
   if (start > end)
-    return undefined
+    return nil()
   else
     return cons(start, () => range(start + 1, end))
 }

@@ -9,13 +9,11 @@ function pair<A,B>(a: A, b: B): [A,B] {
  * `diagonalize` specialized to arrays for more convenient testing.
  */
 function diagonalizeArray<A,B>(arrayA: A[], arrayB: B[]): [A,B][] {
-  return Stream.toArray(
-    Stream.diagonalize(
-      pair,
-      Stream.fromArray(arrayA),
-      Stream.fromArray(arrayB)
-    )
-  )
+  return [...Stream.diagonalize(
+    pair,
+    Stream.fromArray(arrayA),
+    Stream.fromArray(arrayB)
+  )]
 }
 
 describe('diagonalize', () => {
@@ -27,7 +25,7 @@ describe('diagonalize', () => {
       Stream.range(1, Infinity),
     )   
 
-    const first10 = Stream.toArray(Stream.take(10, allPairs))
+    const first10 = [...Stream.take(10, allPairs)]
 
     expect(first10).toEqual([
       [1,1],
@@ -44,7 +42,7 @@ describe('diagonalize', () => {
       Stream.range(1, Infinity),
     )   
 
-    const first10 = Stream.toArray(Stream.take(10, allPairs))
+    const first10 = [...Stream.take(10, allPairs)]
 
     expect(first10).toEqual([
       ['a',1],
@@ -62,7 +60,7 @@ describe('diagonalize', () => {
       Stream.fromArray(['a', 'b', 'c']),
     )   
 
-    const first10 = Stream.toArray(Stream.take(10, allPairs))
+    const first10 = [...Stream.take(10, allPairs)]
 
     expect(first10).toEqual([
       [1,'a'],
@@ -103,12 +101,10 @@ describe('diagonalize', () => {
 })
 
 function interleaveArray<T>(arrayA: T[], arrayB: T[]): T[] {
-  return Stream.toArray(
-    Stream.interleave(
-      Stream.fromArray(arrayA),
-      Stream.fromArray(arrayB),
-    )
-  )
+  return [...Stream.interleave(
+    Stream.fromArray(arrayA),
+    Stream.fromArray(arrayB),
+  )]
 }
 
 describe('interleave', () => {
@@ -119,7 +115,7 @@ describe('interleave', () => {
       Stream.range(1, Infinity),
     )   
 
-    const first10 = Stream.toArray(Stream.take(10, stream))
+    const first10 = [...Stream.take(10, stream)]
     expect(first10).toEqual([1,1,2,2,3,3,4,4,5,5])
   })
 
