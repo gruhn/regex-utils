@@ -433,10 +433,6 @@ export function toString(regex: StdRegex): string {
   return '^' + toStringRec(regex) + '$'
 }
 
-export function isSpecialChar(char: string): boolean {
-  return char.match(/^[.^$*+?()[\]{\|]$/) !== null
-}
-
 // TODO: make this more compact by using fewer parenthesis and
 // recognizing patterns like "a+" instead of "aa*" etc.
 function toStringRec(regex: StdRegex): string {

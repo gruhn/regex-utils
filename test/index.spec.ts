@@ -4,12 +4,11 @@ import * as Arb from './arbitrary-regex'
 import * as CharSet from '../src/char-set'
 import { intersection } from '../src/index'
 
-// test('...', () => {
-//   const regex = intersection(
-//     /^[a-z]+$/,
-//     // /^.{5,10}$/
-//     /^......?.?.?.?.?$/
-//   )
-//   console.debug(regex)
-// })
+test('...', () => {
+  const regex = intersection(
+    /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/,
+    /^.{5,10}$/
+  )
+  console.debug(regex)
+})
 

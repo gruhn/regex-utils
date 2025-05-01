@@ -3,7 +3,7 @@ import * as DFA from './dfa'
 import { parseRegExp } from './regex-parser'
 
 /**
- * Returns a regular expression that matches the union of the languages of the given regular expressions.
+ * Returns a regular expression that matches the intersection of the languages of the given regular expressions.
  */
 export function intersection(...res: RegExp[]): RegExp {
   const parsed = res.map(parseRegExp)   

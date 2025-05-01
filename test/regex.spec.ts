@@ -24,18 +24,16 @@ describe('toString', () => {
 
 })
 
-describe('enumerate', () => {
-  
-  // TODO: also test that `enumerate` is complete by matching with 
-  // the complement.
+describe('enumerate', () => { 
 
-  it('only produces strings matching the input regex', () => {
+  // soundness
+  it('output strings match the input regex', () => {
     fc.assert(
       fc.property(
         Arb.stdRegex(),
-        stdRegex => {
-          const regexp = RE.toRegExp(stdRegex)
-          const allWords = RE.enumerate(stdRegex)
+        inputRegex => {
+          const regexp = RE.toRegExp(inputRegex)
+          const allWords = RE.enumerate(inputRegex)
 
           // long words are likely result of repitiion and are less interesting to test
           // and also blow up memory use:
@@ -47,6 +45,35 @@ describe('enumerate', () => {
 
           for (const word of selectedWords) {
             expect(word).toMatch(regexp)
+          }
+        }
+      ),
+    )
+  })
+
+  // completeness
+  it('strings NOT in the output, do NOT match the input regex', () => {
+    fc.assert(
+      fc.property(
+        // FIXME: have to exclude `star` because complement operation
+        // then often leads to exponential blow-up:
+        Arb.stdRegexNoStar(),
+        inputRegex => {
+          const regexp = RE.toRegExp(inputRegex)
+
+          // get words NOT in the output by enumerating words of the complement:
+          const inputRegexComplement = DFA.toStdRegex(RE.complement(inputRegex))
+          const allComplementWords = RE.enumerate(inputRegexComplement)
+
+          // long words are likely result of repitiion and are less interesting to test
+          // and also blow up memory:
+          const shortWords = Stream.takeWhile(word => word.length <= 30, allComplementWords)
+          const selectedWords = Stream.toArray(
+            Stream.take(100, shortWords)
+          )
+
+          for (const complementWord of selectedWords) {
+            expect(complementWord).not.toMatch(regexp)
           }
         }
       ),
@@ -94,7 +121,7 @@ describe('size', () => {
   })
 
   it('returns 26**60 for [a-z]{60}', () => {
-    const regex = RE.replicate(0, 60, RE.literal(CharSet.charRange('a', 'z')))
+    const regex = RE.replicate(60, 60, RE.literal(CharSet.charRange('a', 'z')))
     expect(RE.size(regex)).toBe(26n**60n)
   })
 
