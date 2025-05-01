@@ -33,18 +33,18 @@ describe('toStdRegex', () => {
     fc.assert(
       fc.property(
         // FIXME: `star` often leads to exponential blow up.
-        Arb.stdRegexNoStar(100),
+        Arb.stdRegexNoStar(),
         inputRegex => {
-          console.log(RE.toString(inputRegex))
-          const startTime = performance.now()
+          // console.log(RE.toString(inputRegex))
+          // const startTime = performance.now()
           const outputRegex = toStdRegex(inputRegex)
-          console.log('time', performance.now() - startTime)
+          // console.log('time', performance.now() - startTime)
 
           expect(isSubsetOf(inputRegex, outputRegex)).toBe(true)
           expect(isSubsetOf(outputRegex, inputRegex)).toBe(true)
         }
       ),
-      { endOnFailure: true }
+      // { endOnFailure: true }
       // { seed: 1421202580, path: "0:0:0", endOnFailure: true }
       // { seed: 568057861, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
       // { seed: 2050898313, path: "3:0:0:1:1:1:1:1:2:7:0:0:0:0:0:0:0:0:0:1:0:2:2:2:4:4:4:4:4:4:4:4", endOnFailure: true }
@@ -52,11 +52,11 @@ describe('toStdRegex', () => {
     )
   })
 
-  it.only('debug', () => {
+  it.skip('debug', () => {
     const inputRegex = parseRegExp(/^(a|((d|(e|ce[a-b]))|(e[af]|[bd])(f|bc)))a([b-e][be]|bd(a|db))(ccafb|([ae]|(beaf|d)))$/)
     const outputRegex = toStdRegex(inputRegex)
     console.debug(RE.toString(inputRegex))
-    // console.debug(RE.toString(outputRegex))
+    console.debug(RE.toString(outputRegex))
     console.debug(JSON.stringify(outputRegex, null, 2).length)
     // expect(isSubsetOf(inputRegex, outputRegex)).toBe(true)
     // expect(isSubsetOf(outputRegex, inputRegex)).toBe(true)
@@ -95,6 +95,6 @@ test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
         expect(isSubsetOf(regexB, interRegex)).toBe(true)
       }
     ),
-    { seed: 1125268176, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:1:1:1:1:1:1:1:1:1:0:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2", endOnFailure: true }
+    // { seed: 1125268176, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:1:1:1:1:1:1:1:1:1:0:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2", endOnFailure: true }
   )   
 })

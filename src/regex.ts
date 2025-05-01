@@ -415,9 +415,7 @@ function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet
 }
 
 export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
-  // const alphabet = CharSet.fullUnicode
-  // TEMP:
-  const alphabet = CharSet.charRange('a', 'z')
+  const alphabet = CharSet.fullUnicode
 
   switch (regex.type) {
     case "epsilon":

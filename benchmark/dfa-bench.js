@@ -1,4 +1,4 @@
-import { intersection } from '../dist/index.js'
+import { intersection, enumerate } from '../dist/index.js'
 
 console.log("DFA BENCHMARK")
 
@@ -13,9 +13,8 @@ const startTime = performance.now()
 // const output = toStdRegex(input)
 
 const regex = intersection(
-  // /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/,
-  /^\w{2,}$/,
-  /^.{5,10}$/
+  /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/,
+  /^.{10}$/
 )
 console.debug(regex)
 
