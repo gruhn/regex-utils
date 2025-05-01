@@ -1,4 +1,4 @@
-import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith } from './utils'
+import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith, hashAssocNotComm } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
 
@@ -39,7 +39,11 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   else if (regex.type === 'literal')
     return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.charset.hash) }
   else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
-    return { ...regex, hash: hashAssoc(hashStr(regex.type), hashAssoc(regex.left.hash, regex.right.hash)) }
+    return { ...regex, hash: hashAssoc(
+      hashStr(regex.type),
+      // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
+      hashAssocNotComm(regex.left.hash, regex.right.hash))
+    }
   else if (regex.type === 'star' || regex.type === 'complement')
     return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.inner.hash) }
   checkedAllCases(regex)  
@@ -75,8 +79,25 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (right.type === "epsilon")
     // r · ε ≈ r
     return left
-  else 
-    return withHash({ type: 'concat', left, right })
+
+  // Try to eliminate as many `star`s as possible,
+  // e.g. "a+a+" --> "aa*aa*" --> "aaa*a*" --> "aaa*"
+  if (left.type === "star") {
+    if (equal(left.inner, right))
+      // r* · r ≈ r · r*
+      return concat(right, left)
+    else if (right.type === 'concat' && equal(left.inner, right.left))
+      // r* · (r · s)  ≈ r · (r* · s)
+      return concat(left.inner, concat(left, right.right))
+    else if (right.type === 'star' && equal(left.inner, right.inner))
+      // r* · r*  ≈ r*
+      return left
+    else if (right.type === 'concat' && right.left.type === 'star' && equal(left, right.left))
+      // r* · (r* · s) ≈ r* · s
+      return concat(left, right.right)
+  }
+
+  return withHash({ type: 'concat', left, right })
 }
 
 export function union(left: StdRegex, right: StdRegex): StdRegex
@@ -179,6 +200,9 @@ export function complement(inner: ExtRegex): ExtRegex {
   if (inner.type === "complement")
     // ¬(¬r) ≈ r
     return inner
+  else if (inner.type === 'literal')
+    // ¬S ≈ Σ\S
+    return literal(CharSet.difference(CharSet.fullUnicode, inner.charset))
   else
     return withHash({ type: "complement", inner })
 }

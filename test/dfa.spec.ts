@@ -7,6 +7,7 @@ import * as CharSet from '../src/char-set'
 import { toRegExp } from "../src/regex"
 import { parseRegExp } from "../src/regex-parser"
 import { toStdRegex } from "../src/dfa"
+import { assert } from "../src/utils"
 
 function stochasticEquiv(regex1: RE.StdRegex, regex2: RE.StdRegex): { left: string } | { right: string } | undefined {
   if (regex1.hash === regex2.hash) {
@@ -36,33 +37,10 @@ function stochasticEquiv(regex1: RE.StdRegex, regex2: RE.StdRegex): { left: stri
 
 describe('toStdRegex', () => {
 
-  it('A ⋂ ¬A = ∅', () => {
+  it('is idempotent on StdRegex', () => {
     fc.assert(
       fc.property(
-        Arb.stdRegexNoStar(),
-        inputRegex => {
-          const outputRegex = toStdRegex(
-            RE.intersection(
-              inputRegex,
-              RE.complement(inputRegex)
-            )
-          )
-          expect(RE.isEmpty(outputRegex)).toBe(true)
-        }
-      ),
-    )
-  })
-
-    // it.only('... debug ', () => {
-  //   const regex = parseRegExp(/^(e?)a$/)
-  //   console.debug(RE.toString(regex), JSON.stringify(regex, null, 2))
-  //   const classes = RE.derivativeClasses(regex)
-  //   console.debug(classes.map(CharSet.toString))
-  // })
-
-  it.only('is idempotent on StdRegex', () => {
-    fc.assert(
-      fc.property(
+        // FIXME: `star` often leads to exponential blow up.
         Arb.stdRegexNoStar(),
         inputRegex => {
           console.debug('inp:', RE.toString(inputRegex))
@@ -81,22 +59,27 @@ describe('toStdRegex', () => {
       // { seed: 568057861, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
       // { seed: 2050898313, path: "3:0:0:1:1:1:1:1:2:7:0:0:0:0:0:0:0:0:0:1:0:2:2:2:4:4:4:4:4:4:4:4", endOnFailure: true }
       // { seed: 149770099, path: "2:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:1:1:3:3:5:4:4:4:4:4:4:4:5:5:5:5:7:7:4:4:6:6:5:6:3:5:1", endOnFailure: true }
-      { seed: -724612261, path: "27:0:0:0:0:1:3:4:4:4:0:2", endOnFailure: true }
     )
   })
 
 })
 
 
-/*
+test('A ⋂ ¬A = ∅', () => {
+  fc.assert(
+    fc.property(
+      Arb.stdRegexNoStar(),
+      inputRegex => {
+        const outputRegex = toStdRegex(
+          RE.intersection(
+            inputRegex,
+            RE.complement(inputRegex)
+          )
+        )
+        expect(RE.isEmpty(outputRegex)).toBe(true)
+      }
+    ),
+  )
+})
 
-inp:
-(((aa|a)a|(aa|a))a|(aa|(a|a(aa|a))))(ab|(a|a[d-e]aaa))abaaa
-((aaa?|(aa|(a|a(aa|a))))a(b|[d-e]aaa)?abaaa
 
-
-
-out:
-(aaaaaba(a|baa)|((((aaa[d-e]|aa[d-e])a|aaaa[d-e]a)a|aaaaa[d-e]aa)aaba|(aaaaa[acf-z]b|aabab)a)a)a
-
-*/

@@ -129,9 +129,19 @@ export function hashStr(str: string, seed = 0): number {
 }
 
 /**
- * Associatively combines two hashes to one.
+ * Combines two hashes to one. The function is associative and
+ * commutative.
  */
 export function hashAssoc(hash1: number, hash2: number): number {
   return ((hash1 % 2**32) + (hash2 % 2**32)) % 2**32
+}
+
+/**
+ * Combines two hashes to one. The function is associative but
+ * NOT commutative.
+ */
+export function hashAssocNotComm(hash1: number, hash2: number): number {
+  // TODO: a bit ad-hoc. Probably there are better (more efficient options):
+  return hashStr(String(hash1) + String(hash2))
 }
 

@@ -265,9 +265,29 @@ export function isSpecialChar(char: string): boolean {
   return char.match(/^[.^$*+?()[\]{\|]$/) !== null
 }
 
-// TODO: can make this more compact using character classes
-// e.g. \d instead of [0-9]
+// TODO: render unicode characters with escape sequences:
 export function toString(set: CharSet): string {
+  // First check if the set matches any of the 
+  // predefined characters classes:
+  switch (set.hash) {
+    case wordChars.hash:
+      return '\w'
+    case nonWordChars.hash:
+      return '\W'
+    case whiteSpaceChars.hash:
+      return '\s'
+    case nonWhiteSpaceChars.hash:
+      return '\S'
+    case wildcard({ dotAll: false }).hash:
+      return '.'
+    case digitChars.hash:
+      return '\d'
+    case nonDigitChars.hash:
+      return '\D'
+  }
+
+  // Otherwise, render the set using range notation:
+
   const str = [...getRanges(set)].map(Range.toString).join('')
 
   if (str.length === 0) 

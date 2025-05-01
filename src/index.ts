@@ -6,9 +6,17 @@ import { parseRegExp } from './regex-parser'
  * Returns a regular expression that matches the intersection of the languages of the given regular expressions.
  */
 export function intersection(...res: RegExp[]): RegExp {
-  const parsed = res.map(parseRegExp)   
-  const result = DFA.toStdRegex(RE.intersectAll(parsed))
-  return RE.toRegExp(result)
+  if (res.length === 0) {
+    // TODO: this technically doesn't match everything.
+    // Need to also get regexp flags right:
+    return /^.*$/
+  } else if (res.length === 1) {
+    return res[0]
+  } else {
+    const parsed = res.map(parseRegExp)   
+    const result = DFA.toStdRegex(RE.intersectAll(parsed))
+    return RE.toRegExp(result)
+  }
 }
 
 /**

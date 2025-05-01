@@ -1,30 +1,14 @@
 import * as CharSet from "./char-set"
 import * as RE from "./regex"
 import { assert } from "./utils"
-
-type TransitionMap<Label> = Map<number, Map<number, Label>>
+import * as Table from './table'
 
 export type DFA = Readonly<{
   allStates: Map<number, RE.ExtRegex>
   startState: number
   finalStates: Set<number>
-  transitions: TransitionMap<CharSet.CharSet>
+  transitions: Table.Table<CharSet.CharSet>
 }>
-
-function addTransition<Label>(
-  source: number,
-  label: Label,
-  target: number,
-  transitions: TransitionMap<Label>
-): void {
-  let transitionsFromSource = transitions.get(source)
-  if (transitionsFromSource === undefined) {
-    transitionsFromSource = new Map()
-    transitions.set(source, transitionsFromSource)
-  }
-
-  transitionsFromSource.set(target, label) 
-}
 
 function pickChar(set: CharSet.CharSet): number {
   assert(set.type !== 'empty')
@@ -46,15 +30,14 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
     for (const charSet of RE.derivativeClasses(sourceState)) {
       const char = pickChar(charSet)
       const targetState = RE.codePointDerivative(char, sourceState)
-
       const knownState = allStates.get(targetState.hash)
 
       if (knownState === undefined) {
         allStates.set(targetState.hash, targetState)
-        addTransition(sourceState.hash, charSet, targetState.hash, transitions)
+        Table.set(sourceState.hash, targetState.hash, charSet, transitions)
         worklist.push(targetState)
       } else {
-        addTransition(sourceState.hash, charSet, knownState.hash, transitions)
+        Table.set(sourceState.hash, knownState.hash, charSet, transitions)
       }  
     }
   }
@@ -80,8 +63,8 @@ type RipStateResult = {
   successors: [number, RE.StdRegex][]
 }
 
-function ripState(state: number, transitions: TransitionMap<RE.StdRegex>): RipStateResult {
-  const selfLoop = transitions.get(state)?.get(state) ?? RE.epsilon
+function ripState(state: number, transitions: Table.Table<RE.StdRegex>): RipStateResult {
+  const selfLoop = Table.get(state, state, transitions) ?? RE.epsilon
 
   const successorsMap = transitions.get(state) ?? new Map<number, RE.StdRegex>()
   // handle self loops separately:
@@ -105,22 +88,14 @@ function ripState(state: number, transitions: TransitionMap<RE.StdRegex>): RipSt
 }
 
 export function dfaToRegex(dfa: DFA): RE.StdRegex {
-  const transitionsWithRegexLabels: TransitionMap<RE.StdRegex> = new Map(
-    [...dfa.transitions.entries()].map(
-      ([source, transitionsFromSource]) => [ source, new Map(
-          [...transitionsFromSource.entries()].map(
-            ([target, charSet]) => [target, RE.literal(charSet)]
-          )
-      )]
-    )
-  )
+  const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
 
   const newStartState = -1
-  addTransition(newStartState, RE.epsilon, dfa.startState, transitionsWithRegexLabels)
+  Table.set(newStartState, dfa.startState, RE.epsilon, transitionsWithRegexLabels)
 
   const newFinalState = -2
   for (const oldFinalState of dfa.finalStates) {
-    addTransition(oldFinalState, RE.epsilon, newFinalState, transitionsWithRegexLabels)
+    Table.set(oldFinalState, newFinalState, RE.epsilon, transitionsWithRegexLabels)
   }
 
   for (const state of dfa.allStates.keys()) {
@@ -137,7 +112,7 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
         const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
         const combinedLabel = RE.union(transitiveLabel, existingLabel)
 
-        addTransition(pred, combinedLabel, succ, transitionsWithRegexLabels)
+        Table.set(pred, succ, combinedLabel, transitionsWithRegexLabels)
       }
     }
   }
@@ -158,18 +133,18 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
   }
 }
 
+// TODO: can this round-trip through DFA construction be avoided?
 export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
-  // TODO: can this round-trip through DFA construction be avoided?
   const dfa = regexToDFA(regex)
   return dfaToRegex(dfa)
 }
 
-// function printTrans<Label>(trans: TransitionMap<Label>) {
+// function printTrans<Label>(trans: Table.Table<Label>) {
 //   console.debug('=========trans===========')
 //   for (const [source, succs] of trans.entries()) {
 //     for (const [target, label] of succs) {
-//       // console.debug(source, target, CharSet.toString(label))
-//       console.debug(source, target, label)
+//       console.debug(source, target, CharSet.toString(label))
+//       // console.debug(source, target, RE.toString(label))
 //     }
 //   }
 // }

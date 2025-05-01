@@ -152,6 +152,8 @@ Can compute a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_d
 
 TODO: examples.
 
+<!--
+
 ## Todo Utilities
 
 * recognize regex prone to catastrophic backtracking
@@ -159,7 +161,10 @@ TODO: examples.
   - https://www.youtube.com/watch?v=DDe-S3uef2w
 * check equivalence of two regex or find counterexample string
 
+-->
+
 ## References
 
-Heavily informed by this paper: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
-
+Heavily informed by these papers:
+- https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
+- https://courses.grainger.illinois.edu/cs374/fa2017/extra_notes/01_nfa_to_reg.pdf
