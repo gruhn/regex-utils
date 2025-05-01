@@ -67,6 +67,33 @@ const group = P.between(
   regex(),
 )
 
+const boundedQuantifier: P.Parser<(inner: RE.StdRegex) => RE.StdRegex> = P.between(
+  P.string('{'),
+  P.string('}'),
+  P.optional(P.decimal).andThen(lowerBound => {
+    if (lowerBound === undefined)
+      // e.g. a{,5}
+      return P.string(',')
+        .andThen(_ => P.decimal)
+        .map(upperBoundOnly => regex => RE.replicate(0, upperBoundOnly, regex))
+    else
+      return P.optional(P.string(',')).andThen(comma => {
+        if (comma === undefined)
+          // e.g. a{3}
+          return P.pure(regex => RE.replicate(lowerBound, lowerBound, regex))
+        else
+          return P.optional(P.decimal).map(upperBound => regex => {
+            if (upperBound === undefined)
+              // e.g. a{3,}
+              return RE.replicate(lowerBound, Infinity, regex)
+            else
+              // e.g. a{3,5}
+              return RE.replicate(lowerBound, upperBound, regex)
+          })
+      })
+  })
+)
+
 function regexTerm() {
   return P.choice([
     wildcard, 
@@ -82,6 +109,7 @@ function regex(): P.Parser<RE.StdRegex> {
       { type: 'postfix', op: P.string('*').map(_ => RE.star) },
       { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
+      { type: 'postfix', op: boundedQuantifier },
       { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
       { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
     ]

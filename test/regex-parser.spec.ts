@@ -19,13 +19,13 @@ describe('parseRegexString', () => {
     [/aa|bb/, RE.union(RE.string('aa'), RE.string('bb'))],
     [/(a|b)*/, RE.star(RE.union(RE.singleChar('a'), RE.singleChar('b')))],
     [/ab*/, RE.concat(RE.singleChar('a'), RE.star(RE.singleChar('b')))],
+    [/a{3}/, RE.replicate(3, 3, RE.singleChar('a'))],
+    [/a{3,}/, RE.replicate(3, Infinity, RE.singleChar('a'))],
+    [/a{,5}/, RE.replicate(0, 5, RE.singleChar('a'))],
+    [/a{3,5}/, RE.replicate(3, 5, RE.singleChar('a'))],
   ])('can parses %s', (regexp, expected) => {
     const result = parseRegexString('^' + regexp.source + '$')
     expect(result).toEqual(expected)
-  })
-
-  it('can parse email regex', () => {
-    parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
   })
 
   it.each([
@@ -33,6 +33,10 @@ describe('parseRegexString', () => {
     ['(a'],
   ])('rejects invalid regex /%s/', (regexStr) => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
+  })
+
+  it('can parse email regex', () => {
+    parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
   })
 
   it('inverts RE.toString', () => {

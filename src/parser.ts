@@ -135,6 +135,13 @@ export function many<T>(parser: Parser<T>): Parser<T[]> {
   })
 }
 
+export function some<T>(parser: Parser<T>): Parser<[T, ...T[]]> {
+  return parser
+    .andThen(first => many(parser)
+      .andThen(rest => pure([first, ...rest]))
+    )
+}
+
 export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
   return new Parser(input => {
     try {
@@ -163,7 +170,17 @@ export function satisfy(predicate: (char: string) => boolean): Parser<string> {
   })
 }
 
+export const digitChar: Parser<string> = satisfy(char => char.match(/^[0-9]$/) !== null)
+
 export const anyChar: Parser<string> = satisfy(_ => true)
+
+function digitsToDecimal(digits: number[]): number {
+  return digits.reduce((acc, digit) => 10*acc + digit, 0)
+}
+
+export const decimal: Parser<number> = some(digitChar).map(
+  digits => digitsToDecimal(digits.map(digit => parseInt(digit)))
+)
 
 /**
  * Needed for recursive parsers. TODO: explain why.

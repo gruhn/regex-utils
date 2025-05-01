@@ -224,10 +224,20 @@ export function intersectAll(res: ExtRegex[]): ExtRegex {
     return res.reduceRight(intersection)
 }
 
-export function replicate(n: number, regex: StdRegex): StdRegex
-export function replicate(n: number, regex: ExtRegex): ExtRegex
-export function replicate(n: number, regex: ExtRegex): ExtRegex {
-  return concatAll(Array(n).fill(regex))
+export function replicate(lowerBound: number, upperBound: number, regex: StdRegex): StdRegex
+export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex
+export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex {
+  assert(0 <= lowerBound && lowerBound <= upperBound)
+
+  const requiredPrefix = concatAll(Array(lowerBound).fill(regex))
+
+  if (upperBound === Infinity)
+    return concat(requiredPrefix, star(regex))
+  else 
+    return concat(
+      requiredPrefix,
+      concatAll(Array(upperBound - lowerBound).fill(optional(regex)))
+    )
 }
 
 //////////////////////////////////////////////
