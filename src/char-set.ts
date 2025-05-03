@@ -262,17 +262,18 @@ export function difference(setA: CharSet, setB: CharSet): CharSet {
 }
 
 export function intersection(setA: CharSet, setB: CharSet): CharSet {
+  // console.debug('inter: ', [...getRanges(setA)].length, [...getRanges(setB)].length)
   return [...getRanges(setB)]
     .flatMap(rangeB => intersectRange(setA, rangeB))
     .reduce(insertRange, empty)
 }
 
-export function compare(setA: CharSet, setB: CharSet): number {
-  return setA.hash - setB.hash
+export function complement(set: CharSet): CharSet {
+  return difference(fullUnicode, set)
 }
 
-export function isSpecialChar(char: string): boolean {
-  return char.match(/^[.^$*+?()[\]{\|]$/) !== null
+export function compare(setA: CharSet, setB: CharSet): number {
+  return setA.hash - setB.hash
 }
 
 // TODO: render unicode characters with escape sequences:
@@ -281,34 +282,41 @@ export function toString(set: CharSet): string {
   // predefined characters classes:
   switch (set.hash) {
     case wordChars.hash:
-      return '\w'
+      return '\\w'
     case nonWordChars.hash:
-      return '\W'
+      return '\\W'
     case whiteSpaceChars.hash:
-      return '\s'
+      return '\\s'
     case nonWhiteSpaceChars.hash:
-      return '\S'
+      return '\\S'
     case wildcard({ dotAll: false }).hash:
       return '.'
     case digitChars.hash:
-      return '\d'
+      return '\\d'
     case nonDigitChars.hash:
-      return '\D'
+      return '\\D'
+    case fullUnicode.hash:
+      // TODO: if dotAll flag is set then the "." is enough:
+      return '[.\n\r\u2028\u2029]'
   }
 
-  // Otherwise, render the set using range notation:
-
-  const str = [...getRanges(set)].map(Range.toString).join('')
-
-  if (str.length === 0) 
-    // Contradictory regular expression to encode the empty set:
+  if (set.type === 'empty') {
+    // Use a contradictory regular expression to encode the empty set:
     return "$.^"
-  else if (str.length === 1)
-    // single char doesn't need brackets:
-    return isSpecialChar(str) ? '\\' + str : str
-  else
-    // output e.g. "[abc0-9]"
-    return '[' + str  + ']'
+  } else if (isSingleton(set)) {
+    // If the set contains only a single char then no brackets are needed:
+    return Range.toString(set.range)
+  } else if (2*size(set) > size(fullUnicode)) {
+    // If the set contains more than half the characters of the
+    // entire alphabet then it's more compact to render the complement. E.g. [^a].
+    const ranges = [...getRanges(complement(set))].map(Range.toString).join('')
+    return '[^' + ranges + ']'
+  } else {
+    // Otherwise, render the set using positive range notation,
+    // e.g. "[abc0-9]"
+    const ranges = [...getRanges(set)].map(Range.toString).join('')
+    return '[' + ranges + ']'
+  }
 }
 
 export function enumerate(set: CharSet): Stream.Stream<string> {
@@ -360,7 +368,7 @@ export const digitChars = charRange('0', '9')
 /**
  * Equivalent to \D
  */
-export const nonDigitChars = difference(fullUnicode, digitChars)
+export const nonDigitChars = complement(digitChars)
 
 /**
  * Equivalent to \w
@@ -375,7 +383,7 @@ export const wordChars = [
 /**
  * Equivalent to \W
  */
-export const nonWordChars = difference(fullUnicode, wordChars)
+export const nonWordChars = complement(wordChars)
 
 /**
  * Equivalent to \s
@@ -402,5 +410,5 @@ export const whiteSpaceChars = [
 /**
  * Equivalent to \s
  */
-export const nonWhiteSpaceChars = difference(fullUnicode, whiteSpaceChars)
+export const nonWhiteSpaceChars = complement(whiteSpaceChars)
 

@@ -8,7 +8,7 @@ export class ParseError extends Error {
     message: string,
     public readonly restInput: string
   ) {
-    super(`${message}\nInput: "${restInput.slice(0, 20)}..."`)
+    super(`${message}\nInput: "${restInput.slice(0, 20).padEnd(25, '.')}"`)
   }
   
 }

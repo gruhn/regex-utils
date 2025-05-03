@@ -208,7 +208,7 @@ export function complement(inner: ExtRegex): ExtRegex {
     return inner
   else if (inner.type === 'literal')
     // ¬S ≈ Σ\S
-    return literal(CharSet.difference(CharSet.fullUnicode, inner.charset))
+    return literal(CharSet.complement(inner.charset))
   else
     return withHash({ type: "complement", inner })
 }

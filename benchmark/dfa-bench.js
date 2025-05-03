@@ -21,10 +21,12 @@ const startTime = performance.now()
 // )
 
 const regex = intersection(
-  /.{12,}/, // 12 letters or more
-  /[0-9]/,  // at least one number
-  // /[A-Z]/,  // at least one upper case letter   
-  // /[a-z]/,  // at least one lower case letter
+  // /.{12,}/, // 12 letters or more
+  // /[0-9]$/,  // at least one number
+  /^[0-9\.A-Za-z]{12,}$/, // 12 letters or more
+  /^\.*[0-9]\.*$/,  // at least one number
+  // /^\.*[A-Z]\.*$/,  // at least one upper case letter   
+  // /^\.*[a-z]\.*$/,  // at least one lower case letter
 )
 
 // const test = parseRegExp(/^(((((((Σ)*|((Σ)*|((Σ)*|((.)*(Σ)*|(Σ)*)))))))))$/)

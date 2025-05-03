@@ -106,10 +106,32 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
   return union(before, after)
 }
 
-export function toString(range: CodePointRange): string {
-  if (range.start === range.end) 
-    return String.fromCodePoint(range.start) 
+export function isMetaChar(char: string): boolean {
+  return /^[.^$*+?()[\]{\|]$/.test(char)
+}
+
+function codePointToString(codePoint: number): string {
+  const char = String.fromCharCode(codePoint)
+
+  if (isMetaChar(char)) 
+    // e.g. \$ \+ \. 
+    return '\\' + char
+  else if (codePoint > 126)
+    // char is outside ASCII range --> need \uXXXX encoding:
+    return '\\u' + codePoint.toString(16).padStart(4, '0')
   else
-    return `${String.fromCodePoint(range.start)}-${String.fromCodePoint(range.end)}`
- 
+    return char 
+}
+
+export function toString(range: CodePointRange): string {
+  const rangeSize = size(range)
+  assert(rangeSize > 0)
+
+  if (rangeSize === 1) 
+    return codePointToString(range.start) 
+  else if (rangeSize === 2) 
+    return codePointToString(range.start) + codePointToString(range.end) 
+  else 
+    // rangeSize >= 3
+    return `${codePointToString(range.start)}-${codePointToString(range.end)}`
 }

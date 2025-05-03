@@ -18,12 +18,9 @@ const regExpFlags = [
 type RegExpFlag = typeof regExpFlags[number]
 
 // TODO:
-// - "\." (escaped dot), "\s" (all whitespace characters)
-// - "[a-zA-Z]"
-// - "a{3,5}", "a{3,}", "a{,5}"
-// - ...
-// TODO: allow empty strings, e.g. regex like "(|)"
-// const emptyString = P.string('').map(() => RE.epsilon)
+// - parse \uXXXX notation
+// - allow empty strings, e.g. regex like "(|)"
+//   const emptyString = P.string('').map(() => RE.epsilon)
 
 const startMarker = P.optional(P.string('^')).map(marker => {
   if (marker === undefined) {
@@ -45,7 +42,7 @@ const wildcard = P.string('.').map(
   () => RE.literal(CharSet.wildcard({ dotAll: false }))
 )
 
-const singleChar = P.satisfy(char => !CharSet.isSpecialChar(char))
+const singleChar = P.satisfy(char => !Range.isMetaChar(char))
 
 const codePoint = singleChar.map(char => {
   const result = char.codePointAt(0)!
