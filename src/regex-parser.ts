@@ -101,25 +101,25 @@ const group = P.between(
 const boundedQuantifier: P.Parser<(inner: RE.StdRegex) => RE.StdRegex> = P.between(
   P.string('{'),
   P.string('}'),
-  P.optional(P.decimal).andThen(lowerBound => {
-    if (lowerBound === undefined)
+  P.optional(P.decimal).andThen(min => {
+    if (min === undefined)
       // e.g. a{,5}
       return P.string(',')
         .andThen(_ => P.decimal)
-        .map(upperBoundOnly => regex => RE.replicate(0, upperBoundOnly, regex))
+        .map(maxOnly => regex => RE.quantifier(regex, 0, maxOnly))
     else
       return P.optional(P.string(',')).andThen(comma => {
         if (comma === undefined)
           // e.g. a{3}
-          return P.pure(regex => RE.replicate(lowerBound, lowerBound, regex))
+          return P.pure(regex => RE.quantifier(regex, min, min))
         else
-          return P.optional(P.decimal).map(upperBound => regex => {
-            if (upperBound === undefined)
+          return P.optional(P.decimal).map(max => regex => {
+            if (max === undefined)
               // e.g. a{3,}
-              return RE.replicate(lowerBound, Infinity, regex)
+              return RE.quantifier(regex, min, Infinity)
             else
               // e.g. a{3,5}
-              return RE.replicate(lowerBound, upperBound, regex)
+              return RE.quantifier(regex, min, max)
           })
       })
   })

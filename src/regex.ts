@@ -11,6 +11,8 @@ type StdRegexWithoutHash = (
   | { type: "concat", left: StdRegex, right: StdRegex }
   | { type: "union", left: StdRegex, right: StdRegex }
   | { type: "star", inner: StdRegex }
+  // subsumes operators like *, +, ?, {3,4}
+  | { type: "quantifier", inner: StdRegex, min: number, max: number }
 )
 
 /**
@@ -22,6 +24,7 @@ type ExtRegexWithoutHash = (
   | { type: "concat", left: ExtRegex, right: ExtRegex }
   | { type: "union", left: ExtRegex, right: ExtRegex }
   | { type: "star", inner: ExtRegex  }
+  | { type: "quantifier", inner: ExtRegex, min: number, max: number }
   // Extended with intersection and complement operator:
   | { type: "intersection", left: ExtRegex, right: ExtRegex }
   | { type: "complement", inner: ExtRegex }
@@ -43,6 +46,15 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
       hashStr(regex.type),
       // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
       hashAssocNotComm(regex.left.hash, regex.right.hash))
+    }
+  else if (regex.type === 'quantifier')
+    return { ...regex, hash: [
+        hashStr(regex.type),
+        // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
+        hashStr('min:' + regex.min),
+        hashStr('max:' + regex.max),
+        regex.inner.hash
+      ].reduce(hashAssoc)
     }
   else if (regex.type === 'star' || regex.type === 'complement')
     return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.inner.hash) }
@@ -160,20 +172,26 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   return withHash({ type: 'union', left, right })
 }
 
-export function star(inner: StdRegex): StdRegex
-export function star(inner: ExtRegex): ExtRegex
-export function star(inner: ExtRegex): ExtRegex {
+export function quantifier(inner: StdRegex, min: number, max: number): StdRegex 
+export function quantifier(inner: ExtRegex, min: number, max: number): ExtRegex 
+export function quantifier(inner: ExtRegex, min: number, max: number): ExtRegex {
+  assert(0 <= min && min <= max)
+
   if (inner.type === "epsilon")
-    // ε∗ ≈ ε
+    // ε{n,m} ≈ ε
     return epsilon
-  else if (inner.type === "star")
-    // (r∗)∗ ≈ r∗
-    return inner
+  else if (inner.type === 'quantifier')
+    // (r{n1,m2}){n2,m2} = r{n1*n2, m1*m2}
+    return quantifier(inner, inner.min*min, inner.max*max)
   else if (equal(empty, inner))
-    // ∅∗ ≈ ε
-    return epsilon
-  else
-    return withHash({ type: "star", inner })
+    // ∅ {0,m} ≈ ε 
+    // ∅ {1,m} ≈ ∅
+    return min === 0 ? epsilon : empty
+  else if (min === 1 && max === 1)
+    // r{1,1} ≈ r
+    return inner
+  else // TODO: more rewrite rules
+    return withHash({ type: 'quantifier', inner, min, max })
 }
 
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
@@ -227,16 +245,22 @@ export function string(str: string) {
   return concatAll([...str].map(singleChar))
 }
 
+export function star(inner: StdRegex): StdRegex
+export function star(inner: ExtRegex): ExtRegex
+export function star(inner: ExtRegex): ExtRegex {
+  return quantifier(inner, 0, Infinity)
+}
+
 export function optional(regex: StdRegex): StdRegex
 export function optional(regex: ExtRegex): ExtRegex
 export function optional(regex: ExtRegex): ExtRegex {
-  return union(epsilon, regex)
+  return quantifier(regex, 0, 1)
 }
 
 export function plus(regex: StdRegex): StdRegex
 export function plus(regex: ExtRegex): ExtRegex 
 export function plus(regex: ExtRegex): ExtRegex {
-  return concat(regex, star(regex))
+  return quantifier(regex, 1, Infinity)
 }
 
 export function concatAll(res: StdRegex[]): StdRegex
@@ -249,25 +273,9 @@ export function concatAll(res: ExtRegex[]): ExtRegex {
 export function intersectAll(res: ExtRegex[]): ExtRegex {
   if (res.length === 0)
     // TODO: is that correct?
-    return star(literal(CharSet.fullUnicode))
+    return star(literal(CharSet.alphabet))
   else
     return res.reduceRight(intersection)
-}
-
-export function replicate(lowerBound: number, upperBound: number, regex: StdRegex): StdRegex
-export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex
-export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex {
-  assert(0 <= lowerBound && lowerBound <= upperBound)
-
-  const requiredPrefix = concatAll(Array(lowerBound).fill(regex))
-
-  if (upperBound === Infinity)
-    return concat(requiredPrefix, star(regex))
-  else 
-    return concat(
-      requiredPrefix,
-      concatAll(Array(upperBound - lowerBound).fill(optional(regex)))
-    )
 }
 
 //////////////////////////////////////////////
@@ -312,11 +320,39 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRege
         codePointDerivative(codePoint, regex.left),
         codePointDerivative(codePoint, regex.right)
       )
-    case "star":
-      return concat(
-        codePointDerivative(codePoint, regex.inner),
-        star(regex.inner)
-      )
+    case "quantifier": {
+      if (regex.min === 0) {
+        if (regex.max === 0)
+          return empty
+        else
+          return concat(
+            codePointDerivative(codePoint, regex.inner),
+            quantifier(regex.inner, 0, regex.max-1)           
+          )
+      } else {
+        if (regex.min === regex.max) {
+          if (isNullable(regex.inner))
+            return concat(
+              codePointDerivative(codePoint, regex.inner),
+              union(
+                quantifier(regex.inner, regex.min-1, regex.max-1),
+                quantifier(regex.inner, 0, regex.max-2)
+              )
+            )
+          else
+            return concat(
+              codePointDerivative(codePoint, regex.inner),
+              quantifier(regex.inner, regex.min-1, regex.max-1),
+            )
+        } else { // min < max
+          if (isNullable(regex.inner)) {
+            
+          } else {
+            
+          }
+        }
+      }
+    }
     case "complement":
       return complement(codePointDerivative(codePoint, regex.inner))
   }  
@@ -355,6 +391,8 @@ export function isNullable(regex: ExtRegex): boolean {
       return isNullable(regex.left) || isNullable(regex.right)
     case "intersection":
       return isNullable(regex.left) && isNullable(regex.right)
+    case "quantifier": 
+      return regex.min === 0 || isNullable(regex.inner)
     case "star":
       return true
     case "complement":
@@ -448,6 +486,12 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
         derivativeClasses(regex.left),
         derivativeClasses(regex.right)
       )
+    case "quantifier": {
+      if (regex.min === 0 && regex.max === 0)
+        return [CharSet.alphabet]
+      else
+        return derivativeClasses(regex.inner)
+    }
     case "star":
       return derivativeClasses(regex.inner)
     case "complement":
@@ -481,6 +525,11 @@ function toStringRec(regex: ExtRegex): string {
       return toStringRec(regex.left) + toStringRec(regex.right)
     case 'union':
       return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
+    case 'quantifier': {
+      const minStr = regex.min === 0 ? '' : String(regex.min)
+      const maxStr = regex.max === Infinity ? '' : String(regex.max)
+      return `(${toStringRec(regex.inner)})${minStr,maxStr}`
+    }
     case 'star':
       return `(${toStringRec(regex.inner)})*`
     case 'complement':
@@ -508,6 +557,8 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
         enumerate(regex.left),
         enumerate(regex.right),
       )
+    case 'quantifier':
+      return Stream.
     case 'star':
       return Stream.cons(
         '',
@@ -541,6 +592,25 @@ export function size(regex: StdRegex): bigint | undefined {
         return leftSize + rightSize
       else
         return undefined
+    }
+    case 'quantifier': {
+      const innerSize = size(regex.inner)
+      if (regex.min === 0 && regex.max === 0)
+        // Only match is the empty string regardless of `innerSize`,
+        // e.g. `(a*){0,0}`:
+        return 1n       
+      else if (innerSize === undefined || regex.max === Infinity)
+        // If `innerSize` is infinite or the `max` is infinite,
+        // the overall size is infinite:
+        // e.g. `(a*){1,1}` or `a{3,}`:
+        return undefined
+      else
+        // e.g. `(a|b){3,6}`
+        // --> 2**3 + 2**4 + 2**5 + 2**6
+        // === 2**7 - (2**2 + 2**1 + 2**0)
+        // === 2**7 - (2**3 - 1)
+        // === 2**7 - 2**3 + 1
+        return innerSize**(BigInt(regex.max)+1n) - innerSize**BigInt(regex.min) + 1n
     }
     case 'star': {
       const innerSize = size(regex.inner)
