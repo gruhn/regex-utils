@@ -1,15 +1,22 @@
 import fs from 'fs'
 import { parseRegexString } from '../src/regex-parser'
 
-// export function readBenchFile(): [string, string][] {
-//   return fs.readFileSync('./benchmark/bench.txt', 'utf-8')
-//     .trim()
-//     .split('\n')
-//     .map((line: string) => {
-//       const [regex1, regex2] = line.split(/\s{3}/)
-//       return [regex1, regex2]
-//     })
-// }
+export function readBenchFile(): string[] {
+  return fs.readFileSync('./benchmark/regex-list-js-flavor.txt', 'utf-8')
+    .trim()
+    .split('\n')
+    // .map((line: string) => {
+    //   const [regex1, regex2] = line.split(/\s{3}/)
+    //   return [regex1, regex2]
+    // })
+}
+
+for (const regex of readBenchFile()) {
+  console.debug(new RegExp(regex))
+}
+
+process.exit()
+
 
 // export function* chunks<T>(n: number, array: T[]): Generator<T[]> {
 //   while (array.length > n) {

@@ -1,4 +1,3 @@
-
 # Rare Regex Utils
 
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
@@ -14,13 +13,19 @@ TODO: how to import TypeScript sources vs. JavaScript bundle.
 
 ## Limitations
 
-* Not full regex syntax supported (yet)
-* Output regex maybe too verbose, e.g.
-  - `(|a)` instead of `a?`
-  - `aaaaaa*` instead of `a{5,}`
-  - `[a-zA-Z]` instead of `\w`
-* Some functions have worst case exponential complexity.
-  Usually just pathological cases. Please report.
+* syntax support
+  - the full regex syntax is not supported (yet)
+  - output regex syntax is even more limited. For example:
+    - `a?` is supported as input but output is `(a|)`
+    - similarly you get `aaaaaa*` instead of `a{5,}`
+  - also no support for regex flags
+* performance of `intersection` and `complement`
+  - These function have worst case exponential complexity.
+    but often the worst case is not realized.
+  - Nested quantifiers are especially dangerous, e.g. `(a*|b)*`.
+  - A bigger problem is: even if computation is fast,
+    that the output regex can be extremely large to the point that
+    the `new RegExp(...)` constructor rejects the string.
 
 ## Documentation
 
@@ -143,7 +148,7 @@ size(/^[a-z]*$/) === undefined
 size(/^[a-z]{60}/) === 7914088058189701615326255069116716194962212229317838559326167922356251403772678373376n 
 ```
 
-> [!TIP]
+> [!NOTE]
 > Double counting is often avoided. 
 > For example, `size(/^(hello|hello)$/)` is only `1n` and not `2n`.
 > But it probably still happens.

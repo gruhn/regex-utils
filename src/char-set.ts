@@ -269,7 +269,7 @@ export function intersection(setA: CharSet, setB: CharSet): CharSet {
 }
 
 export function complement(set: CharSet): CharSet {
-  return difference(fullUnicode, set)
+  return difference(alphabet, set)
 }
 
 export function compare(setA: CharSet, setB: CharSet): number {
@@ -295,9 +295,9 @@ export function toString(set: CharSet): string {
       return '\\d'
     case nonDigitChars.hash:
       return '\\D'
-    case fullUnicode.hash:
+    case alphabet.hash:
       // TODO: if dotAll flag is set then the "." is enough:
-      return '[.\n\r\u2028\u2029]'
+      return '(.|[\n\r\u2028\u2029])'
   }
 
   if (set.type === 'empty') {
@@ -306,7 +306,7 @@ export function toString(set: CharSet): string {
   } else if (isSingleton(set)) {
     // If the set contains only a single char then no brackets are needed:
     return Range.toString(set.range)
-  } else if (2*size(set) > size(fullUnicode)) {
+  } else if (2*size(set) > size(alphabet)) {
     // If the set contains more than half the characters of the
     // entire alphabet then it's more compact to render the complement. E.g. [^a].
     const ranges = [...getRanges(complement(set))].map(Range.toString).join('')
@@ -342,7 +342,15 @@ export function size(set: CharSet): number {
 //////////////// Specific Character Classes //////////////// 
 ////////////////////////////////////////////////////////////
 
-export const fullUnicode = fromRange({ start: 0, end: 0x10FFFF })
+/**
+ * Full unicode range.
+ */
+export const alphabet = // fromRange({ start: 0, end: 0x10FFFF })
+  difference(
+    fromRange({ start: 0, end: 0x10FFFF }),
+    // alphabet,
+    fromArray(['\r', '\n', '\u2028', '\u2029'])
+  )
 
 /**
  * Equivalent to the dot ".". Whether or not the dot matches
@@ -352,10 +360,10 @@ export const fullUnicode = fromRange({ start: 0, end: 0x10FFFF })
  */
 export const wildcard = (options: { dotAll: boolean }) => {
   if (options.dotAll)
-    return fullUnicode
+    return alphabet
   else
     return difference(
-      fullUnicode,
+      alphabet,
       fromArray(['\r', '\n', '\u2028', '\u2029'])
     )
 }
@@ -408,7 +416,7 @@ export const whiteSpaceChars = [
 
 
 /**
- * Equivalent to \s
+ * Equivalent to \S
  */
 export const nonWhiteSpaceChars = complement(whiteSpaceChars)
 

@@ -7,14 +7,15 @@ import { parseRegExp } from './regex-parser'
  */
 export function intersection(...res: RegExp[]): RegExp {
   if (res.length === 0) {
-    // TODO: this technically doesn't match everything.
-    // Need to also get regexp flags right:
-    return /^.*$/
+    // intersection of nothing is the regex that matches everything:
+    return RE.toRegExp(RE.star(RE.anySingleChar))
   } else if (res.length === 1) {
     return res[0]
   } else {
     const parsed = res.map(parseRegExp)   
     const result = DFA.toStdRegex(RE.intersectAll(parsed))
+    console.debug(JSON.stringify(RE.debugShow(result), null, 2))
+    console.debug(RE.toString(result))
     return RE.toRegExp(result)
   }
 }

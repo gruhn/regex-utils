@@ -121,9 +121,6 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (equal(complement(empty), right))
     // r + ¬∅ ≈ ¬∅
     return complement(empty)
-  // else if (left.hash > right.hash)
-  //   // r + s ≈ s + r
-  //   return union(right, left)
   else if (left.type === 'literal' && right.type === 'literal')
     // R + S ≈ R ∪ S
     return literal(CharSet.union(left.charset, right.charset))
@@ -134,28 +131,28 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r + (s + r) = r + s
     return union(left, right.left)
 
-  // else if (left.type === 'concat') {
-  //   if (right.type === 'concat')
-  //     if (equal(left.left, right.left))
-  //       // TODO
-  //       return concat(left.left, union(left.right, right.right))
-  //     else if (left.right.hash === right.right.hash)
-  //       // TODO
-  //       return concat(union(left.left, right.left), left.right)
-  //   else if (equal(right, left.left))
-  //     // TODO
-  //     return concat(left.left, optional(left.right))
-  //   else if (equal(right, left.right))
-  //     // TODO
-  //     return concat(optional(left.left), left.right)
-  // } else if (right.type === 'concat') {
-  //   if (right.left.hash === left.hash)
-  //     // TODO
-  //     return concat(right.left, optional(right.right))
-  //   else if (right.right.hash === left.hash)
-  //     // TODO
-  //     return concat(optional(right.left), right.right)
-  // }
+  else if (left.type === 'concat') {
+    if (right.type === 'concat')
+      if (equal(left.left, right.left))
+        // (r · s) + (r · t) = r · (s + t)
+        return concat(left.left, union(left.right, right.right))
+      else if (equal(left.right, right.right))
+        // (s · r) + (t · r) = (s + t) · r
+        return concat(union(left.left, right.left), left.right)
+    else if (equal(right, left.left))
+      // (r · s) + r = r · (s + ε)
+      return concat(left.left, optional(left.right))
+    else if (equal(right, left.right))
+      // (s · r) + r = (s + ε) · r
+      return concat(optional(left.left), left.right)
+  } else if (right.type === 'concat') {
+    if (equal(right.left, left))
+      // r + (r · s) = r · (ε + s)
+      return concat(right.left, optional(right.right))
+    else if (right.right.hash === left.hash)
+      // r + (s · r) = (s + ε) · r
+      return concat(optional(right.left), right.right)
+  }
 
   return withHash({ type: 'union', left, right })
 }
@@ -217,7 +214,7 @@ export function complement(inner: ExtRegex): ExtRegex {
 // some additional composite constructors ////
 //////////////////////////////////////////////
 
-export const anySingleChar: StdRegex = literal(CharSet.fullUnicode)
+export const anySingleChar: StdRegex = literal(CharSet.alphabet)
 
 export function singleChar(char: string) {
   return literal(CharSet.singleton(char))
@@ -249,7 +246,7 @@ export function concatAll(res: ExtRegex[]): ExtRegex {
 export function intersectAll(res: ExtRegex[]): ExtRegex {
   if (res.length === 0)
     // TODO: is that correct?
-    return star(literal(CharSet.fullUnicode))
+    return star(literal(CharSet.alphabet))
   else
     return res.reduceRight(intersection)
 }
@@ -421,13 +418,11 @@ function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet
 }
 
 export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
-  const alphabet = CharSet.fullUnicode
-
   switch (regex.type) {
     case "epsilon":
-      return [alphabet]
+      return [CharSet.alphabet]
     case "literal": 
-      return [regex.charset, CharSet.difference(alphabet, regex.charset)]
+      return [regex.charset, CharSet.complement(regex.charset)]
         .filter(charset => !CharSet.isEmpty(charset))   
     case "concat": {
       if (isNullable(regex.left))
@@ -477,18 +472,39 @@ function toStringRec(regex: ExtRegex): string {
       return ''
     case 'literal':
       return CharSet.toString(regex.charset)
-    case 'concat':
-      return toStringRec(regex.left) + toStringRec(regex.right)
+    case 'concat': {
+      const [len, rest] = extractConcatChain(regex.left, regex.right)
+      if (len === 0)
+        return toStringRec(regex.left) + toStringRec(regex.right)
+      else
+        return `(${toStringRec(regex.left)}{${len+1}})` + (rest === undefined ? '' : toStringRec(rest))
+    }
     case 'union':
       return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
     case 'star':
-      return `(${toStringRec(regex.inner)})*`
+      return `(${toStringRec(regex.inner)}*)`
     case 'complement':
-      return `¬(${toStringRec(regex.inner)})`
+      return `(¬${toStringRec(regex.inner)})`
     case 'intersection':
       return `(${toStringRec(regex.left)}∩${toStringRec(regex.right)})`
   }
   checkedAllCases(regex)
+}
+
+/**
+ * Hacky way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
+ * to produce more compact representation when converting to string,
+ * e.g. `[a-z]{3}`
+ */
+function extractConcatChain(left: ExtRegex, right: ExtRegex): [number, ExtRegex | undefined] {
+  if (right.type === 'concat' && equal(left, right.left)) {
+    const [len, rest] = extractConcatChain(left, right.right)
+    return [len+1, rest]
+  } else if (equal(left, right)) {
+    return [1, undefined]
+  } else {
+    return [0, right]
+  }
 }
 
 export function enumerate(regex: StdRegex): Stream.Stream<string> {
@@ -554,4 +570,24 @@ export function size(regex: StdRegex): bigint | undefined {
         return undefined
     }
   }
+}
+
+export function debugShow(regex: ExtRegex): any {
+  switch (regex.type) {
+    case 'epsilon':
+      return 'ε'
+    case 'literal':
+      return CharSet.toString(regex.charset)
+    case 'concat':
+      return { type: 'concat', left: debugShow(regex.left), right: debugShow(regex.right) }
+    case 'union':
+      return { type: 'union', left: debugShow(regex.left), right: debugShow(regex.right) }
+    case 'star':
+      return { type: 'star', inner: debugShow(regex.inner) }
+    case 'intersection':
+      return { type: 'intersection', left: debugShow(regex.left), right: debugShow(regex.right) }
+    case 'complement':
+      return { type: 'complement', inner: debugShow(regex.inner) }
+  }
+  checkedAllCases(regex)
 }
