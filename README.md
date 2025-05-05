@@ -4,8 +4,8 @@ Zero-dependency TypeScript library for regex utilities that go beyond string mat
 These are surprisingly hard to come by for any programming language.
 
 > [!WARNING]
-> This is very much experimantal. `complement` and `intersection` have very 
-> unpredictable performance.
+> This is very much experimental. `complement` and `intersection` have very 
+> unpredictable performance behavior.
 
 ## Installation
 
