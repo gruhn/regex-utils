@@ -52,7 +52,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
           () => { throw new Error('transition already exists') }
         )
         worklist.push(targetState)
-        console.debug('new state: ', RE.toString(targetState))
+        // console.debug('new state: ', RE.toString(targetState))
       } else {
         Table.setWith(
           sourceState.hash,
@@ -147,10 +147,10 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
         const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
         const combinedLabel = RE.union(transitiveLabel, existingLabel)
         const str = RE.toString(combinedLabel)
-        if (str.length > 1000) {
-          console.debug('1000+ chars: ', new RegExp(str))
-          process.exit()
-        }
+        // if (str.length > 1000) {
+        //   console.debug('1000+ chars: ', new RegExp(str))
+        //   process.exit()
+        // }
 
         Table.setWith(
           pred,
@@ -181,10 +181,10 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 
 // TODO: can this round-trip through DFA construction be avoided?
 export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
-  console.debug('regex -> DFA')
+  // console.debug('regex -> DFA')
   const dfa = regexToDFA(regex)
   // console.debug('DFA:', dfa.allStates.size)
-  printTrans(dfa.transitions)
+  // printTrans(dfa.transitions)
   return dfaToRegex(dfa)
 }
 

@@ -479,12 +479,20 @@ function toStringRec(regex: ExtRegex): string {
       else
         return `(${toStringRec(regex.left)}{${len+1}})` + (rest === undefined ? '' : toStringRec(rest))
     }
-    case 'union':
-      return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
+    case 'union': {
+      // left/right should never be both epsilon, since the 
+      // `union` smart constructor would eliminate that:
+      if (regex.left.type === 'epsilon')
+        return `(${toStringRec(regex.right)})?`
+      else if (regex.right.type === 'epsilon')
+        return `(${toStringRec(regex.left)})?`
+      else
+        return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
+    }
     case 'star':
-      return `(${toStringRec(regex.inner)}*)`
+      return `(${toStringRec(regex.inner)})*`
     case 'complement':
-      return `(¬${toStringRec(regex.inner)})`
+      return `¬(${toStringRec(regex.inner)})`
     case 'intersection':
       return `(${toStringRec(regex.left)}∩${toStringRec(regex.right)})`
   }
@@ -492,7 +500,7 @@ function toStringRec(regex: ExtRegex): string {
 }
 
 /**
- * Hacky way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
+ * Rather ad-hco way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
  * to produce more compact representation when converting to string,
  * e.g. `[a-z]{3}`
  */
@@ -571,6 +579,15 @@ export function size(regex: StdRegex): bigint | undefined {
     }
   }
 }
+
+// export function equivalent(regex1: ExtRegex, regex2: ExtRegex): boolean {
+//   if (equal(regex1, regex2)) {
+//     return true
+//   } else {
+//     // TODO: check if empty:
+//     intersection(regex1, complement(regex2))
+//   }
+// }
 
 export function debugShow(regex: ExtRegex): any {
   switch (regex.type) {

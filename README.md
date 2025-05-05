@@ -20,9 +20,6 @@ npm install @gruhn/regex-utils
       (technically they are allowed anywhere in the expression)
     - escaped meta characters: `\$`, `\.`, ...
     - capturing groups: `(...)`
-  - Output regex syntax is even more limited. For example:
-    - `a?` is supported as input but output is `(a|)`
-    - `a{5,}` is supported as input but output is `aaaaaa*`
   - regex flags are not supported at all
 * performance of `intersection` and `complement`
   - These function have worst case exponential complexity.
