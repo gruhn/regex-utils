@@ -1,7 +1,11 @@
 # Regex Utils
 
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
-These are surprisingly hard to come by in for any programming language.
+These are surprisingly hard to come by for any programming language.
+
+> [!WARNING]
+> This is very much experimantal. `complement` and `intersection` have very 
+> unpredictable performance.
 
 ## Installation
 

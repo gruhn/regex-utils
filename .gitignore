@@ -6,3 +6,4 @@ dist
 prof
 # project specific helix config
 .helix
+benchmark/regex-dataset.json
