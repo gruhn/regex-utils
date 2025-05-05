@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "test": "vitest watch --disableConsoleIntercept --exclude .direnv --exclude node_modules",
+    "test": "vitest",
     "bench": "npm run build && 0x --output-dir prof benchmark/dfa-bench.js",
     "bench2": "npm run build && node benchmark/dfa-bench.js",
     "build": "tsc && tsc-alias"
