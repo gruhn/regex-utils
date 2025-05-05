@@ -1,31 +1,37 @@
 # Regex Utils
 
-Experimental TypeScript library for regex utilities that go beyond string matching.
+Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by in for any programming language.
 
-## Install
+## Installation
 
 ```bash
 npm install @gruhn/regex-utils
 ```
 
-TODO: how to import TypeScript sources vs. JavaScript bundle.
-
 ## Limitations
 
-* syntax support
-  - the full regex syntax is not supported (yet)
-  - output regex syntax is even more limited. For example:
+* Syntax support
+  - The library implements a custom parser for regular expressions,
+    so only a subset of the syntax is supported:
+    - quantifiers: `*`, `+`, `?`, `{3,5}`, ...
+    - character classes: `.`, `\w`, `[a-z]`, ...
+    - optional start/end markers: `^` / `$` but only at the start/end
+      (technically they are allowed anywhere in the expression)
+    - escaped meta characters: `\$`, `\.`, ...
+    - capturing groups: `(...)`
+  - Output regex syntax is even more limited. For example:
     - `a?` is supported as input but output is `(a|)`
-    - similarly you get `aaaaaa*` instead of `a{5,}`
-  - also no support for regex flags
+    - `a{5,}` is supported as input but output is `aaaaaa*`
+  - regex flags are not supported at all
 * performance of `intersection` and `complement`
   - These function have worst case exponential complexity.
-    but often the worst case is not realized.
-  - Nested quantifiers are especially dangerous, e.g. `(a*|b)*`.
+    But often the worst case is not realized.
+    - Nested quantifiers are especially dangerous, e.g. `(a*|b)*`.
   - A bigger problem is: even if computation is fast,
     the output regex can be extremely large to the point that
     the `new RegExp(...)` constructor crashes.
+    This happens even on very simple examples.
 
 ## Documentation
 
