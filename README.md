@@ -43,7 +43,7 @@ This is useful to combine several constraints into one.
 For example, to build a regular expression that can validate a new password:
 
 ```typescript
-import { intersection } from 'rare-regex-utils'
+import { intersection } from '@gruhn/regex-utils'
 
 const passwordRegex = intersection(
   /.{12,}/, // 12 letters or more
@@ -83,7 +83,7 @@ that returns a (potentially infinite) stream of strings that match the given `Re
 This can be useful for testing regular expressions.
 
 ```typescript
-import { enumerate } from 'rare-regex-utils'
+import { enumerate } from '@gruhn/regex-utils'
 
 const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
 
@@ -141,7 +141,7 @@ A possible fair enumeration is:
 Returns the number of strings that match the given `RegExp` or `undefined` if there are infinitely many matches.
 
 ```typescript
-import { size } from 'rare-regex-utils'
+import { size } from '@gruhn/regex-utils'
 
 size(/^[a-z]$/) === 26n
 
