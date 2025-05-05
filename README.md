@@ -1,12 +1,12 @@
-# Rare Regex Utils
+# Regex Utils
 
-Zero-dependency TypeScript library for regex utilities that go beyond string matching.
-These are surprisingly hard to come by in any programming language ecosystem.
+Experimental TypeScript library for regex utilities that go beyond string matching.
+These are surprisingly hard to come by in for any programming language.
 
 ## Install
 
 ```bash
-npm install rare-regex-utils
+npm install @gruhn/regex-utils
 ```
 
 TODO: how to import TypeScript sources vs. JavaScript bundle.
@@ -24,8 +24,8 @@ TODO: how to import TypeScript sources vs. JavaScript bundle.
     but often the worst case is not realized.
   - Nested quantifiers are especially dangerous, e.g. `(a*|b)*`.
   - A bigger problem is: even if computation is fast,
-    that the output regex can be extremely large to the point that
-    the `new RegExp(...)` constructor rejects the string.
+    the output regex can be extremely large to the point that
+    the `new RegExp(...)` constructor crashes.
 
 ## Documentation
 
@@ -44,7 +44,6 @@ const passwordRegex = intersection(
   /[A-Z]/,  // at least one upper case letter   
   /[a-z]/,  // at least one lower case letter
 )
-// returns: TODO
 
 function isValidPassword(str: string) {
   return passwordRegex.test(str)
@@ -68,7 +67,7 @@ For example, when a third-party interface expect a single `RegExp` as input like
 
 ### `complement(re: RegExp): RegExp`
 
-TODO
+TODO: examples.
 
 ### `enumerate(re: RegExp): Generator<string>`
 
@@ -156,7 +155,7 @@ size(/^[a-z]{60}/) === 791408805818970161532625506911671619496221222931783855932
 
 ### `derivative(prefix: string, re: RegExp): RegExp`
 
-Can compute a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the given `RegExp`.
+Compute a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the given `RegExp`.
 
 TODO: examples.
 

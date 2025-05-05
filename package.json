@@ -1,5 +1,5 @@
 {
-  "name": "rare-regex-utils",
+  "name": "@gruhn/regex-utils",
   "version": "0.1.0",
   "main": "dist/index.js",
   "type": "module",
