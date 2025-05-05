@@ -31,9 +31,9 @@
   },
   "include": ["./src/*.ts"],
   "exclude": [
-    "node_modules/**/*",
-    "dist/",
-    ".direnv/**/*"
+    "node_modules",
+    "dist",
+    ".direnv"
   ],
   "tsc-alias": {
     "resolveFullPaths": true,

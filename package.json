@@ -11,6 +11,9 @@
   },
   "author": "Niklas Gruhn",
   "license": "MIT",
+  "files": [
+    "dist"
+  ],
   "description": "",
   "devDependencies": {
     "0x": "^5.8.0",
