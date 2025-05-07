@@ -3,10 +3,6 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
-> [!WARNING]
-> This is very much experimental. `complement` and `intersection` have very 
-> unpredictable performance behavior.
-
 ## Installation
 
 ```bash
@@ -32,7 +28,6 @@ npm install @gruhn/regex-utils
   - A bigger problem is: even if computation is fast,
     the output regex can be extremely large to the point that
     the `new RegExp(...)` constructor crashes.
-    This happens even on very simple examples.
 
 ## Documentation
 
