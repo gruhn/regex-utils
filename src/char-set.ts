@@ -262,7 +262,6 @@ export function difference(setA: CharSet, setB: CharSet): CharSet {
 }
 
 export function intersection(setA: CharSet, setB: CharSet): CharSet {
-  // console.debug('inter: ', [...getRanges(setA)].length, [...getRanges(setB)].length)
   return [...getRanges(setB)]
     .flatMap(rangeB => intersectRange(setA, rangeB))
     .reduce(insertRange, empty)

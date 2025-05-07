@@ -398,19 +398,7 @@ export function equal(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return regexA.hash === regexB.hash
 }
 
-// const cache: Map<number, Map<number, CharSet.CharSet[]>> = new Map()
-// let seen: number = 0
-// let total: number = 0
-
 function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet[]): CharSet.CharSet[] {
-  // const hashA = classesA.map(cls => cls.hash).reduce(hashAssoc)
-  // const hashB = classesB.map(cls => cls.hash).reduce(hashAssoc)
-  // let cacheA = cache.get(hashA)
-  // const cachedResult = cacheA?.get(hashB)
-  // if (cachedResult !== undefined) {
-  //   return cachedResult
-  // }
-
   const result: CharSet.CharSet[] = []
   for (const classA of classesA) {
     for (const classB of classesB) {
@@ -421,21 +409,6 @@ function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet
     }
   }
   const finalResult = uniqWith(result, CharSet.compare) 
-
-  // console.debug({
-  //   classesA: classesA.map(CharSet.toString),
-  //   classesB: classesB.map(CharSet.toString),
-  //   result: result.map(CharSet.toString),
-  //   result2: result.toSorted(CharSet.compare).map(CharSet.toString),
-  //   finalResult: finalResult.map(CharSet.toString),
-  // })
-
-  // if (cacheA === undefined) {
-  //   cacheA = new Map()
-  //   cache.set(hashA, cacheA)
-  // }
-  // cacheA.set(hashB, finalResult)
-
   return finalResult
 }
 

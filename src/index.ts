@@ -14,8 +14,6 @@ export function intersection(...res: RegExp[]): RegExp {
   } else {
     const parsed = res.map(parseRegExp)   
     const result = DFA.toStdRegex(RE.intersectAll(parsed))
-    console.debug(JSON.stringify(RE.debugShow(result), null, 2))
-    console.debug(RE.toString(result))
     return RE.toRegExp(result)
   }
 }

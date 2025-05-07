@@ -32,16 +32,6 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
       const targetState = RE.codePointDerivative(char, sourceState)
       const knownState = allStates.get(targetState.hash)
 
-      // console.debug(
-      //   'derivativeClasses:',
-      //   RE.toString(sourceState),
-      //   RE.derivativeClasses(sourceState)
-      //     .map(CharSet.toString),
-      //   String.fromCodePoint(char),
-      //   char,
-      //   RE.toString(targetState),
-      // )
-
       if (knownState === undefined) {
         allStates.set(targetState.hash, targetState)
         Table.setWith(
@@ -52,7 +42,6 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
           () => { throw new Error('transition already exists') }
         )
         worklist.push(targetState)
-        // console.debug('new state: ', RE.toString(targetState))
       } else {
         Table.setWith(
           sourceState.hash,
@@ -147,10 +136,6 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
         const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
         const combinedLabel = RE.union(transitiveLabel, existingLabel)
         const str = RE.toString(combinedLabel)
-        // if (str.length > 1000) {
-        //   console.debug('1000+ chars: ', new RegExp(str))
-        //   process.exit()
-        // }
 
         Table.setWith(
           pred,
@@ -181,19 +166,16 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 
 // TODO: can this round-trip through DFA construction be avoided?
 export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
-  // console.debug('regex -> DFA')
   const dfa = regexToDFA(regex)
-  // console.debug('DFA:', dfa.allStates.size)
-  // printTrans(dfa.transitions)
   return dfaToRegex(dfa)
 }
 
-function printTrans(trans: Table.Table<CharSet.CharSet>) {
-  console.debug('=========trans===========')
-  for (const [source, succs] of trans.entries()) {
-    for (const [target, label] of succs) {
-      console.debug(source, target, new RegExp(CharSet.toString(label)))
-      // console.debug(source, target, RE.toString(label))
-    }
-  }
-}
+// function printTrans(trans: Table.Table<CharSet.CharSet>) {
+//   console.debug('=========trans===========')
+//   for (const [source, succs] of trans.entries()) {
+//     for (const [target, label] of succs) {
+//       console.debug(source, target, new RegExp(CharSet.toString(label)))
+//       // console.debug(source, target, RE.toString(label))
+//     }
+//   }
+// }
