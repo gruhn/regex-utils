@@ -29,13 +29,15 @@ describe('parseRegexString', () => {
     [/^\W$/, RE.literal(CharSet.nonWordChars)],
     [/^\n$/, RE.literal(CharSet.singleton('\n'))],
     [/^\.$/, RE.literal(CharSet.singleton('.'))],
-  ])('can parses %s', (regexp, expected) => {
+  ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)
   })
 
   it.each([
     ['a+*'],
     ['(a'],
+    ['a?{2}'],
+    ['a+{2}'],
   ])('rejects invalid regex /%s/', (regexStr) => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
   })

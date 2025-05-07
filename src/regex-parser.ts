@@ -139,9 +139,9 @@ function regex(): P.Parser<RE.StdRegex> {
     regexTerm(),
     [
       { type: 'postfix', op: P.string('*').map(_ => RE.star) },
+      { type: 'postfix', op: boundedQuantifier },
       { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
-      { type: 'postfix', op: boundedQuantifier },
       { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
       { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
     ]

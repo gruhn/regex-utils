@@ -98,3 +98,21 @@ test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
     // { seed: 1125268176, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:1:1:1:1:1:1:1:1:1:0:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2", endOnFailure: true }
   )   
 })
+
+test('intersection with regex /^.{N}$/ has only words of length N', () => {
+  fc.assert(
+    fc.property(
+      fc.nat({ max: 10 }),
+      Arb.stdRegexNoStar(),
+      (length, regexA) => {
+        const regexB = RE.replicate(length, length, RE.anySingleChar)
+        const interAB = toStdRegex(RE.intersection(regexA, regexB))
+
+        const samples = Stream.take(100, RE.enumerate(interAB))
+        for (const word of samples) {
+          expect(word).toHaveLength(length)
+        }
+      }
+    ),
+  )   
+})

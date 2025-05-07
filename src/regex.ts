@@ -79,12 +79,14 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (right.type === "epsilon")
     // r · ε ≈ r
     return left
-  else if (equal(left, optional(right)))
-    // (r + ε) · r ≈ r · (r + ε)
-    return concat(right, left)
-  else if (right.type === 'concat' && equal(left, optional(right.left))) 
-    // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
-    return concat(right.left, concat(left, right.right)) 
+  else if (left.type === 'union' && equal(left.right, epsilon)) {
+    if (equal(left.left, right))
+      // (r + ε) · r ≈ r · (r + ε)
+      return concat(right, left)
+    else if (right.type === 'concat' && equal(left.left, right.left)) 
+      // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
+      return concat(right.left, concat(left, right.right)) 
+  }
 
   // Try to eliminate as many `star`s as possible,
   // e.g. "a+a+" --> "aa*aa*" --> "aaa*a*" --> "aaa*"
@@ -184,9 +186,9 @@ export function star(inner: ExtRegex): ExtRegex {
 }
 
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
-  // if (left.type === "intersection")
-  //   // (r & s) & t ≈ r & (s & t)
-  //   return intersection(left.left, intersection(left.right, right))
+  if (left.type === "intersection")
+    // (r & s) & t ≈ r & (s & t)
+    return intersection(left.left, intersection(left.right, right))
   if (equal(left, empty))
     // ∅ & r ≈ ∅
     return empty 
@@ -197,14 +199,14 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
     // ¬∅ & r ≈ r
     return right 
   else if (equal(right, complement(empty)))
-    //  r & ¬∅ ≈ r
+    // r & ¬∅ ≈ r
     return left 
   else if (equal(left, right)) 
     // r & r ≈ r
     return left 
-  else if (left.hash > right.hash)
-    // r & s ≈ s & r
-    return intersection(right, left) 
+  else if (left.type === 'literal' && right.type === 'literal') 
+    // R & S ≈ R∩S
+    return literal(CharSet.intersection(left.charset, right.charset))
 
   return withHash({ type: "intersection", left, right })
 }
@@ -213,9 +215,10 @@ export function complement(inner: ExtRegex): ExtRegex {
   if (inner.type === "complement")
     // ¬(¬r) ≈ r
     return inner
-  else if (inner.type === 'literal')
-    // ¬S ≈ Σ\S
-    return literal(CharSet.complement(inner.charset))
+  // FIXME: actually wrong. Rather: ¬S ≈ ε + (Σ\S) + Σ{2,}
+  // else if (inner.type === 'literal')
+  //   // ¬S ≈ (Σ\S
+  //   return literal(CharSet.complement(inner.charset))
   else
     return withHash({ type: "complement", inner })
 }
@@ -261,19 +264,28 @@ export function intersectAll(res: ExtRegex[]): ExtRegex {
     return res.reduceRight(intersection)
 }
 
-export function replicate(lowerBound: number, upperBound: number, regex: StdRegex): StdRegex
-export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex
-export function replicate(lowerBound: number, upperBound: number, regex: ExtRegex): ExtRegex {
-  assert(0 <= lowerBound && lowerBound <= upperBound)
+/**
+ * Constructs regular expressions with bounded quantifiers.
+ * For example:
+ *
+ *     replicate(3, 5, r)        ~  r{3,5}
+ *     replicate(0, 5, r)        ~  r{,5}
+ *     replicate(3, Infinity, r) ~  r[3,]
+ * 
+ */
+export function replicate(min: number, max: number, regex: StdRegex): StdRegex
+export function replicate(min: number, max: number, regex: ExtRegex): ExtRegex
+export function replicate(min: number, max: number, regex: ExtRegex): ExtRegex {
+  assert(0 <= min && min <= max)
 
-  const requiredPrefix = concatAll(Array(lowerBound).fill(regex))
+  const requiredPrefix = concatAll(Array(min).fill(regex))
 
-  if (upperBound === Infinity)
+  if (max === Infinity)
     return concat(requiredPrefix, star(regex))
   else 
     return concat(
       requiredPrefix,
-      concatAll(Array(upperBound - lowerBound).fill(optional(regex)))
+      concatAll(Array(max - min).fill(optional(regex)))
     )
 }
 
@@ -474,6 +486,24 @@ export function toString(regex: ExtRegex): string {
   return '^' + toStringRec(regex) + '$'
 }
 
+// TODO: information is duplicated in parser:
+function precLevel(nodeType: string) {
+  switch (nodeType) {
+    case 'epsilon': return 7
+    case 'literal': return 6
+    case 'star': return 5
+    case 'boundedQuantifier': return 4
+    case 'plus': return 3
+    case 'optional': return 2
+    case 'concat': return 1
+    case 'union': return 0
+
+    case 'complement': return -1
+    case 'intersection': return -2
+  }
+  throw new Error(`unexpected nodeType: ${nodeType}`)
+}
+
 // TODO: make this more compact by using fewer parenthesis and
 // recognizing patterns like "a+" instead of "aa*" etc.
 function toStringRec(regex: ExtRegex): string {
@@ -484,29 +514,40 @@ function toStringRec(regex: ExtRegex): string {
       return CharSet.toString(regex.charset)
     case 'concat': {
       const [len, rest] = extractConcatChain(regex.left, regex.right)
-      if (len === 0)
-        return toStringRec(regex.left) + toStringRec(regex.right)
-      else
-        return `(${toStringRec(regex.left)}{${len+1}})` + (rest === undefined ? '' : toStringRec(rest))
+      if (len === 0) {
+        const left = maybeWithParens(regex.left, precLevel('concat'))
+        const right = maybeWithParens(regex.right, precLevel('concat'))
+        return left + right
+      } else {
+        const quantified = maybeWithParens(regex.left, precLevel('boundedQuantifier')) + '{' + (len+1) + '}'
+        if (rest === undefined) 
+          return quantified
+        else 
+          return quantified + maybeWithParens(rest, precLevel('concat'))
+      }
     }
     case 'union': {
-      // left/right should never be both epsilon, since the 
-      // `union` smart constructor would eliminate that:
-      if (regex.left.type === 'epsilon')
-        return `(${toStringRec(regex.right)})?`
-      else if (regex.right.type === 'epsilon')
-        return `(${toStringRec(regex.left)})?`
+      // The `union` smart constructor should guarantee that there is only 
+      // ever a right epsilon (never only on the left or on both sides):
+      if (regex.right.type === 'epsilon')
+        return maybeWithParens(regex.left, precLevel('optional')) + '?'
       else
-        return `(${toStringRec(regex.left)}|${toStringRec(regex.right)})`
+        return maybeWithParens(regex.left, precLevel('union')) + '|' + maybeWithParens(regex.right, precLevel('union'))
     }
     case 'star':
-      return `(${toStringRec(regex.inner)})*`
+      return maybeWithParens(regex.inner, precLevel('star')) + '*'
     case 'complement':
-      return `¬(${toStringRec(regex.inner)})`
+      return '¬' + maybeWithParens(regex.inner, precLevel('complement'))
     case 'intersection':
-      return `(${toStringRec(regex.left)}∩${toStringRec(regex.right)})`
+      return maybeWithParens(regex.left, precLevel('intersection')) + '∩' + maybeWithParens(regex.right, precLevel('intersection'))
   }
   checkedAllCases(regex)
+}
+function maybeWithParens(regex: ExtRegex, parentPrecLevel: number): string {
+  if (precLevel(regex.type) < parentPrecLevel)
+    return '(' + toStringRec(regex) + ')'
+  else
+    return toStringRec(regex)
 }
 
 /**

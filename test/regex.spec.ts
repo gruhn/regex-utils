@@ -148,13 +148,14 @@ describe('rewrite rules', () => {
 
   it.each([
     // concat rules:
-    [/^a*a$/, /^a(a)*$/],
-    [/^a*(ab)$/, /^a(a)*b$/],
-    [/^a*a*$/, /^(a)*$/],
-    [/^a*(a*b)$/, /^(a)*b$/],
-    [/^a?a$/, /^a(a)?$/],
-    [/^a?(ab)$/, /^a(a)?b$/],
-    [/^(a{3})(a)?(a{2})$/, /^(a{5})(a)?$/],
+    [/^a*a$/, /^aa*$/],
+    [/^a*(ab)$/, /^aa*b$/],
+    [/^a*a*$/, /^a*$/],
+    [/^a*(a*b)$/, /^a*b$/],
+    [/^a?a$/, /^aa?$/],
+    [/^a?(ab)$/, /^aa?b$/],
+    [/^a{3}a?a{2}$/, /^a{5}a?$/],
+    [/^a?a?$/, /^(a?){2}$/],
     // union rules:
     [/^(a|a)$/, /^a$/],
     [/^a|(a|b)$/, /^[ab]$/],
@@ -164,12 +165,12 @@ describe('rewrite rules', () => {
     // union-of-concat rules:
     [/^ab|ac$/, /^a[bc]$/],
     [/^ba|ca$/, /^[bc]a$/],
-    [/^ab|a$/, /^a(b)?$/],
-    [/^ba|a$/, /^(b)?a$/],
-    [/^a|ab$/, /^a(b)?$/],
-    [/^a|ba$/, /^(b)?a$/],
+    [/^ab|a$/, /^ab?$/],
+    [/^ba|a$/, /^b?a$/],
+    [/^a|ab$/, /^ab?$/],
+    [/^a|ba$/, /^b?a$/],
     // star rules:
-    [/^(a*)*$/, /^(a)*$/],
+    [/^(a*)*$/, /^a*$/],
   ])('rewrites %s to %s', (source, target) => {
     expect(RE.toRegExp(parseRegExp(source))).toEqual(target)
   })
