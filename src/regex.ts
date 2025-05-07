@@ -79,6 +79,12 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (right.type === "epsilon")
     // r · ε ≈ r
     return left
+  else if (equal(left, optional(right)))
+    // (r + ε) · r ≈ r · (r + ε)
+    return concat(right, left)
+  else if (right.type === 'concat' && equal(left, optional(right.left))) 
+    // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
+    return concat(right.left, concat(left, right.right)) 
 
   // Try to eliminate as many `star`s as possible,
   // e.g. "a+a+" --> "aa*aa*" --> "aaa*a*" --> "aaa*"
@@ -112,6 +118,9 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   else if (equal(left, empty))
     // ∅ + r ≈ r
     return right
+  else if (left.type === 'epsilon')
+    // ε + r ≈ r + ε 
+    return union(right, left)
   else if (equal(empty, right))
     // r + ∅ ≈ r
     return left

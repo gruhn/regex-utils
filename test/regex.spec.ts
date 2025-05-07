@@ -146,19 +146,22 @@ describe('rewrite rules', () => {
   //   (can't be tested right now because parser does not
   //   support empty set `$.^` and epsilon `()`.
 
-  it.only.each([
+  it.each([
     // concat rules:
     [/^a*a$/, /^a(a)*$/],
     [/^a*(ab)$/, /^a(a)*b$/],
     [/^a*a*$/, /^(a)*$/],
     [/^a*(a*b)$/, /^(a)*b$/],
+    [/^a?a$/, /^a(a)?$/],
+    [/^a?(ab)$/, /^a(a)?b$/],
+    [/^(a{3})(a)?(a{2})$/, /^(a{5})(a)?$/],
     // union rules:
     [/^(a|a)$/, /^a$/],
     [/^a|(a|b)$/, /^[ab]$/],
     [/^a|(b|a)$/, /^[ab]$/],
     [/^(b|a)|a$/, /^[ab]$/],
     [/^(a|b)|a$/, /^[ab]$/],
-    // union+concat rules:
+    // union-of-concat rules:
     [/^ab|ac$/, /^a[bc]$/],
     [/^ba|ca$/, /^[bc]a$/],
     [/^ab|a$/, /^a(b)?$/],
