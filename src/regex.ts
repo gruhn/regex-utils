@@ -483,71 +483,126 @@ export function toRegExp(regex: StdRegex): RegExp {
 }
 
 export function toString(regex: ExtRegex): string {
-  return '^' + toStringRec(regex) + '$'
+  return '^(' + astToString(toRegExpAST(regex)) + ')$'
 }
 
 // TODO: information is duplicated in parser:
-function precLevel(nodeType: string) {
+function precLevel(nodeType: RegExpAST['type']) {
   switch (nodeType) {
-    case 'epsilon': return 7
-    case 'literal': return 6
+    case 'epsilon': return 10
+    case 'literal': return 10
     case 'star': return 5
-    case 'boundedQuantifier': return 4
-    case 'plus': return 3
-    case 'optional': return 2
-    case 'concat': return 1
-    case 'union': return 0
-
-    case 'complement': return -1
-    case 'intersection': return -2
+    case 'plus': return 5
+    case 'optional': return 5
+    case 'boundedQuantifier': return 5
+    case 'complement': return 5
+    case 'concat': return 3
+    case 'union': return 2
+    case 'intersection': return 2
   }
-  throw new Error(`unexpected nodeType: ${nodeType}`)
+  checkedAllCases(nodeType)
 }
 
-// TODO: make this more compact by using fewer parenthesis and
-// recognizing patterns like "a+" instead of "aa*" etc.
-function toStringRec(regex: ExtRegex): string {
+type RegExpAST = 
+  | { type: "epsilon" }
+  | { type: "literal", charset: CharSet.CharSet }
+  | { type: "concat", left: RegExpAST, right: RegExpAST }
+  | { type: "union", left: RegExpAST, right: RegExpAST }
+  | { type: "star", inner: RegExpAST }
+  | { type: "plus", inner: RegExpAST }
+  | { type: "optional", inner: RegExpAST }
+  | { type: "complement", inner: RegExpAST }
+  | { type: "boundedQuantifier", inner: RegExpAST, count: number }
+  | { type: "intersection", left: RegExpAST, right: RegExpAST }
+
+// TODO:
+// - "a+" instead of "aa*".
+// - "a{3,}" instead of "a{3}a*".
+// - "a{,3}" instead of "a?a?a?".
+function toRegExpAST(regex: ExtRegex): RegExpAST {
   switch (regex.type) {
     case 'epsilon':
-      return ''
+      return regex
     case 'literal':
-      return CharSet.toString(regex.charset)
+      return regex
     case 'concat': {
       const [len, rest] = extractConcatChain(regex.left, regex.right)
       if (len === 0) {
-        const left = maybeWithParens(regex.left, precLevel('concat'))
-        const right = maybeWithParens(regex.right, precLevel('concat'))
-        return left + right
+        return {
+          type: 'concat',
+          left: toRegExpAST(regex.left),
+          right: toRegExpAST(regex.right),
+        }
       } else {
-        const quantified = maybeWithParens(regex.left, precLevel('boundedQuantifier')) + '{' + (len+1) + '}'
-        if (rest === undefined) 
-          return quantified
+        const left: RegExpAST = {
+          type: 'boundedQuantifier',
+          inner: toRegExpAST(regex.left),
+          count: len+1,
+        }
+
+        if (rest === undefined)
+          return left
         else 
-          return quantified + maybeWithParens(rest, precLevel('concat'))
+          return { type: 'concat', left, right: toRegExpAST(rest) }
       }
     }
     case 'union': {
       // The `union` smart constructor should guarantee that there is only 
       // ever a right epsilon (never only on the left or on both sides):
       if (regex.right.type === 'epsilon')
-        return maybeWithParens(regex.left, precLevel('optional')) + '?'
+        return { type: 'optional', inner: toRegExpAST(regex.left) }
       else
-        return maybeWithParens(regex.left, precLevel('union')) + '|' + maybeWithParens(regex.right, precLevel('union'))
+        return {
+          type: 'union',
+          left: toRegExpAST(regex.left),
+          right: toRegExpAST(regex.right),
+        }
     }
     case 'star':
-      return maybeWithParens(regex.inner, precLevel('star')) + '*'
+      return { type: 'star', inner: toRegExpAST(regex.inner) }
     case 'complement':
-      return '¬' + maybeWithParens(regex.inner, precLevel('complement'))
+      return { type: 'complement', inner: toRegExpAST(regex.inner) }
     case 'intersection':
-      return maybeWithParens(regex.left, precLevel('intersection')) + '∩' + maybeWithParens(regex.right, precLevel('intersection'))
+      return {
+        type: 'intersection',
+        left: toRegExpAST(regex.left),
+        right: toRegExpAST(regex.right),
+      }
   }
   checkedAllCases(regex)
 }
-function maybeWithParens(regex: ExtRegex, parentPrecLevel: number): string {
-  if (precLevel(regex.type) < parentPrecLevel)
-    return '(' + toStringRec(regex) + ')'
+
+function astToString(ast: RegExpAST): string {
+  switch (ast.type) {
+    case 'epsilon':
+      return ''
+    case 'literal':
+      return CharSet.toString(ast.charset)
+    case 'concat':
+      return maybeWithParens(ast.left, ast) + maybeWithParens(ast.right, ast)
+    case 'union': 
+      return maybeWithParens(ast.left, ast) + '|' + maybeWithParens(ast.right, ast)   
+    case 'star':
+      return maybeWithParens(ast.inner, ast) + '*'
+    case 'plus':
+      return maybeWithParens(ast.inner, ast) + '+'
+    case 'optional':
+      return maybeWithParens(ast.inner, ast) + '?'
+    case 'boundedQuantifier':
+      return maybeWithParens(ast.inner, ast) + '{' + ast.count + '}'
+    case 'complement':
+      return '¬' + maybeWithParens(ast.inner, ast)
+    case 'intersection':
+      return maybeWithParens(ast.left, ast) + '∩' + maybeWithParens(ast.right, ast)
+  }
+  checkedAllCases(ast)
+}
+
+function maybeWithParens(ast: RegExpAST, parent: RegExpAST): string {
+  if (ast.type === parent.type || precLevel(ast.type) > precLevel(parent.type)) 
+    return astToString(ast)
   else
-    return toStringRec(regex)
+    return '(' + astToString(ast) + ')'
 }
 
 /**

@@ -1,5 +1,4 @@
 
-// TODO: make this an Iterable instance:
 export type Stream<T> = Iterable<T> & (
   | { type: 'nil' }
   | { type: 'cons', head: T, tail: () => Stream<T> }

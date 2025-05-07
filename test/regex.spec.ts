@@ -39,9 +39,7 @@ describe('enumerate', () => {
           // and also blow up memory use:
           const shortWords = Stream.takeWhile(word => word.length <= 30, allWords)
 
-          const selectedWords = [...Stream.take(100, shortWords)]
-
-          for (const word of selectedWords) {
+          for (const word of Stream.take(100, shortWords)) {
             expect(word).toMatch(regexp)
           }
         }
@@ -63,12 +61,11 @@ describe('enumerate', () => {
           const inputRegexComplement = DFA.toStdRegex(RE.complement(inputRegex))
           const allComplementWords = RE.enumerate(inputRegexComplement)
 
-          // long words are likely result of repitiion and are less interesting to test
+          // long words are likely result of repetition and are less interesting to test
           // and also blow up memory:
           const shortWords = Stream.takeWhile(word => word.length <= 30, allComplementWords)
-          const selectedWords = [...Stream.take(100, shortWords)]
 
-          for (const complementWord of selectedWords) {
+          for (const complementWord of Stream.take(100, shortWords)) {
             expect(complementWord).not.toMatch(regexp)
           }
         }
@@ -148,29 +145,30 @@ describe('rewrite rules', () => {
 
   it.each([
     // concat rules:
-    [/^a*a$/, /^aa*$/],
-    [/^a*(ab)$/, /^aa*b$/],
-    [/^a*a*$/, /^a*$/],
-    [/^a*(a*b)$/, /^a*b$/],
-    [/^a?a$/, /^aa?$/],
-    [/^a?(ab)$/, /^aa?b$/],
-    [/^a{3}a?a{2}$/, /^a{5}a?$/],
-    [/^a?a?$/, /^(a?){2}$/],
+    [/^a*a$/, /^(aa*)$/],
+    [/^a*(ab)$/, /^(aa*b)$/],
+    [/^a*a*$/, /^(a*)$/],
+    [/^a*(a*b)$/, /^(a*b)$/],
+    [/^a?a$/, /^(aa?)$/],
+    [/^a?(ab)$/, /^(aa?b)$/],
+    [/^a{3}a?a{2}$/, /^(a{5}a?)$/],
+    [/^a?a?$/, /^((a?){2})$/],
     // union rules:
-    [/^(a|a)$/, /^a$/],
-    [/^a|(a|b)$/, /^[ab]$/],
-    [/^a|(b|a)$/, /^[ab]$/],
-    [/^(b|a)|a$/, /^[ab]$/],
-    [/^(a|b)|a$/, /^[ab]$/],
+    [/^(a|a)$/, /^(a)$/],
+    [/^a|(a|b)$/, /^([ab])$/],
+    [/^a|(b|a)$/, /^([ab])$/],
+    [/^(b|a)|a$/, /^([ab])$/],
+    [/^(a|b)|a$/, /^([ab])$/],
+    [/^(a?)?$/, /^(a?)$/],
     // union-of-concat rules:
-    [/^ab|ac$/, /^a[bc]$/],
-    [/^ba|ca$/, /^[bc]a$/],
-    [/^ab|a$/, /^ab?$/],
-    [/^ba|a$/, /^b?a$/],
-    [/^a|ab$/, /^ab?$/],
-    [/^a|ba$/, /^b?a$/],
+    [/^ab|ac$/, /^(a[bc])$/],
+    [/^ba|ca$/, /^([bc]a)$/],
+    [/^ab|a$/, /^(ab?)$/],
+    [/^ba|a$/, /^(b?a)$/],
+    [/^a|ab$/, /^(ab?)$/],
+    [/^a|ba$/, /^(b?a)$/],
     // star rules:
-    [/^(a*)*$/, /^a*$/],
+    [/^(a*)*$/, /^(a*)$/],
   ])('rewrites %s to %s', (source, target) => {
     expect(RE.toRegExp(parseRegExp(source))).toEqual(target)
   })
