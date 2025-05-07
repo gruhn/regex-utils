@@ -132,19 +132,20 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     return union(left, right.left)
 
   else if (left.type === 'concat') {
-    if (right.type === 'concat')
+    if (right.type === 'concat') {
       if (equal(left.left, right.left))
         // (r · s) + (r · t) = r · (s + t)
         return concat(left.left, union(left.right, right.right))
       else if (equal(left.right, right.right))
         // (s · r) + (t · r) = (s + t) · r
         return concat(union(left.left, right.left), left.right)
-    else if (equal(right, left.left))
+    } else if (equal(left.left, right)) {
       // (r · s) + r = r · (s + ε)
       return concat(left.left, optional(left.right))
-    else if (equal(right, left.right))
+    } else if (equal(right, left.right)) {
       // (s · r) + r = (s + ε) · r
       return concat(optional(left.left), left.right)
+    }
   } else if (right.type === 'concat') {
     if (equal(right.left, left))
       // r + (r · s) = r · (ε + s)

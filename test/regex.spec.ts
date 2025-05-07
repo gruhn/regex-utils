@@ -138,6 +138,41 @@ describe('size', () => {
 
 })
 
+describe('rewrite rules', () => {
+
+  // TODO:
+  // - test intersection/complement rules.
+  // - test rules involving epsilon / empty set
+  //   (can't be tested right now because parser does not
+  //   support empty set `$.^` and epsilon `()`.
+
+  it.only.each([
+    // concat rules:
+    [/^a*a$/, /^a(a)*$/],
+    [/^a*(ab)$/, /^a(a)*b$/],
+    [/^a*a*$/, /^(a)*$/],
+    [/^a*(a*b)$/, /^(a)*b$/],
+    // union rules:
+    [/^(a|a)$/, /^a$/],
+    [/^a|(a|b)$/, /^[ab]$/],
+    [/^a|(b|a)$/, /^[ab]$/],
+    [/^(b|a)|a$/, /^[ab]$/],
+    [/^(a|b)|a$/, /^[ab]$/],
+    // union+concat rules:
+    [/^ab|ac$/, /^a[bc]$/],
+    [/^ba|ca$/, /^[bc]a$/],
+    [/^ab|a$/, /^a(b)?$/],
+    [/^ba|a$/, /^(b)?a$/],
+    [/^a|ab$/, /^a(b)?$/],
+    [/^a|ba$/, /^(b)?a$/],
+    // star rules:
+    [/^(a*)*$/, /^(a)*$/],
+  ])('rewrites %s to %s', (source, target) => {
+    expect(RE.toRegExp(parseRegExp(source))).toEqual(target)
+  })
+  
+})
+
 // describe('equivalent', () => {
 //   it('every regex is equivalent to itself', () => {
 //     fc.assert(
