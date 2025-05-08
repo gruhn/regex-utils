@@ -1,7 +1,6 @@
 import fs from 'fs'
 import * as RE from '../dist/regex.js'
 import * as DFA from '../dist/dfa.js'
-// import { parseRegExp } from '../dist/dfa.js'
 // import { intersection, size } from '../dist/index.js'
 
 const input = fs.readFileSync('./benchmark/aoc2023-day12_input.txt', 'utf-8')
@@ -68,7 +67,8 @@ function part1() {
 
     const count = RE.size(DFA.toStdRegex(
       RE.intersection(leftRegex, rightRegex)
-    ), new Map()) 
+    ), new Map())
+    // const count = size(intersection(leftRegex, rightRegex))
 
     console.log(i, ':', count)
     totalCount += count
@@ -89,6 +89,7 @@ function part2() {
     const count = RE.size(DFA.toStdRegex(
       RE.intersection(leftRegex, rightRegex)
     ), new Map()) 
+    // const count = size(intersection(leftRegex, rightRegex))
 
     console.log(i, ':', count)
     totalCount += count
@@ -98,5 +99,5 @@ function part2() {
   console.log('Part 2:', totalCount, `(time: ${Math.ceil(time)}ms)`)
 }
 
-part1()
-part2()
+part1() // best time:  2_039ms
+part2() // best time: 54_954ms

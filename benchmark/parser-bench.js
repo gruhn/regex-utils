@@ -19,13 +19,16 @@ export function* readDataset() {
 let hasError = 0
 let noError = 0
 
-for (const { regex } of readDataset()) {
+for (const { regex, flags } of readDataset()) {
   try {
+    const time = performance.now()
     parseRegexString(regex)
+    console.log(`time: ${Math.round(performance.now() - time)}ms`)
     noError++
   } catch (e) {
+    console.error(new RegExp(regex, flags))
     hasError++
   }
 }
 
-console.debug(hasError, '/', noError)
+console.debug(hasError, '/', hasError + noError)
