@@ -20,6 +20,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
   const transitions: Map<number, Map<number, CharSet.CharSet>> = new Map()
 
   const worklist = [regex]
+  const derivClassCache: Table.Table<CharSet.CharSet[]> = new Map()
 
   while (true) {
     const sourceState = worklist.shift()
@@ -27,19 +28,18 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
       break
     }
 
-    for (const charSet of RE.derivativeClasses(sourceState)) {
+    for (const charSet of RE.derivativeClasses(sourceState, derivClassCache)) {
       const char = pickChar(charSet)
       const targetState = RE.codePointDerivative(char, sourceState)
       const knownState = allStates.get(targetState.hash)
 
       if (knownState === undefined) {
         allStates.set(targetState.hash, targetState)
-        Table.setWith(
+        Table.set(
           sourceState.hash,
           targetState.hash,
           charSet,
           transitions,
-          () => { throw new Error('transition already exists') }
         )
         worklist.push(targetState)
       } else {
@@ -103,22 +103,20 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
   const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
 
   const newStartState = -1
-  Table.setWith(
+  Table.set(
     newStartState,
     dfa.startState,
     RE.epsilon,
     transitionsWithRegexLabels,
-    () => { throw new Error('transition already exists') }
   )
 
   const newFinalState = -2
   for (const oldFinalState of dfa.finalStates) {
-    Table.setWith(
+    Table.set(
       oldFinalState,
       newFinalState,
       RE.epsilon,
       transitionsWithRegexLabels,
-      () => { throw new Error('transition already exists') }
     )
   }
 
@@ -135,7 +133,6 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 
         const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
         const combinedLabel = RE.union(transitiveLabel, existingLabel)
-        const str = RE.toString(combinedLabel)
 
         Table.setWith(
           pred,

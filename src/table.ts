@@ -6,6 +6,21 @@ export function get<T>(rowIndex: number, colIndex: number, table: Table<T>): T |
   return table.get(rowIndex)?.get(colIndex)
 }
 
+export function set<T>(
+  rowIndex: number,
+  colIndex: number,
+  newValue: T,
+  table: Table<T>,
+): void {
+  return setWith(
+    rowIndex,
+    colIndex,
+    newValue,
+    table,
+    () => { throw new Error('Table.set cell non-empty') } 
+  )
+}
+
 export function setWith<T>(
   rowIndex: number,
   colIndex: number,

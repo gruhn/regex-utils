@@ -15,6 +15,7 @@ npm install @gruhn/regex-utils
   - The library implements a custom parser for regular expressions,
     so only a subset of the syntax is supported:
     - quantifiers: `*`, `+`, `?`, `{3,5}`, ...
+    - alternation: '|'
     - character classes: `.`, `\w`, `[a-z]`, ...
     - optional start/end markers: `^` / `$` but only at the start/end
       (technically they are allowed anywhere in the expression)

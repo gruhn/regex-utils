@@ -1,6 +1,7 @@
 import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith, hashAssocNotComm } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
+import * as Table from './table';
 
 /**
  * TODO
@@ -398,7 +399,18 @@ export function equal(regexA: ExtRegex, regexB: ExtRegex): boolean {
   return regexA.hash === regexB.hash
 }
 
-function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet.CharSet[]): CharSet.CharSet[] {
+function allNonEmptyIntersections(
+  classesA: CharSet.CharSet[],
+  classesB: CharSet.CharSet[],
+  cache: Table.Table<CharSet.CharSet[]>
+): CharSet.CharSet[] {
+  const hashA = classesA.map(classA => classA.hash).reduce(hashAssoc)
+  const hashB = classesB.map(classB => classB.hash).reduce(hashAssoc)
+  const resultCached = Table.get(hashA, hashB, cache)
+  if (resultCached !== undefined) {
+    return resultCached
+  }
+
   const result: CharSet.CharSet[] = []
   for (const classA of classesA) {
     for (const classB of classesB) {
@@ -409,10 +421,14 @@ function allNonEmptyIntersections(classesA: CharSet.CharSet[], classesB: CharSet
     }
   }
   const finalResult = uniqWith(result, CharSet.compare) 
+  Table.set(hashA, hashB, finalResult, cache)
   return finalResult
 }
 
-export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
+export function derivativeClasses(
+  regex: ExtRegex,
+  cache: Table.Table<CharSet.CharSet[]>
+): CharSet.CharSet[] {
   switch (regex.type) {
     case "epsilon":
       return [CharSet.alphabet]
@@ -422,26 +438,29 @@ export function derivativeClasses(regex: ExtRegex): CharSet.CharSet[] {
     case "concat": {
       if (isNullable(regex.left))
         return allNonEmptyIntersections(
-          derivativeClasses(regex.left),
-          derivativeClasses(regex.right)
+          derivativeClasses(regex.left, cache),
+          derivativeClasses(regex.right, cache),
+          cache,
         )
       else 
-        return derivativeClasses(regex.left)     
+        return derivativeClasses(regex.left, cache)
     }
     case "union":
       return allNonEmptyIntersections(
-        derivativeClasses(regex.left),
-        derivativeClasses(regex.right)
+        derivativeClasses(regex.left, cache),
+        derivativeClasses(regex.right, cache),
+        cache,
       )
     case "intersection":
       return allNonEmptyIntersections(
-        derivativeClasses(regex.left),
-        derivativeClasses(regex.right)
+        derivativeClasses(regex.left, cache),
+        derivativeClasses(regex.right, cache),
+        cache
       )
     case "star":
-      return derivativeClasses(regex.inner)
+      return derivativeClasses(regex.inner, cache)
     case "complement":
-      return derivativeClasses(regex.inner)
+      return derivativeClasses(regex.inner, cache)
   }  
   checkedAllCases(regex)
 }
@@ -623,30 +642,51 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
   }
 }
 
-export function size(regex: StdRegex): bigint | undefined {
+export function size(
+  regex: StdRegex,
+  // For handwritten regex, memoizing the size of sub-expressions
+  // is probably irrelevant but output regex from `intersection`
+  // can often have a lot of duplicate sub-expressions. There
+  // memoization can speed up `size` a lot:
+  cache: Map<number, bigint | undefined> = new Map()
+): bigint | undefined {
+  const cached = cache.get(regex.hash)
+  if (cached !== undefined) {
+    return cached
+  } else {
+    const result = sizeAux(regex, cache)
+    cache.set(regex.hash, result)
+    return result
+  }
+}
+
+function sizeAux(
+  regex: StdRegex,
+  cache: Map<number, bigint | undefined>
+): bigint | undefined {
   switch (regex.type) {
     case 'epsilon':
       return 1n
     case 'literal':
       return BigInt(CharSet.size(regex.charset))
     case 'concat': {
-      const leftSize = size(regex.left)
-      const rightSize = size(regex.right)
+      const leftSize = size(regex.left, cache)
+      const rightSize = size(regex.right, cache)
       if (leftSize !== undefined && rightSize !== undefined)
         return leftSize * rightSize
       else
         return undefined
     }
     case 'union': {
-      const leftSize = size(regex.left)
-      const rightSize = size(regex.right)
+      const leftSize = size(regex.left, cache)
+      const rightSize = size(regex.right, cache)
       if (leftSize !== undefined && rightSize !== undefined)
         return leftSize + rightSize
       else
         return undefined
     }
     case 'star': {
-      const innerSize = size(regex.inner)
+      const innerSize = size(regex.inner, cache)
       if (innerSize === 0n) 
         // `inner` is empty so `star(inner)` the only match is the empty string:
         return 1n

@@ -6,4 +6,6 @@ dist
 prof
 # project specific helix config
 .helix
+*.log
 benchmark/regex-dataset.json
+benchmark/aoc2023-day12_input.txt

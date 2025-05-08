@@ -14,7 +14,7 @@ function runFilter(count) {
 }
 
 
-for (const sampleCount of [10,50,100,500,1000,2000]) {
+for (const sampleCount of [10,50,100,500,1000,2000/* ,10_000,20_000,50_000,100_000 */]) {
   const filterStart = performance.now()
   runFilter(sampleCount)
   const filterTime = performance.now() - filterStart
