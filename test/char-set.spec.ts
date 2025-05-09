@@ -3,9 +3,12 @@ import * as CharSet from '../src/char-set'
 import fc from 'fast-check'
 import * as Range from '../src/code-point-range'
 
+
 const arbitraryRange: fc.Arbitrary<Range.CodePointRange> =
-  fc.tuple(fc.nat(100), fc.nat(100))
-    .map(([start, end]) => ({ start, end }))
+  fc.tuple(
+    fc.integer({ min: 48, max: 122 }), // 0-9a-zA-Z
+    fc.integer({ min: 48, max: 122 }),
+  ).map(([start, end]) => ({ start, end }))
 
 test('insertRange respects invariants', () => {
   fc.assert(

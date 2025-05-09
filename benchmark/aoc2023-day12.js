@@ -99,5 +99,5 @@ function part2() {
   console.log('Part 2:', totalCount, `(time: ${Math.ceil(time)}ms)`)
 }
 
-part1() // best time:  2_039ms
-part2() // best time: 54_954ms
+part1() // best time:   992ms
+part2() // best time: 28258ms

@@ -1,4 +1,4 @@
-import { adjacentPairs, assert, checkedAllCases, hashAssoc, hashStr, zip } from './utils'
+import { adjacentPairs, assert, checkedAllCases, hashNums, hashStr, xor, zip } from './utils'
 import * as Range from './code-point-range'
 import * as Stream from './stream'
 
@@ -11,8 +11,6 @@ type CharSetWithoutHash =
   | { type: 'empty' }
   | { type: 'node', range: Range.CodePointRange, left: CharSet, right: CharSet }
 
-// TODO: make sure hash identifies all contained ranges and is not dependent on the 
-// structure of the tree! Check if hash function is associative.
 export type CharSet = Readonly<WithHash<CharSetWithoutHash>>
 
 export const empty: CharSet = {
@@ -30,21 +28,23 @@ function node({ left, right, range }: {
     range,
     left, 
     right,
-    // If we include the `type` in the hash then the hash
-    // on the structure of tree and how it's balanced. 
-    // We only want the hash to identify the ranges stored inside, 
+    // Could use `hashNums` to combine hashes but it's not associative,
+    // which means these two trees would receive different hashes although
+    // they contain the same ranges:
+    //
+    //         xyz        abc
+    //         /            \
+    //       abc            xyz
+    // 
+    // We want he hash to identify the ranges contained within,
+    // independent of the structure of the tree and how it's balanced,
     // so it's cheap to detect when two `CharSet`s are equal.
     hash: [
       left.hash,
-      // Can't use `start` / `end` directly. Otherwise, different
-      // ranges with same sum easily map to same hash, e.g.
-      // 
-      //     hashAssoc(10, 20) === hashAssoc(5, 25)
-      // 
-      hashStr('start' + range.start),
-      hashStr('end'+ range.end),
-      right.hash
-    ].reduce(hashAssoc)
+      hashStr("s" + range.start),
+      hashStr("e" + range.end),
+      right.hash,
+    ].reduce(xor)
   }
 }
 

@@ -71,12 +71,10 @@ test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
       (regexA, regexB, regexC) => {
         const unionAB = RE.union(regexA, regexB)
         const unionBC = RE.union(regexB, regexC)
-
         const interRegex = toStdRegex(RE.intersection(unionAB, unionBC))
         expect(isSubsetOf(regexB, interRegex)).toBe(true)
       }
     ),
-    // { seed: 1125268176, path: "0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:1:1:1:1:1:1:1:1:1:0:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2:2", endOnFailure: true }
   )   
 })
 

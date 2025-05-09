@@ -1,5 +1,5 @@
 import { isSingleton } from './char-set'
-import { hashAssoc, assert, checkedAllCases } from './utils'
+import { assert, checkedAllCases } from './utils'
 
 export type CodePointRange = { start: number, end: number }
 

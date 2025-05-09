@@ -1,4 +1,4 @@
-import { hashAssoc, hashStr, checkedAllCases, assert, uniqWith, hashAssocNotComm } from './utils'
+import { hashStr, checkedAllCases, assert, uniqWith, adjacentPairs, zip, hashNums } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
 import * as Table from './table';
@@ -38,15 +38,16 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
     return { ...regex, hash: hashStr(regex.type) }
   else if (regex.type === 'literal')
-    return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.charset.hash) }
+    return { ...regex, hash: hashNums([hashStr(regex.type), regex.charset.hash]) }
   else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
-    return { ...regex, hash: hashAssoc(
+    return { ...regex, hash: hashNums([
       hashStr(regex.type),
       // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
-      hashAssocNotComm(regex.left.hash, regex.right.hash))
-    }
+      regex.left.hash,
+      regex.right.hash,
+    ])}
   else if (regex.type === 'star' || regex.type === 'complement')
-    return { ...regex, hash: hashAssoc(hashStr(regex.type), regex.inner.hash) }
+    return { ...regex, hash: hashNums([hashStr(regex.type), regex.inner.hash]) }
   checkedAllCases(regex)  
 }
 
@@ -404,9 +405,13 @@ function allNonEmptyIntersections(
   classesB: CharSet.CharSet[],
   cache: Table.Table<CharSet.CharSet[]>
 ): CharSet.CharSet[] {
-  const hashA = classesA.map(classA => classA.hash).reduce(hashAssoc)
-  const hashB = classesB.map(classB => classB.hash).reduce(hashAssoc)
-  const resultCached = Table.get(hashA, hashB, cache)
+  const hashA = hashNums(classesA.map(classA => classA.hash))
+  const hashB = hashNums(classesB.map(classB => classB.hash))
+  // Function is symmetric so no need to memoize both hash pairs (1,2) and (2,1):
+  const hashMin = hashA <= hashB ? hashA : hashB
+  const hashMax = hashA <= hashB ? hashB : hashA
+
+  const resultCached = Table.get(hashMin, hashMax, cache)
   if (resultCached !== undefined) {
     return resultCached
   }
@@ -420,8 +425,9 @@ function allNonEmptyIntersections(
       }
     }
   }
+
   const finalResult = uniqWith(result, CharSet.compare) 
-  Table.set(hashA, hashB, finalResult, cache)
+  Table.set(hashMin, hashMax, finalResult, cache)   
   return finalResult
 }
 
@@ -435,6 +441,7 @@ export function derivativeClasses(
     case "literal": 
       return [regex.charset, CharSet.complement(regex.charset)]
         .filter(charset => !CharSet.isEmpty(charset))   
+        .toSorted(CharSet.compare)
     case "concat": {
       if (isNullable(regex.left))
         return allNonEmptyIntersections(
