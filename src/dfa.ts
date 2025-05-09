@@ -17,7 +17,7 @@ function pickChar(set: CharSet.CharSet): number {
 
 function regexToDFA(regex: RE.ExtRegex): DFA {
   const allStates = new Map([[regex.hash, regex]])
-  const transitions: Map<number, Map<number, CharSet.CharSet>> = new Map()
+  const transitions: Table.Table<CharSet.CharSet> = new Map()
 
   const worklist = [regex]
   const derivClassCache: Table.Table<CharSet.CharSet[]> = new Map()

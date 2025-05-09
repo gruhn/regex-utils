@@ -29,6 +29,8 @@ describe('parseRegexString', () => {
     [/^\W$/, RE.literal(CharSet.nonWordChars)],
     [/^\n$/, RE.literal(CharSet.singleton('\n'))],
     [/^\.$/, RE.literal(CharSet.singleton('.'))],
+    [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
+    [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
   ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)
   })

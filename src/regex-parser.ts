@@ -85,8 +85,15 @@ const charSet = P.choice([
     // QUESTION: can brackets be nested?
     P.string('['),
     P.string(']'),
-    P.many(P.choice([escapeSequence, codePointRange])).map(
-      sets => sets.reduce(CharSet.union, CharSet.empty)
+    P.optional(P.string('^')).andThen(negated =>
+      P.many(P.choice([escapeSequence, codePointRange])).map(
+        sets => {
+          if (negated === undefined)
+            return sets.reduce(CharSet.union, CharSet.empty)
+          else
+            return sets.reduce(CharSet.difference, CharSet.alphabet)
+        }
+      )
     )
   ),
   singleChar.map(CharSet.singleton),
