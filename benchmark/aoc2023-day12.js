@@ -6,7 +6,9 @@ const input = fs.readFileSync('./benchmark/aoc2023-day12_input.txt', 'utf-8')
   .split('\n')
   .map(line => line.split(' '))
 
-// e.g. "???.###" --> /^(.|#)(.|#)(.|#).###$/
+/**
+ * Maps pattern like "#?...##?#" to regex like `#(.|#)...##(.|#)#`
+ */
 function leftToRegex(pattern) {
   const inner = [...pattern].map(char => {
     switch (char) {
@@ -28,16 +30,21 @@ function interleave(array, sep) {
   }
 }
 
-// e.g. "1,1,3" --> /^a*b{1}a+b{1}a+b{3}a*$/
+/**
+ * Maps pattern like "2,4,3" to regex like `.*##.+####.+###.*`
+ */
 function rightToRegex(pattern) { 
+  const regexStartEnd = RE.repeat(RE.singleChar('.')) // .*
+  const regexBetween = RE.repeat(RE.singleChar('.'), { min: 1 }) // .+
+
   const inner = pattern.split(',')
     .map(digit => parseInt(digit))
     .map(count => RE.repeat(RE.singleChar('#'), count))
 
   return RE.seq([
-    RE.repeat(RE.singleChar('.')),
-    ...interleave(inner, RE.repeat(RE.singleChar('.'), { min: 1 })),
-    RE.repeat(RE.singleChar('.')),
+    regexStartEnd,
+    RE.seq(interleave(inner, regexBetween)),
+    regexStartEnd,
   ])
 }
 
@@ -49,9 +56,10 @@ function part1() {
     const leftRegex = leftToRegex(left)
     const rightRegex = rightToRegex(right)
 
-    const count = RE.size(RE.toStdRegex(
-      RE.and([leftRegex, rightRegex])
-    ))
+    // Compute intersection of the two regex: 
+    const intersection = RE.toStdRegex(RE.and([leftRegex, rightRegex]))
+    // And count the number of matching strings using `size`:
+    const count = RE.size(intersection)
 
     console.log(i, ':', count)
     totalCount += count
@@ -69,9 +77,10 @@ function part2() {
     const leftRegex = leftToRegex(Array(5).fill(left).join('?'))
     const rightRegex = rightToRegex(Array(5).fill(right).join(','))
 
-    const count = RE.size(RE.toStdRegex(
-      RE.and([leftRegex, rightRegex])
-    ))
+    // Compute intersection of the two regex: 
+    const intersection = RE.toStdRegex(RE.and([leftRegex, rightRegex]))
+    // And count the number of matching strings using `size`:
+    const count = RE.size(intersection)
 
     console.log(i, ':', count)
     totalCount += count
