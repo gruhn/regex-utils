@@ -1,6 +1,6 @@
 # Regex Utils
 
-Zero-dependency TypeScript library for regex utilities that go beyond string matching.
+Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
 ## Installation
@@ -15,7 +15,7 @@ npm install @gruhn/regex-utils
   - The library implements a custom parser for regular expressions,
     so only a subset of the syntax is supported:
     - quantifiers: `*`, `+`, `?`, `{3,5}`, ...
-    - alternation: '|'
+    - alternation: `|`
     - character classes: `.`, `\w`, `[a-z]`, ...
     - optional start/end markers: `^` / `$` but only at the start/end
       (technically they are allowed anywhere in the expression)
@@ -69,6 +69,8 @@ For example, when a third-party interface expect a single `RegExp` as input like
 * fast-check - for random string generation during fuzzing / property based testing
 
 ### `complement(re: RegExp): RegExp`
+
+Constructs a regular expressions that describes the opposite of the input `RegExp`.
 
 TODO: examples.
 
