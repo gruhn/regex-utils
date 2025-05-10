@@ -1,3 +1,10 @@
+/**
+ * The high-level API operates directly on native JavaScript `RegExp` instances.
+ * Use this if you want convenience. Use the low-level API if you want speed.
+ * 
+ * @module High-level API
+ */
+
 import * as RE from './low-level-api'
 
 /**

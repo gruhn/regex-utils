@@ -24,8 +24,8 @@ npm install @gruhn/regex-utils
 
 There is a high-level API and a low-level API:
 
- - [high-level API documentation](https://gruhn.github.io/regex-utils/modules/high-level-api.html)
- - [low-level API documentation](https://gruhn.github.io/regex-utils/modules/low-level-api.html)
+ - [high-level API documentation](https://gruhn.github.io/regex-utils/modules/High-level_API.html)
+ - [low-level API documentation](https://gruhn.github.io/regex-utils/modules/Low-Level_API.html)
 
 The high-level API operates directly on native JavaScript `RegExp` instances,
 which is more convenient but also requires parsing the regular expression.

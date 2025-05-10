@@ -1,5 +1,9 @@
 {
   "name": "@gruhn/regex-utils",
+  "description": "TypeScript library for regex intersection, complement and other utilities that go beyond string matching.",
+  "author": "Niklas Gruhn",
+  "license": "MIT",
+  "repository": "github:gruhn/regex-utils",
   "version": "0.0.0-development",
   "type": "module",
   "scripts": {
@@ -8,24 +12,20 @@
     "build": "tsc --project tsconfig.build.json && tsc-alias",
     "build:docs": "typedoc --tsconfig tsconfig.build.json"
   },
-  "main": "./dist/high-level-api.js",
+  "main": "./dist/index.js",
   "exports": {
     ".": {
-      "import": "./dist/high-level-api.js",
-      "types": "./dist/high-level-api.d.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
     "./low-level-api": {
       "import": "./dist/low-level-api.js",
       "types": "./dist/low-level-api.d.ts"
     }
   },
-  "author": "Niklas Gruhn",
-  "license": "MIT",
-  "repository": "github:gruhn/regex-utils",
   "files": [
     "dist"
   ],
-  "description": "TypeScript library for regex intersection, complement and other utilities that go beyond string matching.",
   "devDependencies": {
     "0x": "^5.8.0",
     "fast-check": "^3.23.2",
