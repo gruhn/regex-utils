@@ -33,7 +33,7 @@ describe('enumerate', () => {
         Arb.stdRegex(),
         inputRegex => {
           const regexp = RE.toRegExp(inputRegex)
-          const allWords = RE.enumerate(inputRegex)
+          const allWords = RE.enumerateAux(inputRegex)
 
           // long words are likely result of repitiion and are less interesting to test
           // and also blow up memory use:
@@ -47,6 +47,24 @@ describe('enumerate', () => {
     )
   })
 
+  // it.only('debug', () => {
+  //   const regexp = /^((a(fc)?([cef]|f*)|a*|([ce]b*e*(eb)*)*)((cd)*b*(ac*|d))*c)$/
+  //   const inputRegex = parseRegExp(regexp)
+    
+  //   // get words NOT in the output by enumerating words of the complement:
+  //   const inputRegexComplement = DFA.toStdRegex(RE.complement(inputRegex))
+  //   console.debug(RE.toRegExp(inputRegexComplement))
+  //   const allComplementWords = RE.enumerate(inputRegexComplement)
+
+  //   // long words are likely result of repetition and are less interesting to test
+  //   // and also blow up memory:
+  //   const shortWords = Stream.takeWhile(word => word.length <= 30, allComplementWords)
+
+  //   for (const complementWord of Stream.take(100, shortWords)) {
+  //     expect(complementWord).not.toMatch(regexp)
+  //   }
+  // })
+
   // completeness
   it('strings NOT in the output, do NOT match the input regex', () => {
     fc.assert(
@@ -59,7 +77,7 @@ describe('enumerate', () => {
 
           // get words NOT in the output by enumerating words of the complement:
           const inputRegexComplement = DFA.toStdRegex(RE.complement(inputRegex))
-          const allComplementWords = RE.enumerate(inputRegexComplement)
+          const allComplementWords = RE.enumerateAux(inputRegexComplement)
 
           // long words are likely result of repetition and are less interesting to test
           // and also blow up memory:
@@ -70,6 +88,7 @@ describe('enumerate', () => {
           }
         }
       ),
+      { endOnFailure: true }
     )
   })
 
@@ -114,7 +133,7 @@ describe('size', () => {
   })
 
   it('returns 26**60 for [a-z]{60}', () => {
-    const regex = RE.replicate(60, 60, RE.literal(CharSet.charRange('a', 'z')))
+    const regex = RE.repeat(RE.literal(CharSet.charRange('a', 'z')), 60)
     expect(RE.size(regex)).toBe(26n**60n)
   })
 
@@ -126,7 +145,7 @@ describe('size', () => {
           const predicatedSize = RE.size(stdRegex)
           fc.pre(predicatedSize !== undefined && predicatedSize <= 100n)
 
-          const allWords = [...RE.enumerate(stdRegex)]
+          const allWords = [...RE.enumerateAux(stdRegex)]
           expect(predicatedSize).toBe(BigInt(allWords.length))
         }       
       )

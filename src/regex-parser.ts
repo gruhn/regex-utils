@@ -108,25 +108,25 @@ const group = P.between(
 const boundedQuantifier: P.Parser<(inner: RE.StdRegex) => RE.StdRegex> = P.between(
   P.string('{'),
   P.string('}'),
-  P.optional(P.decimal).andThen(lowerBound => {
-    if (lowerBound === undefined)
+  P.optional(P.decimal).andThen(min => {
+    if (min === undefined)
       // e.g. a{,5}
       return P.string(',')
         .andThen(_ => P.decimal)
-        .map(upperBoundOnly => regex => RE.replicate(0, upperBoundOnly, regex))
+        .map(max => regex => RE.repeat(regex, { max }))
     else
       return P.optional(P.string(',')).andThen(comma => {
         if (comma === undefined)
           // e.g. a{3}
-          return P.pure(regex => RE.replicate(lowerBound, lowerBound, regex))
+          return P.pure(regex => RE.repeat(regex, min))
         else
-          return P.optional(P.decimal).map(upperBound => regex => {
-            if (upperBound === undefined)
+          return P.optional(P.decimal).map(max => regex => {
+            if (max === undefined)
               // e.g. a{3,}
-              return RE.replicate(lowerBound, Infinity, regex)
+              return RE.repeat(regex, { min })
             else
               // e.g. a{3,5}
-              return RE.replicate(lowerBound, upperBound, regex)
+              return RE.repeat(regex, { min, max })
           })
       })
   })
@@ -161,7 +161,7 @@ const regexWithBounds = P.sequence([
   startMarker,
   regex(),
   endMarker,
-]).map<RE.StdRegex>(RE.concatAll)
+]).map<RE.StdRegex>(RE.seq)
 
 export function parseRegexString(
   regexStr: string,
@@ -175,6 +175,11 @@ export function parseRegexString(
   }
 }
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function parseRegExp(regexp: RegExp): RE.StdRegex {
   for (const flag of regExpFlags) {
     assert(!regexp[flag], `[regex-utils] RegExp flags not supported`)

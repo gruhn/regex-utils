@@ -1,4 +1,4 @@
-import { describe, expect, it, bench } from "vitest"
+import { describe, expect, it } from "vitest"
 import { parseRegExp, parseRegexString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
 import * as RE from "../src/regex"
@@ -21,10 +21,10 @@ describe('parseRegexString', () => {
     [/^aa|bb$/, RE.union(RE.string('aa'), RE.string('bb'))],
     [/^(a|b)*$/, RE.star(RE.union(RE.singleChar('a'), RE.singleChar('b')))],
     [/^ab*$/, RE.concat(RE.singleChar('a'), RE.star(RE.singleChar('b')))],
-    [/^a{3}$/, RE.replicate(3, 3, RE.singleChar('a'))],
-    [/^a{3,}$/, RE.replicate(3, Infinity, RE.singleChar('a'))],
-    [/^a{,5}$/, RE.replicate(0, 5, RE.singleChar('a'))],
-    [/^a{3,5}$/, RE.replicate(3, 5, RE.singleChar('a'))],
+    [/^a{3}$/, RE.repeat(RE.singleChar('a'), 3)],
+    [/^a{3,}$/, RE.repeat(RE.singleChar('a'), { min: 3 })],
+    [/^a{,5}$/, RE.repeat(RE.singleChar('a'), { max: 5 })],
+    [/^a{3,5}$/, RE.repeat(RE.singleChar('a'), { min: 3, max: 5 })],
     [/^\w$/, RE.literal(CharSet.wordChars)],
     [/^\W$/, RE.literal(CharSet.nonWordChars)],
     [/^\n$/, RE.literal(CharSet.singleton('\n'))],

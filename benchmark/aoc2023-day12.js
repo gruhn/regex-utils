@@ -1,34 +1,22 @@
 import fs from 'fs'
-import * as RE from '../dist/regex.js'
-import * as DFA from '../dist/dfa.js'
-// import { intersection, size } from '../dist/index.js'
+import * as RE from '../dist/low-level-api.js'
 
 const input = fs.readFileSync('./benchmark/aoc2023-day12_input.txt', 'utf-8')
   .trim()
   .split('\n')
   .map(line => line.split(' '))
 
-// e.g. "???.###" --> /^(a|b)(a|b)(a|b)abbb$/
+// e.g. "???.###" --> /^(.|#)(.|#)(.|#).###$/
 function leftToRegex(pattern) {
-  // const inner = [...pattern].map(char => {
-  //   switch (char) {
-  //     case '.': return 'a'
-  //     case '#': return 'b'
-  //     case '?': return '(a|b)'   
-  //   }
-  //   throw 'unknown symbol: ' + char
-  // })
-  // return new RegExp('^' + inner.join('') + '$')
-
   const inner = [...pattern].map(char => {
     switch (char) {
-      case '.': return RE.singleChar('a')
-      case '#': return RE.singleChar('b')
-      case '?': return RE.union(RE.singleChar('a'), RE.singleChar('b'))
+      case '.': return RE.singleChar('.')
+      case '#': return RE.singleChar('#')
+      case '?': return RE.or([RE.singleChar('.'), RE.singleChar('#')])
     }
     throw 'unknown symbol: ' + char
   })
-  return RE.concatAll(inner)
+  return RE.seq(inner)
 }
 
 function interleave(array, sep) {
@@ -40,20 +28,16 @@ function interleave(array, sep) {
   }
 }
 
-
 // e.g. "1,1,3" --> /^a*b{1}a+b{1}a+b{3}a*$/
-function rightToRegex(pattern) {
-  // const inner = pattern.split(',').map(count => `b{${count}}`)
-  // return new RegExp('^a*' + inner.join('a+') + 'a*$')
-  
+function rightToRegex(pattern) { 
   const inner = pattern.split(',')
     .map(digit => parseInt(digit))
-    .map(count => RE.replicate(count, count, RE.singleChar('b')))
+    .map(count => RE.repeat(RE.singleChar('#'), count))
 
-  return RE.concatAll([
-    RE.star(RE.singleChar('a')),
-    ...interleave(inner, RE.plus(RE.singleChar('a'))),
-    RE.star(RE.singleChar('a')),
+  return RE.seq([
+    RE.repeat(RE.singleChar('.')),
+    ...interleave(inner, RE.repeat(RE.singleChar('.'), { min: 1 })),
+    RE.repeat(RE.singleChar('.')),
   ])
 }
 
@@ -65,10 +49,9 @@ function part1() {
     const leftRegex = leftToRegex(left)
     const rightRegex = rightToRegex(right)
 
-    const count = RE.size(DFA.toStdRegex(
-      RE.intersection(leftRegex, rightRegex)
-    ), new Map())
-    // const count = size(intersection(leftRegex, rightRegex))
+    const count = RE.size(RE.toStdRegex(
+      RE.and([leftRegex, rightRegex])
+    ))
 
     console.log(i, ':', count)
     totalCount += count
@@ -86,10 +69,9 @@ function part2() {
     const leftRegex = leftToRegex(Array(5).fill(left).join('?'))
     const rightRegex = rightToRegex(Array(5).fill(right).join(','))
 
-    const count = RE.size(DFA.toStdRegex(
-      RE.intersection(leftRegex, rightRegex)
-    ), new Map()) 
-    // const count = size(intersection(leftRegex, rightRegex))
+    const count = RE.size(RE.toStdRegex(
+      RE.and([leftRegex, rightRegex])
+    ))
 
     console.log(i, ':', count)
     totalCount += count

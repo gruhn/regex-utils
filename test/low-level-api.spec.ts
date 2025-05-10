@@ -1,12 +1,9 @@
 import fc from "fast-check"
 import { describe, it, expect, test } from "vitest"
-import * as RE from "../src/regex"
+import { isEmpty } from '../src/regex'
+import * as RE from "../src/low-level-api"
 import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
-import * as CharSet from '../src/char-set'
-import { toRegExp } from "../src/regex"
-import { parseRegExp } from "../src/regex-parser"
-import { toStdRegex } from "../src/dfa"
 import { assert } from "../src/utils"
 
 /**
@@ -18,7 +15,7 @@ import { assert } from "../src/utils"
 function isSubsetOf(regex1: RE.StdRegex, regex2: RE.StdRegex, maxSamples = 30): true | string {
   const re2 = RE.toRegExp(regex2)
 
-  for (const match1 of Stream.take(maxSamples, RE.enumerateAux(regex1))) {
+  for (const match1 of RE.enumerate(regex1).take(maxSamples)) {
     if (!re2.test(match1)) {
       return match1
     }
@@ -35,7 +32,7 @@ describe('toStdRegex', () => {
         // FIXME: `star` often leads to exponential blow up.
         Arb.stdRegexNoStar(),
         inputRegex => {
-          const outputRegex = toStdRegex(inputRegex)
+          const outputRegex = RE.toStdRegex(inputRegex)
           expect(isSubsetOf(inputRegex, outputRegex)).toBe(true)
           expect(isSubsetOf(outputRegex, inputRegex)).toBe(true)
         }
@@ -50,13 +47,10 @@ test('A ∩ ¬A = ∅', () => {
     fc.property(
       Arb.stdRegexNoStar(),
       regexA => {
-        const outputRegex = toStdRegex(
-          RE.intersection(
-            regexA,
-            RE.complement(regexA)
-          )
+        const outputRegex = RE.toStdRegex(
+          RE.and([regexA, RE.not(regexA)])
         )
-        expect(RE.isEmpty(outputRegex)).toBe(true)
+        expect(isEmpty(outputRegex)).toBe(true)
       }
     ),
   )
@@ -69,9 +63,9 @@ test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
       Arb.stdRegexNoStar(),
       Arb.stdRegexNoStar(),
       (regexA, regexB, regexC) => {
-        const unionAB = RE.union(regexA, regexB)
-        const unionBC = RE.union(regexB, regexC)
-        const interRegex = toStdRegex(RE.intersection(unionAB, unionBC))
+        const unionAB = RE.or([regexA, regexB])
+        const unionBC = RE.or([regexB, regexC])
+        const interRegex = RE.toStdRegex(RE.and([unionAB, unionBC]))
         expect(isSubsetOf(regexB, interRegex)).toBe(true)
       }
     ),
@@ -85,10 +79,9 @@ test('intersection with regex /^.{N}$/ has only words of length N', () => {
       Arb.stdRegexNoStar(),
       (length, regexA) => {
         const regexB = RE.repeat(RE.anySingleChar, length)
-        const interAB = toStdRegex(RE.intersection(regexA, regexB))
+        const interAB = RE.toStdRegex(RE.and([regexA, regexB]))
 
-        const samples = Stream.take(100, RE.enumerateAux(interAB))
-        for (const word of samples) {
+        for (const word of RE.enumerate(interAB).take(100)) {
           expect(word).toHaveLength(length)
         }
       }

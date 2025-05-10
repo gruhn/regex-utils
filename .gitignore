@@ -9,3 +9,4 @@ prof
 *.log
 benchmark/regex-dataset.json
 benchmark/aoc2023-day12_input.txt
+docs

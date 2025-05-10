@@ -42,6 +42,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
           transitions,
         )
         worklist.push(targetState)
+        // console.debug('state count: ', allStates.size)
       } else {
         Table.setWith(
           sourceState.hash,
@@ -125,7 +126,7 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 
     for (const [pred, predLabel] of result.predecessors) {
       for (const [succ, succLabel] of result.successors) {
-        const transitiveLabel = RE.concatAll([
+        const transitiveLabel = RE.seq([
           predLabel,
           RE.star(result.selfLoop),
           succLabel,
@@ -164,6 +165,7 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 // TODO: can this round-trip through DFA construction be avoided?
 export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
   const dfa = regexToDFA(regex)
+  // console.debug('dfa done')
   return dfaToRegex(dfa)
 }
 

@@ -1,4 +1,4 @@
-import { hashStr, checkedAllCases, assert, uniqWith, adjacentPairs, zip, hashNums } from './utils'
+import { hashStr, checkedAllCases, assert, uniqWith, hashNums } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
 import * as Table from './table';
@@ -28,8 +28,14 @@ type ExtRegexWithoutHash = (
   | { type: "complement", inner: ExtRegex }
 )
 
+/**
+ * TODO: docs
+ */
 export type StdRegex = StdRegexWithoutHash & { hash: number }
 
+/**
+ * TODO: docs
+ */
 export type ExtRegex = ExtRegexWithoutHash & { hash: number }
 
 export function withHash(regex: StdRegexWithoutHash): StdRegex
@@ -229,36 +235,81 @@ export function complement(inner: ExtRegex): ExtRegex {
 // some additional composite constructors ////
 //////////////////////////////////////////////
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export const anySingleChar: StdRegex = literal(CharSet.alphabet)
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function singleChar(char: string) {
   return literal(CharSet.singleton(char))
 }
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function string(str: string) {
-  return concatAll([...str].map(singleChar))
+  return seq([...str].map(singleChar))
 }
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function optional(regex: StdRegex): StdRegex
 export function optional(regex: ExtRegex): ExtRegex
 export function optional(regex: ExtRegex): ExtRegex {
   return union(epsilon, regex)
 }
 
+/**
+ * @internal
+ */
 export function plus(regex: StdRegex): StdRegex
 export function plus(regex: ExtRegex): ExtRegex 
 export function plus(regex: ExtRegex): ExtRegex {
   return concat(regex, star(regex))
 }
 
-export function concatAll(res: StdRegex[]): StdRegex
-export function concatAll(res: ExtRegex[]): ExtRegex
-export function concatAll(res: ExtRegex[]): ExtRegex {
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
+export function seq(res: StdRegex[]): StdRegex
+export function seq(res: ExtRegex[]): ExtRegex
+export function seq(res: ExtRegex[]): ExtRegex {
   // Reducing right-to-left should trigger fewer normalization steps in `concat`:
   return res.reduceRight((right, left) => concat(left, right), epsilon)
 }
 
-export function intersectAll(res: ExtRegex[]): ExtRegex {
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
+export function or(res: StdRegex[]): StdRegex
+export function or(res: ExtRegex[]): ExtRegex
+export function or(res: ExtRegex[]): ExtRegex {
+  // Reducing right-to-left should trigger fewer normalization steps in `concat`:
+  return res.reduceRight((right, left) => union(left, right), empty)
+}
+
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
+export function and(res: ExtRegex[]): ExtRegex {
   if (res.length === 0)
     // TODO: is that correct?
     return star(literal(CharSet.alphabet))
@@ -267,27 +318,52 @@ export function intersectAll(res: ExtRegex[]): ExtRegex {
 }
 
 /**
+ * TODO: docs
+ * 
+ * @public
+ */
+export type RepeatBounds = 
+  | number
+  | { min: number, max?: number }
+  | { min?: number, max: number }
+
+/**
  * Constructs regular expressions with bounded quantifiers.
  * For example:
  *
- *     replicate(3, 5, r)        ~  r{3,5}
- *     replicate(0, 5, r)        ~  r{,5}
- *     replicate(3, Infinity, r) ~  r[3,]
+ *     repeat(r)                        ~  r*
+ *     repeat(r, 4)                     ~  r{4}
+ *     repeat(r, { min: 3, max: 5 })    ~  r{3,5}
+ *     repeat(r, { max: 5 })            ~  r{,5}
+ *     repeat(r, { min: 3 })            ~  r{3,}
  * 
+ * @public
  */
-export function replicate(min: number, max: number, regex: StdRegex): StdRegex
-export function replicate(min: number, max: number, regex: ExtRegex): ExtRegex
-export function replicate(min: number, max: number, regex: ExtRegex): ExtRegex {
-  assert(0 <= min && min <= max)
+export function repeat(regex: StdRegex, bounds?: RepeatBounds): StdRegex
+export function repeat(regex: ExtRegex, bounds?: RepeatBounds): ExtRegex
+export function repeat(regex: ExtRegex, bounds?: RepeatBounds): ExtRegex {
+  if (bounds === undefined) {
+    return repeatAux(regex, 0, Infinity)
+  } else if (typeof bounds === 'number') {
+    return repeatAux(regex, bounds, bounds)
+  } else {
+    const { min = 0, max = Infinity } = bounds
+    assert(0 <= min && min <= max)
+    return repeatAux(regex, min, max)   
+  }
+}
 
-  const requiredPrefix = concatAll(Array(min).fill(regex))
+function repeatAux(regex: StdRegex, min: number, max: number): StdRegex
+function repeatAux(regex: ExtRegex, min: number, max: number): ExtRegex
+function repeatAux(regex: ExtRegex, min: number, max: number): ExtRegex {
+  const requiredPrefix = seq(Array(min).fill(regex))
 
   if (max === Infinity)
     return concat(requiredPrefix, star(regex))
   else 
     return concat(
       requiredPrefix,
-      concatAll(Array(max - min).fill(optional(regex)))
+      seq(Array(max - min).fill(optional(regex)))
     )
 }
 
@@ -344,6 +420,11 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRege
   checkedAllCases(regex)
 }
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function derivative(str: string, regex: StdRegex): StdRegex
 export function derivative(str: string, regex: ExtRegex): ExtRegex 
 export function derivative(str: string, regex: ExtRegex): ExtRegex {
@@ -477,6 +558,11 @@ export function derivativeClasses(
 ///// exclusive standard regex utils     /////
 //////////////////////////////////////////////
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function toRegExp(regex: StdRegex): RegExp {
   return new RegExp(toString(regex))
 }
@@ -620,7 +706,16 @@ function extractConcatChain(left: ExtRegex, right: ExtRegex): [number, ExtRegex 
   }
 }
 
-export function enumerate(regex: StdRegex): Stream.Stream<string> {
+/**
+ * TODO
+ * 
+ * @public
+ */
+export function* enumerate(re: StdRegex): Generator<string> {
+  yield* enumerateAux(re)
+}
+
+export function enumerateAux(regex: StdRegex): Stream.Stream<string> {
   switch (regex.type) {
     case 'epsilon':
       return Stream.singleton('')
@@ -629,45 +724,53 @@ export function enumerate(regex: StdRegex): Stream.Stream<string> {
     case 'concat':
       return Stream.diagonalize(
         (l,r) => l+r,
-        enumerate(regex.left),
-        enumerate(regex.right),
+        enumerateAux(regex.left),
+        enumerateAux(regex.right),
       )
     case 'union':
       return Stream.interleave(
-        enumerate(regex.left),
-        enumerate(regex.right),
+        enumerateAux(regex.left),
+        enumerateAux(regex.right),
       )
     case 'star':
       return Stream.cons(
         '',
         () => Stream.diagonalize(
           (l,r) => l+r,
-          enumerate(regex.inner),
-          enumerate(regex),
+          enumerateAux(regex.inner),
+          enumerateAux(regex),
         )
       )
   }
 }
 
-export function size(
+/**
+ * TODO
+ *
+ * @public
+ */
+export function size(regex: StdRegex): bigint | undefined {
+  return sizeMemoized(regex, new Map())
+}
+
+// For handwritten regex, memoizing the size of sub-expressions
+// is probably irrelevant but output regex from `intersection`
+// can often have a lot of duplicate sub-expressions. There
+// memoization can speed up `size` a lot:
+function sizeMemoized(
   regex: StdRegex,
-  // For handwritten regex, memoizing the size of sub-expressions
-  // is probably irrelevant but output regex from `intersection`
-  // can often have a lot of duplicate sub-expressions. There
-  // memoization can speed up `size` a lot:
-  cache: Map<number, bigint | undefined> = new Map()
+  cache: Map<number, bigint | undefined>
 ): bigint | undefined {
   const cached = cache.get(regex.hash)
   if (cached !== undefined) {
     return cached
   } else {
-    const result = sizeAux(regex, cache)
+    const result = sizeMemoizedAux(regex, cache)
     cache.set(regex.hash, result)
     return result
   }
 }
-
-function sizeAux(
+function sizeMemoizedAux(
   regex: StdRegex,
   cache: Map<number, bigint | undefined>
 ): bigint | undefined {
@@ -677,23 +780,23 @@ function sizeAux(
     case 'literal':
       return BigInt(CharSet.size(regex.charset))
     case 'concat': {
-      const leftSize = size(regex.left, cache)
-      const rightSize = size(regex.right, cache)
+      const leftSize = sizeMemoized(regex.left, cache)
+      const rightSize = sizeMemoized(regex.right, cache)
       if (leftSize !== undefined && rightSize !== undefined)
         return leftSize * rightSize
       else
         return undefined
     }
     case 'union': {
-      const leftSize = size(regex.left, cache)
-      const rightSize = size(regex.right, cache)
+      const leftSize = sizeMemoized(regex.left, cache)
+      const rightSize = sizeMemoized(regex.right, cache)
       if (leftSize !== undefined && rightSize !== undefined)
         return leftSize + rightSize
       else
         return undefined
     }
     case 'star': {
-      const innerSize = size(regex.inner, cache)
+      const innerSize = sizeMemoized(regex.inner, cache)
       if (innerSize === 0n) 
         // `inner` is empty so `star(inner)` the only match is the empty string:
         return 1n
