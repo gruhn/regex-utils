@@ -219,6 +219,11 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
   return withHash({ type: "intersection", left, right })
 }
 
+/**
+ * TODO: docs
+ * 
+ * @public
+ */
 export function complement(inner: ExtRegex): ExtRegex {
   if (inner.type === "complement")
     // ¬(¬r) ≈ r
@@ -236,32 +241,49 @@ export function complement(inner: ExtRegex): ExtRegex {
 //////////////////////////////////////////////
 
 /**
- * TODO: docs
+ * Regex that matches any single character. 
+ * Equivalent to the dot: `.`.
  * 
  * @public
  */
 export const anySingleChar: StdRegex = literal(CharSet.alphabet)
 
 /**
- * TODO: docs
- * 
+ * Regex that matches the single given character.
+ * E.g. `singleChar('a')` is equivalent to `/^a$/`.
+ * Meta characters like "$", ".", etc don't need to 
+ * be escaped, i.e. `singleChar('.')` will match "."
+ * literally and not any-single-character.
+ *
+ * @throws if `char` is not exactly one character.
  * @public
  */
-export function singleChar(char: string) {
+export function singleChar(char: string): StdRegex {
   return literal(CharSet.singleton(char))
 }
 
 /**
- * TODO: docs
+ * Creates a regex that matches a string of literal characters.
+ * A shorthand for `seq([singleChar(...), singleChar(...), ...])`.
+ *
+ * @example
+ * ```typescript
+ * string('abc') // like /abc/
+ * ```
  * 
  * @public
  */
-export function string(str: string) {
+export function string(str: string): StdRegex {
   return seq([...str].map(singleChar))
 }
 
 /**
- * TODO: docs
+ * This is like the `?` postfix operator.
+ *
+ * @example
+ * ```typescript
+ * optional(singleChar('a')) // like /a?/
+ * ```
  * 
  * @public
  */
@@ -281,7 +303,12 @@ export function plus(regex: ExtRegex): ExtRegex {
 }
 
 /**
- * TODO: docs
+ * This is like regex concatenation (aka. juxtaposition).
+ *
+ * @example
+ * ```typescript
+ * seq([ singleChar('a'), anySingleChar ]) // like /a./
+ * ```
  * 
  * @public
  */
@@ -293,7 +320,14 @@ export function seq(res: ExtRegex[]): ExtRegex {
 }
 
 /**
- * TODO: docs
+ * This is like the regex pipe operator `|` (aka. alternation, aka. union, aka. or).
+ * This is a standard regex operator so if all inputs are `StdRegex` the output,
+ * is also a `StdRegex`.
+ *
+ * @example
+ * ```typescript
+ * or([ singleChar('a'), singleChar('b') ]) // like /a|b/
+ * ```
  * 
  * @public
  */
@@ -305,7 +339,21 @@ export function or(res: ExtRegex[]): ExtRegex {
 }
 
 /**
- * TODO: docs
+ * Constructs a regex that matches the intersection of all input regex.
+ * This operator has no analog in standard regular expressions, so the
+ * return type is always an `ExtRegex`.
+ * 
+ * NOTE: This is just a cheap constructor. There is no heavy computation
+ * until you call `toStdRegex`.
+ *
+ * @example
+ * ```typescript
+ * const passwordRegex = and(
+ *   parse(/.{12,}/), // 12 letters or more
+ *   parse(/[0-9]/),  // at least one number
+ *   parse(/[A-Z]/),  // at least one upper case letter   
+ *   parse(/[a-z]/),  // at least one lower case letter
+ * )
  * 
  * @public
  */
@@ -328,14 +376,18 @@ export type RepeatBounds =
   | { min?: number, max: number }
 
 /**
- * Constructs regular expressions with bounded quantifiers.
- * For example:
+ * Constructs quantified regular expressions, subsuming all these
+ * regex operators: `*`, `+`, `{n,m}`, `?`.
  *
- *     repeat(r)                        ~  r*
- *     repeat(r, 4)                     ~  r{4}
- *     repeat(r, { min: 3, max: 5 })    ~  r{3,5}
- *     repeat(r, { max: 5 })            ~  r{,5}
- *     repeat(r, { min: 3 })            ~  r{3,}
+ * @example
+ * ```typescript
+ * repeat(r) // r*
+ * repeat(r, 4) // r{4}
+ * repeat(r, { min: 3, max: 5 }) // r{3,5}
+ * repeat(r, { max: 5 }) // r{,5}
+ * repeat(r, { min: 3 }) // r{3,}
+ * repeat(r, { min: 0, max: 1 }) // r?
+ * ```
  * 
  * @public
  */

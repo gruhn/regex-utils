@@ -16,6 +16,7 @@ export {
   repeat,
   anySingleChar,
   singleChar,
+  string,
   // operations:
   toRegExp,
   derivative,
