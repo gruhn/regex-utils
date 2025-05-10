@@ -1,7 +1,18 @@
 # Regex Utils
 
 Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
-These are surprisingly hard to come by for any programming language.
+These are surprisingly hard to come by for any programming language:
+
+ - [`intersection`](https://gruhn.github.io/regex-utils/functions/high-level-api.intersection.html):
+   Combines multiple `RegExp` into a single `RegExp` that descibes their intersection.
+ - [`complement`](https://gruhn.github.io/regex-utils/functions/high-level-api.complement.html):
+   Returns a `RegExp` describes the opposite of the input `RegExp`.
+ - [`size`](https://gruhn.github.io/regex-utils/functions/high-level-api.size.html):
+   Returns the number of strings matching the input `RegExp`.
+ - [`enumerate`](https://gruhn.github.io/regex-utils/functions/high-level-api.enumerate.html):
+   Returns a stream of strings matching the input `RegExp`.
+ - [`derivative`](https://gruhn.github.io/regex-utils/functions/high-level-api.derivative.html):
+   Computes a Brzozowski derivative of the input `RegExp`.
 
 ## Installation
 
