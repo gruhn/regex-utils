@@ -8,11 +8,11 @@
     "build": "tsc --project tsconfig.build.json && tsc-alias",
     "build:docs": "typedoc --tsconfig tsconfig.build.json"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/high-level-api.js",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/high-level-api.js",
+      "types": "./dist/high-level-api.d.ts"
     },
     "./low-level-api": {
       "import": "./dist/low-level-api.js",

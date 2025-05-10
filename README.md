@@ -13,7 +13,7 @@ npm install @gruhn/regex-utils
 
 There is a high-level API and a low-level API:
 
- - [high-level API documentation](https://gruhn.github.io/regex-utils/modules/)
+ - [high-level API documentation](https://gruhn.github.io/regex-utils/modules/high-level-api.html)
  - [low-level API documentation](https://gruhn.github.io/regex-utils/modules/low-level-api.html)
 
 The high-level API operates directly on native JavaScript `RegExp` instances,

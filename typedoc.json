@@ -1,0 +1,6 @@
+{
+  "entryPoints": ["src/high-level-api.ts", "src/low-level-api.ts"],
+  "navigationLinks": {
+    "GitHub": "https://github.com/gruhn/regex-utils"
+  }
+}
