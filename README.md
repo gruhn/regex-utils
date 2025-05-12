@@ -3,15 +3,15 @@
 Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language:
 
- - [`intersection`](https://gruhn.github.io/regex-utils/functions/high-level-api.intersection.html):
+ - [`intersection`](https://gruhn.github.io/regex-utils/functions/High-level_API.intersection.html):
    Combines multiple `RegExp` into a single `RegExp` that descibes their intersection.
- - [`complement`](https://gruhn.github.io/regex-utils/functions/high-level-api.complement.html):
+ - [`complement`](https://gruhn.github.io/regex-utils/functions/High-level_API.complement.html):
    Returns a `RegExp` describes the opposite of the input `RegExp`.
- - [`size`](https://gruhn.github.io/regex-utils/functions/high-level-api.size.html):
+ - [`size`](https://gruhn.github.io/regex-utils/functions/High-level_API.size.html):
    Returns the number of strings matching the input `RegExp`.
- - [`enumerate`](https://gruhn.github.io/regex-utils/functions/high-level-api.enumerate.html):
+ - [`enumerate`](https://gruhn.github.io/regex-utils/functions/High-level_API.enumerate.html):
    Returns a stream of strings matching the input `RegExp`.
- - [`derivative`](https://gruhn.github.io/regex-utils/functions/high-level-api.derivative.html):
+ - [`derivative`](https://gruhn.github.io/regex-utils/functions/High-level_API.derivative.html):
    Computes a Brzozowski derivative of the input `RegExp`.
 
 ## Installation
