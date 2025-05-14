@@ -132,9 +132,6 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
           succLabel,
         ])
 
-        const existingLabel = transitionsWithRegexLabels.get(pred)?.get(succ) ?? RE.empty
-        const combinedLabel = RE.union(transitiveLabel, existingLabel)
-
         Table.setWith(
           pred,
           succ,

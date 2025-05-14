@@ -66,7 +66,7 @@ function part1() {
   })
 
   const time = performance.now() - startTime
-  console.log('Part 1:', totalCount, `(time: ${Math.ceil(time)}ms)`)
+  return { totalCount, time }
 }
 
 function part2() {
@@ -87,8 +87,11 @@ function part2() {
   })
 
   const time = performance.now() - startTime
-  console.log('Part 2:', totalCount, `(time: ${Math.ceil(time)}ms)`)
+  return { time, totalCount }
 }
 
-part1() // best time:   992ms
-part2() // best time: 28258ms
+const sol1 = part1() // best time:   992ms
+const sol2 = part2() // best time: 28258ms
+
+console.log('Part 1:', sol1.totalCount, `(time: ${Math.ceil(sol1.time)}ms)`)
+console.log('Part 2:', sol2.totalCount, `(time: ${Math.ceil(sol2.time)}ms)`)

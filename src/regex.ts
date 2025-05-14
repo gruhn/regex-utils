@@ -348,12 +348,15 @@ export function or(res: ExtRegex[]): ExtRegex {
  *
  * @example
  * ```typescript
+ * import { and, parse } from '@gruhn/regex-utils/low-level-api'
+ *
  * const passwordRegex = and(
  *   parse(/.{12,}/), // 12 letters or more
  *   parse(/[0-9]/),  // at least one number
  *   parse(/[A-Z]/),  // at least one upper case letter   
  *   parse(/[a-z]/),  // at least one lower case letter
  * )
+ * ```
  * 
  * @public
  */
@@ -743,7 +746,7 @@ function maybeWithParens(ast: RegExpAST, parent: RegExpAST): string {
 }
 
 /**
- * Rather ad-hco way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
+ * Rather ad-hoc way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
  * to produce more compact representation when converting to string,
  * e.g. `[a-z]{3}`
  */
