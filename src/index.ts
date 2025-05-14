@@ -162,3 +162,18 @@ export function size(re: RegExp): bigint | undefined {
 export function derivative(prefix: string, re: RegExp): RegExp {
   return RE.toRegExp(RE.derivative(prefix, RE.parse(re)))
 }
+
+/**
+ * Tests if two regular expressions are semantically equivalent, i.e.
+ * they match the exact same set of strings.
+ *
+ * @example
+ * ```typescript 
+ * equivalent(/^a{1,}$/, /^a+$/) === true
+ * ```
+ *
+ * @public
+ */
+export function equivalent(re1: RegExp, re2: RegExp): boolean {
+  return RE.equivalent(RE.parse(re1), RE.parse(re2))
+}

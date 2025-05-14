@@ -41,4 +41,7 @@ export {
   enumerate,
 } from './regex'
 
-export { toStdRegex } from './dfa'
+export {
+  toStdRegex,
+  equivalent,
+} from './dfa'

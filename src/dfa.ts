@@ -175,3 +175,28 @@ export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
 //     }
 //   }
 // }
+
+/**
+ * Tests if two regular expressions are semantically equivalent, i.e.
+ * they match the exact same set of strings.
+ *
+ * TODO: maybe expose `equal` as dedicated function in low-level-api
+ */
+export function equivalent(regexA: RE.ExtRegex, regexB: RE.ExtRegex): boolean {
+  if (RE.equal(regexA, regexB)) { // First check hash based equality: cheap but weak.
+    return true
+  } else {
+    // Otherwise: A = B iff (A \ B) ∪ (B \ A) = ∅
+    
+    // A \ B = A ∩ ¬B 
+    const diffAB = RE.and([regexA, RE.complement(regexB)])
+
+    // B \ A = B ∩ ¬A
+    const diffBA = RE.and([regexB, RE.complement(regexA)])
+    
+    const result = toStdRegex(RE.or([ diffAB, diffBA ]))
+
+    // QUESTION: This seems too simple. Does this really always work?
+    return RE.isEmpty(result)
+  }
+}
