@@ -1,8 +1,10 @@
 # Regex Utils
 
-Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
+Zero-dependency TypeScript library for regex equivalence, intersection, complement and other utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language:
 
+ - [`equivalent`](https://gruhn.github.io/regex-utils/functions/High-level_API.equivalent.html):
+   Tests if two `RegExp` match the exact same set of strings.
  - [`intersection`](https://gruhn.github.io/regex-utils/functions/High-level_API.intersection.html):
    Combines multiple `RegExp` into a single `RegExp` that descibes their intersection.
  - [`complement`](https://gruhn.github.io/regex-utils/functions/High-level_API.complement.html):

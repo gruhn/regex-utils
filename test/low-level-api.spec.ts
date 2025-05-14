@@ -3,8 +3,6 @@ import { describe, it, expect, test } from "vitest"
 import { isEmpty } from '../src/regex'
 import * as RE from "../src/low-level-api"
 import * as Arb from './arbitrary-regex'
-import * as Stream from '../src/stream'
-import { assert } from "../src/utils"
 
 /**
  * Stochastically verifies that `regex1` is a subset of `regex2`.
@@ -35,6 +33,25 @@ describe('toStdRegex', () => {
           const outputRegex = RE.toStdRegex(inputRegex)
           expect(isSubsetOf(inputRegex, outputRegex)).toBe(true)
           expect(isSubsetOf(outputRegex, inputRegex)).toBe(true)
+        }
+      ),
+    )
+  })
+
+})
+
+describe('equivalent', () => {
+
+  it('returns true if both inputs are the same', () => {
+    fc.assert(
+      fc.property(
+        // FIXME: `star` often leads to exponential blow up.
+        Arb.stdRegexNoStar(),
+        inputRegex => {
+          // Since `toStdRegex` is idempotent the output regex should be
+          // equivalent to the input regex but is likely syntactically different.
+          const outputRegex = RE.toStdRegex(inputRegex)
+          expect(RE.equivalent(inputRegex, outputRegex)).toBe(true)
         }
       ),
     )
