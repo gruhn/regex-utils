@@ -14,7 +14,7 @@ const passwordRegex = intersection(
   /[a-z]/, // at least one lower case letter
 )
 
-// `size` to calculates the number of strings matching the regex: 
+// `size` calculates the number of strings matching the regex: 
 console.log(size(passwordRegex))
 // 2301586451429392354821768871006991487961066695735482449920n
 
