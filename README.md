@@ -1,18 +1,38 @@
 # Regex Utils
 
 Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
-These are surprisingly hard to come by for any programming language:
+These are surprisingly hard to come by for any programming language.
 
- - [`intersection`](https://gruhn.github.io/regex-utils/functions/High-level_API.intersection.html):
-   Combines multiple `RegExp` into a single `RegExp` that descibes their intersection.
- - [`complement`](https://gruhn.github.io/regex-utils/functions/High-level_API.complement.html):
-   Returns a `RegExp` describes the opposite of the input `RegExp`.
- - [`size`](https://gruhn.github.io/regex-utils/functions/High-level_API.size.html):
-   Returns the number of strings matching the input `RegExp`.
- - [`enumerate`](https://gruhn.github.io/regex-utils/functions/High-level_API.enumerate.html):
-   Returns a stream of strings matching the input `RegExp`.
- - [`derivative`](https://gruhn.github.io/regex-utils/functions/High-level_API.derivative.html):
-   Computes a Brzozowski derivative of the input `RegExp`.
+```typescript
+import { intersection, size, enumerate } from '@gruhn/regex-utils'
+
+// `intersection` combines multiple regex into one:
+const passwordRegex = intersection(
+  /^[a-zA-Z0-9]{12,32}$/, // 12-32 alphanumeric characters
+  /[0-9]/, // at least one number
+  /[A-Z]/, // at least one upper case letter   
+  /[a-z]/, // at least one lower case letter
+)
+
+// `size` to calculates the number of strings matching the regex: 
+console.log(size(passwordRegex))
+// 2301586451429392354821768871006991487961066695735482449920n
+
+// `enumerate` returns a stream of strings matching the regex:
+for (const sample of enumerate(passwordRegex).take(10)) {
+  console.log(sample)
+}
+// aaaaaaaaaaA0
+// aaaaaaaaaa0A
+// aaaaaaaaaAA0
+// aaaaaaaaaA00
+// aaaaaaaaaaA1
+// aaaaaaaaa00A
+// baaaaaaaaaA0
+// AAAAAAAAAA0a
+// aaaaaaaaaAA1
+// aaaaaaaaaa0B
+```
 
 ## Installation
 
