@@ -75,23 +75,23 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (equal(empty, left))
     // ∅ · r ≈ ∅
     return empty
-  else if (equal(empty, right))
+  if (equal(empty, right))
     // r · ∅ ≈ ∅
     return empty
-  else if (left.type === "concat")
+  if (left.type === "concat")
     // (r · s) · t ≈ r · (s · t)
     return concat(left.left, concat(left.right, right))
-  else if (left.type === "epsilon")
+  if (left.type === "epsilon")
     // ε · r ≈ r
     return right
-  else if (right.type === "epsilon")
+  if (right.type === "epsilon")
     // r · ε ≈ r
     return left
-  else if (left.type === 'union' && equal(left.right, epsilon)) {
+  if (left.type === 'union' && equal(left.right, epsilon)) {
     if (equal(left.left, right))
       // (r + ε) · r ≈ r · (r + ε)
       return concat(right, left)
-    else if (right.type === 'concat' && equal(left.left, right.left)) 
+    if (right.type === 'concat' && equal(left.left, right.left)) 
       // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
       return concat(right.left, concat(left, right.right)) 
   }
@@ -102,18 +102,48 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
     if (equal(left.inner, right))
       // r* · r ≈ r · r*
       return concat(right, left)
-    else if (right.type === 'concat' && equal(left.inner, right.left))
+    if (right.type === 'concat' && equal(left.inner, right.left))
       // r* · (r · s)  ≈ r · (r* · s)
       return concat(left.inner, concat(left, right.right))
-    else if (right.type === 'star' && equal(left.inner, right.inner))
+    if (right.type === 'star' && equal(left.inner, right.inner))
       // r* · r*  ≈ r*
       return left
-    else if (right.type === 'concat' && right.left.type === 'star' && equal(left, right.left))
+    if (right.type === 'concat' && right.left.type === 'star' && equal(left, right.left))
       // r* · (r* · s) ≈ r* · s
       return concat(left, right.right)
   }
 
   return withHash({ type: 'concat', left, right })
+}
+
+function extractFront(regex: StdRegex): [StdRegex, StdRegex]
+function extractFront(regex: ExtRegex): [ExtRegex, ExtRegex]
+function extractFront(regex: ExtRegex): [ExtRegex, ExtRegex] {
+  switch (regex.type) {
+    case 'epsilon': return [regex, epsilon]
+    case 'literal': return [regex, epsilon]
+    case 'concat': return [regex.left, regex.right]
+    case 'union': return [regex, epsilon]
+    case 'star': return [regex.inner, regex]
+    case 'intersection': return [regex, epsilon]
+    case 'complement': return [regex, epsilon]
+  }
+  checkedAllCases(regex)
+}
+
+function extractBack(regex: StdRegex): [StdRegex, StdRegex]
+function extractBack(regex: ExtRegex): [ExtRegex, ExtRegex]
+function extractBack(regex: ExtRegex): [ExtRegex, ExtRegex] {
+  switch (regex.type) {
+    case 'epsilon': return [epsilon, epsilon]
+    case 'literal': return [epsilon, regex]
+    case 'concat': return [regex.left, regex.right]
+    case 'union': return [epsilon, regex]
+    case 'star': return [regex, regex.inner]
+    case 'intersection': return [epsilon, regex]
+    case 'complement': return [epsilon, regex]
+  }
+  checkedAllCases(regex)
 }
 
 export function union(left: StdRegex, right: StdRegex): StdRegex
@@ -122,57 +152,65 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (left.type === 'union')
     // (r + s) + t ≈ r + (s + t)
     return union(left.left, union(left.right, right))
-  else if (equal(left, right))
+  if (equal(left, right))
     // r + r ≈ r
     return left
-  else if (equal(left, empty))
+  if (equal(left, empty))
     // ∅ + r ≈ r
     return right
-  else if (left.type === 'epsilon')
+  if (left.type === 'epsilon')
     // ε + r ≈ r + ε 
     return union(right, left)
-  else if (equal(empty, right))
+  if (equal(empty, right))
     // r + ∅ ≈ r
     return left
-  else if (equal(left, complement(empty)))
+  if (equal(left, complement(empty)))
     // ¬∅ + r ≈ ¬∅
     return complement(empty)
-  else if (equal(complement(empty), right))
+  if (equal(complement(empty), right))
     // r + ¬∅ ≈ ¬∅
     return complement(empty)
-  else if (left.type === 'literal' && right.type === 'literal')
+  if (left.type === 'literal' && right.type === 'literal')
     // R + S ≈ R ∪ S
     return literal(CharSet.union(left.charset, right.charset))
-  else if (right.type === 'union' && equal(left, right.left))
-    // r + (r + s) = r + s
-    return union(left, right.right)
-  else if (right.type === 'union' && equal(left, right.right))
-    // r + (s + r) = r + s
-    return union(left, right.left)
+  if (left.type === 'star' && right.type === 'epsilon')
+    // r* + ε = r*
+    return left
 
-  else if (left.type === 'concat') {
-    if (right.type === 'concat') {
-      if (equal(left.left, right.left))
-        // (r · s) + (r · t) = r · (s + t)
-        return concat(left.left, union(left.right, right.right))
-      else if (equal(left.right, right.right))
-        // (s · r) + (t · r) = (s + t) · r
-        return concat(union(left.left, right.left), left.right)
-    } else if (equal(left.left, right)) {
-      // (r · s) + r = r · (s + ε)
-      return concat(left.left, optional(left.right))
-    } else if (equal(right, left.right)) {
-      // (s · r) + r = (s + ε) · r
-      return concat(optional(left.left), left.right)
-    }
-  } else if (right.type === 'concat') {
-    if (equal(right.left, left))
-      // r + (r · s) = r · (ε + s)
-      return concat(right.left, optional(right.right))
-    else if (right.right.hash === left.hash)
-      // r + (s · r) = (s + ε) · r
-      return concat(optional(right.left), right.right)
+  if (right.type == 'union') {
+    if (equal(left, right.left))
+      // r + (r + s) = r + s
+      return union(left, right.right)
+    if (equal(left, right.right))
+      // r + (s + r) = r + s
+      return union(left, right.left)
+
+    // const [leftHead, leftTail] = extractFront(left)
+    // const [rightHead, rightTail] = extractFront(right.left)
+    // if (equal(leftHead, rightHead))
+    //   // (r · s) + ((r · t) + u) = (r · (s + t)) + u
+    //   return union(concat(left, union(leftTail, rightTail)), right.right)
+    //   // return concat(left, optional(union(leftTail, right.right)))
   }
+
+  const [leftHead, leftTail] = extractFront(left)
+  const [rightHead, rightTail] = extractFront(right)
+
+  if (equal(leftHead, rightHead))
+    // (r · s) + (r · t) = r · (s + t)
+    // (r · s) + r       = r · (s + ε)
+    // r       + (r · s) = r · (ε + s)
+    // r       + r*      = r · (ε + r*)
+    return concat(leftHead, union(leftTail, rightTail))
+
+  const [leftInit, leftLast] = extractBack(left)
+  const [rightInit, rightLast] = extractBack(right)
+
+  if (equal(leftLast, rightLast))
+    // (s · r) + (t · r) = (s + t) · r
+    // (s · r) + r       = (s + ε) · r
+    // r       + (s · r) = (s + ε) · r
+    return concat(union(leftInit, rightInit), leftLast)
 
   return withHash({ type: 'union', left, right })
 }
@@ -189,6 +227,9 @@ export function star(inner: ExtRegex): ExtRegex {
   else if (equal(empty, inner))
     // ∅∗ ≈ ε
     return epsilon
+  else if (inner.type === 'concat' && inner.left.type === 'star' && inner.right.type === 'star')
+    // (r∗ · s∗)∗ = (r + s)∗
+    return star(union(inner.left.inner, inner.right.inner))
   else
     return withHash({ type: "star", inner })
 }

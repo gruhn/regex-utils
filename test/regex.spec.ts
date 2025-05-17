@@ -179,6 +179,8 @@ describe('rewrite rules', () => {
     [/^(b|a)|a$/, /^([ab])$/],
     [/^(a|b)|a$/, /^([ab])$/],
     [/^(a?)?$/, /^(a?)$/],
+    [/^(a*)?$/, /^(a*)$/],
+    [/^(a|a*)$/, /^(aa*)$/],
     // union-of-concat rules:
     [/^ab|ac$/, /^(a[bc])$/],
     [/^ba|ca$/, /^([bc]a)$/],
@@ -186,8 +188,12 @@ describe('rewrite rules', () => {
     [/^ba|a$/, /^(b?a)$/],
     [/^a|ab$/, /^(ab?)$/],
     [/^a|ba$/, /^(b?a)$/],
+    // TODO:
+    // [/^(a|a{2}|a{3}|a{4}|a{5})$/, /^(a{1,5})$/],
+    // [/^(a|a{2}|a{3}|a{4}|a{5}|b)$/, /^(a{1,5}|b)$/],
     // star rules:
     [/^(a*)*$/, /^(a*)$/],
+    [/^(a*b*)*$/, /^([ab]*)$/],
   ])('rewrites %s to %s', (source, target) => {
     expect(RE.toRegExp(parseRegExp(source))).toEqual(target)
   })
