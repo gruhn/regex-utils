@@ -46,15 +46,15 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
     return { ...regex, hash: Hash.fromString(regex.type) }
   else if (regex.type === 'literal')
-    return { ...regex, hash: Hash.combineAssoc(37n, Hash.fromString(regex.type), regex.charset.hash) }
+    return { ...regex, hash: regex.charset.hash }
   else if (regex.type === 'union' || regex.type === 'intersection')
     // Need commutative hash operator for `union` and `intersection`, otherwise "a|c" and "c|a" are different:
-    return { ...regex, hash: Hash.combineAssocComm(41n, regex.left.hash, regex.right.hash) }
+    return { ...regex, hash: Hash.combineAssocComm(3n, regex.left.hash, regex.right.hash) }
   else if (regex.type === 'concat')
     // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
-    return { ...regex, hash: Hash.combineAssoc(43n, regex.left.hash, regex.right.hash) }
+    return { ...regex, hash: Hash.combineAssoc(5n, regex.left.hash, regex.right.hash) }
   else if (regex.type === 'star' || regex.type === 'complement')
-    return { ...regex, hash: Hash.combineAssoc(47n, Hash.fromString(regex.type), regex.inner.hash) }
+    return { ...regex, hash: Hash.combineAssoc(2n, Hash.fromString(regex.type), regex.inner.hash) }
   checkedAllCases(regex)  
 }
 
@@ -584,8 +584,8 @@ function allNonEmptyIntersections(
   cache: Table.Table<readonly CharSet.CharSet[]>
 ): readonly CharSet.CharSet[] {
   if (isNonEmpty(classesA) && isNonEmpty(classesB)) {
-    const hashA = Hash.combineAssocMany(53n, classesA.map(classA => classA.hash))
-    const hashB = Hash.combineAssocMany(53n, classesB.map(classA => classA.hash))
+    const hashA = Hash.combineAssocMany(13n, classesA.map(classA => classA.hash))
+    const hashB = Hash.combineAssocMany(13n, classesB.map(classA => classA.hash))
     // Function is symmetric so no need to memoize both hash pairs (1,2) and (2,1):
     const hashMin = hashA <= hashB ? hashA : hashB
     const hashMax = hashA <= hashB ? hashB : hashA

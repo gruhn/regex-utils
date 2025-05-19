@@ -38,13 +38,13 @@ export function fromNumber(num: number): Hash {
  */
 export function combineAssoc(base: bigint, hashA: Hash, hashB: Hash): Hash {
   return {
-    value: (hashA.value * base**hashB.length + hashB.value) % PRIME_MODULUS,
+    value: ((hashA.value * (base**hashB.length % PRIME_MODULUS) % PRIME_MODULUS) + hashB.value) % PRIME_MODULUS,
     length: hashA.length + hashB.length
   }
 }
 
 export function combineAssocMany(base: bigint, hashes: NonEmptyArray<Hash>): Hash {
-  return hashes.reduce((hashA, hashB) => combineAssoc(base ,hashA, hashB))
+  return hashes.reduce((hashA, hashB) => combineAssoc(base, hashA, hashB))
 }
 
 /**

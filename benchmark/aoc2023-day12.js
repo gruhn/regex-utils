@@ -74,6 +74,8 @@ function part2() {
   let totalCount = 0n
 
   input.forEach(([left, right], i) => {
+    // if (i >= 4) return
+
     const leftRegex = leftToRegex(Array(5).fill(left).join('?'))
     const rightRegex = rightToRegex(Array(5).fill(right).join(','))
 
@@ -90,8 +92,8 @@ function part2() {
   return { time, totalCount }
 }
 
-const sol1 = part1() // best time:   992ms
-// const sol2 = part2() // best time: 28258ms
+// const sol1 = part1() // best time:   992ms
+const sol2 = part2() // best time: 28258ms
 
-console.log('Part 1:', sol1.totalCount, `(time: ${Math.ceil(sol1.time)}ms)`)
-// console.log('Part 2:', sol2.totalCount, `(time: ${Math.ceil(sol2.time)}ms)`)
+// console.log('Part 1:', sol1.totalCount, `(time: ${Math.ceil(sol1.time)}ms)`)
+console.log('Part 2:', sol2.totalCount, `(time: ${Math.ceil(sol2.time)}ms)`)
