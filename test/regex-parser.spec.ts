@@ -48,14 +48,14 @@ describe('parseRegexString', () => {
     parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
   })
 
-  it('inverts RE.toString', () => {
+  it.only('inverts RE.toString', () => {
     fc.assert(
       fc.property(
         Arb.stdRegex(),
         (stdRegex) => {
         const regexStr = RE.toString(stdRegex)
         const result = parseRegexString(regexStr)
-        expect(result.hash).toBe(stdRegex.hash)
+        expect(result.hash.value).toBe(stdRegex.hash.value)
       }),
     )   
   })

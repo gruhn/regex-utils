@@ -1,12 +1,4 @@
 
-// declare global {
-//   interface ErrorConstructor {
-//     // Non-standard v8-specific function. Since it is not guaranteed to be 
-//     // available, we make it optional.
-//     captureStackTrace?: (target: any, func: any) => void
-//   }
-// }
-
 /**
  * Throws an error if the `condition` in the first argument is `false`.
  * This function is useful to make assumptions explicit. NOT JUST IN TEST CODE.

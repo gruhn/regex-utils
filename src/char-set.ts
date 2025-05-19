@@ -1,21 +1,18 @@
-import { adjacentPairs, assert, checkedAllCases, hashNums, hashStr, xor, zip } from './utils'
+import { assert, checkedAllCases } from './utils'
 import * as Range from './code-point-range'
 import * as Stream from './stream'
-
-type WithHash<T> = T & { hash: number }
-
-type EmptyCharSet = WithHash<{ type: 'empty' }>
+import * as Hash from './hash'
 
 // TODO: ensure tree is balanced
 type CharSetWithoutHash =
   | { type: 'empty' }
   | { type: 'node', range: Range.CodePointRange, left: CharSet, right: CharSet }
 
-export type CharSet = Readonly<WithHash<CharSetWithoutHash>>
+export type CharSet = Readonly<Hash.WithHash<CharSetWithoutHash>>
 
 export const empty: CharSet = {
   type: 'empty',
-  hash: hashStr('empty')
+  hash: Hash.fromString('empty')
 }
 
 function node({ left, right, range }: {
@@ -39,12 +36,12 @@ function node({ left, right, range }: {
     // We want he hash to identify the ranges contained within,
     // independent of the structure of the tree and how it's balanced,
     // so it's cheap to detect when two `CharSet`s are equal.
-    hash: [
+    hash: Hash.combineAssocMany(31n, [
       left.hash,
-      hashStr("s" + range.start),
-      hashStr("e" + range.end),
+      Hash.fromNumber(range.start),
+      Hash.fromNumber(range.end),
       right.hash,
-    ].reduce(xor)
+    ])
   }
 }
 
@@ -202,7 +199,7 @@ export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet 
   } else if (set.type === 'empty') {
     return empty
   } else if (set.type === 'node') {
-    const [rangeBeforeStart, rangeRest1] = Range.splitAt(set.range.start-1, range)
+    const [rangeBeforeStart, _rangeRest1] = Range.splitAt(set.range.start-1, range)
     const [rangeRest2, rangeAfterEnd] = Range.splitAt(set.range.end, range)
 
     const newLeft = deleteRange(set.left, rangeBeforeStart)
@@ -272,7 +269,12 @@ export function complement(set: CharSet): CharSet {
 }
 
 export function compare(setA: CharSet, setB: CharSet): number {
-  return setA.hash - setB.hash
+  if (setA.hash.value < setB.hash.value)
+    return -1
+  else if (setA.hash.value > setB.hash.value)
+    return +1
+  else
+    return 0
 }
 
 // TODO: render unicode characters with escape sequences:

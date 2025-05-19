@@ -1,22 +1,22 @@
 
 
-export type Table<T> = Map<number, Map<number, T>>
+export type Table<T> = Map<bigint, Map<bigint, T>>
 
-export function get<T>(rowIndex: number, colIndex: number, table: Table<T>): T | undefined {
+export function get<T>(rowIndex: bigint, colIndex: bigint, table: Table<T>): T | undefined {
   return table.get(rowIndex)?.get(colIndex)
 }
 
 export function remove<T>(
-  rowIndex: number,
-  colIndex: number,
+  rowIndex: bigint,
+  colIndex: bigint,
   table: Table<T>
 ) {
   return table.get(rowIndex)?.delete(colIndex)
 }
 
 export function set<T>(
-  rowIndex: number,
-  colIndex: number,
+  rowIndex: bigint,
+  colIndex: bigint,
   newValue: T,
   table: Table<T>,
 ): void {
@@ -30,8 +30,8 @@ export function set<T>(
 }
 
 export function setWith<T>(
-  rowIndex: number,
-  colIndex: number,
+  rowIndex: bigint,
+  colIndex: bigint,
   newValue: T,
   table: Table<T>,
   combine: (oldValue: T, newValue: T) => T

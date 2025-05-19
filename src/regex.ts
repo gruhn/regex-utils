@@ -1,7 +1,9 @@
-import { hashStr, checkedAllCases, assert, uniqWith, hashNums } from './utils'
+import { checkedAllCases, assert, uniqWith } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
 import * as Table from './table';
+import * as Hash from './hash'
+import { isNonEmpty } from './non-empty-array';
 
 /**
  * TODO
@@ -31,29 +33,28 @@ type ExtRegexWithoutHash = (
 /**
  * TODO: docs
  */
-export type StdRegex = StdRegexWithoutHash & { hash: number }
+export type StdRegex = Hash.WithHash<StdRegexWithoutHash>
 
 /**
  * TODO: docs
  */
-export type ExtRegex = ExtRegexWithoutHash & { hash: number }
+export type ExtRegex = Hash.WithHash<ExtRegexWithoutHash>
 
 export function withHash(regex: StdRegexWithoutHash): StdRegex
 export function withHash(regex: ExtRegexWithoutHash): ExtRegex 
 export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
   if (regex.type === 'epsilon')
-    return { ...regex, hash: hashStr(regex.type) }
+    return { ...regex, hash: Hash.fromString(regex.type) }
   else if (regex.type === 'literal')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.charset.hash]) }
-  else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
-    return { ...regex, hash: hashNums([
-      hashStr(regex.type),
-      // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
-      regex.left.hash,
-      regex.right.hash,
-    ])}
+    return { ...regex, hash: Hash.combineAssoc(37n, Hash.fromString(regex.type), regex.charset.hash) }
+  else if (regex.type === 'union' || regex.type === 'intersection')
+    // Need commutative hash operator for `union` and `intersection`, otherwise "a|c" and "c|a" are different:
+    return { ...regex, hash: Hash.combineAssocComm(41n, regex.left.hash, regex.right.hash) }
+  else if (regex.type === 'concat')
+    // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
+    return { ...regex, hash: Hash.combineAssoc(43n, regex.left.hash, regex.right.hash) }
   else if (regex.type === 'star' || regex.type === 'complement')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.inner.hash]) }
+    return { ...regex, hash: Hash.combineAssoc(47n, Hash.fromString(regex.type), regex.inner.hash) }
   checkedAllCases(regex)  
 }
 
@@ -574,44 +575,48 @@ export function matches(regex: ExtRegex, string: string): boolean {
  * not detect regex equivalence.
  */
 export function equal(regexA: ExtRegex, regexB: ExtRegex): boolean {
-  return regexA.hash === regexB.hash
+  return regexA.hash.value === regexB.hash.value
 }
 
 function allNonEmptyIntersections(
-  classesA: CharSet.CharSet[],
-  classesB: CharSet.CharSet[],
-  cache: Table.Table<CharSet.CharSet[]>
-): CharSet.CharSet[] {
-  const hashA = hashNums(classesA.map(classA => classA.hash))
-  const hashB = hashNums(classesB.map(classB => classB.hash))
-  // Function is symmetric so no need to memoize both hash pairs (1,2) and (2,1):
-  const hashMin = hashA <= hashB ? hashA : hashB
-  const hashMax = hashA <= hashB ? hashB : hashA
+  classesA: readonly CharSet.CharSet[],
+  classesB: readonly CharSet.CharSet[],
+  cache: Table.Table<readonly CharSet.CharSet[]>
+): readonly CharSet.CharSet[] {
+  if (isNonEmpty(classesA) && isNonEmpty(classesB)) {
+    const hashA = Hash.combineAssocMany(53n, classesA.map(classA => classA.hash))
+    const hashB = Hash.combineAssocMany(53n, classesB.map(classA => classA.hash))
+    // Function is symmetric so no need to memoize both hash pairs (1,2) and (2,1):
+    const hashMin = hashA <= hashB ? hashA : hashB
+    const hashMax = hashA <= hashB ? hashB : hashA
 
-  const resultCached = Table.get(hashMin, hashMax, cache)
-  if (resultCached !== undefined) {
-    return resultCached
-  }
+    const resultCached = Table.get(hashMin.value, hashMax.value, cache)
+    if (resultCached !== undefined) {
+      return resultCached
+    }
 
-  const result: CharSet.CharSet[] = []
-  for (const classA of classesA) {
-    for (const classB of classesB) {
-      const inter = CharSet.intersection(classA, classB)
-      if (!CharSet.isEmpty(inter)) {
-        result.push(inter)
+    const result: CharSet.CharSet[] = []
+    for (const classA of classesA) {
+      for (const classB of classesB) {
+        const inter = CharSet.intersection(classA, classB)
+        if (!CharSet.isEmpty(inter)) {
+          result.push(inter)
+        }
       }
     }
-  }
 
-  const finalResult = uniqWith(result, CharSet.compare) 
-  Table.set(hashMin, hashMax, finalResult, cache)   
-  return finalResult
+    const finalResult = uniqWith(result, CharSet.compare) 
+    Table.set(hashMin.value, hashMax.value, finalResult, cache)   
+    return finalResult
+  } else {
+    return []
+  }
 }
 
 export function derivativeClasses(
   regex: ExtRegex,
-  cache: Table.Table<CharSet.CharSet[]>
-): CharSet.CharSet[] {
+  cache: Table.Table<readonly CharSet.CharSet[]>
+): readonly CharSet.CharSet[] {
   switch (regex.type) {
     case "epsilon":
       return [CharSet.alphabet]
@@ -855,20 +860,20 @@ export function size(regex: StdRegex): bigint | undefined {
 // memoization can speed up `size` a lot:
 function sizeMemoized(
   regex: StdRegex,
-  cache: Map<number, bigint | undefined>
+  cache: Map<bigint, bigint | undefined>
 ): bigint | undefined {
-  const cached = cache.get(regex.hash)
+  const cached = cache.get(regex.hash.value)
   if (cached !== undefined) {
     return cached
   } else {
     const result = sizeMemoizedAux(regex, cache)
-    cache.set(regex.hash, result)
+    cache.set(regex.hash.value, result)
     return result
   }
 }
 function sizeMemoizedAux(
   regex: StdRegex,
-  cache: Map<number, bigint | undefined>
+  cache: Map<bigint, bigint | undefined>
 ): bigint | undefined {
   switch (regex.type) {
     case 'epsilon':

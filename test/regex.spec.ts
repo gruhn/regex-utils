@@ -94,6 +94,29 @@ describe('enumerate', () => {
 
 })
 
+describe('equal', () => {
+
+  it.each([
+    [/^(a|b|c|d)$/, /^(d|c|a|b)$/],
+    [/^((ab)c)d$/, /^a((bc)d)$/],
+    [/^(a|b)(cd)$/, /^((a|b)c)d$/],
+  ])('%s is equal to %s', (reA, reB) => {
+    const regexA = parseRegExp(reA)
+    const regexB = parseRegExp(reB)
+    expect(RE.equal(regexA, regexB)).toBe(true)
+  })
+
+  it.each([
+    [/^ab$/, /^ba$/],
+  ])('%s is not equal to %s', (reA, reB) => {
+    const regexA = parseRegExp(reA)
+    const regexB = parseRegExp(reB)
+    expect(RE.equal(regexA, regexB)).toBe(false)
+  })
+
+})
+
+
 describe('size', () => {
 
   it('returns 1 for ∅ *', () => {

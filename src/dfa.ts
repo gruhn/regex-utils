@@ -4,9 +4,9 @@ import { assert } from "./utils"
 import * as Table from './table'
 
 export type DFA = Readonly<{
-  allStates: Map<number, RE.ExtRegex>
-  startState: number
-  finalStates: Set<number>
+  allStates: Map<bigint, RE.ExtRegex>
+  startState: bigint
+  finalStates: Set<bigint>
   transitions: Table.Table<CharSet.CharSet>
 }>
 
@@ -15,8 +15,9 @@ function pickChar(set: CharSet.CharSet): number {
   return set.range.start
 }
 
+
 function regexToDFA(regex: RE.ExtRegex): DFA {
-  const allStates = new Map([[regex.hash, regex]])
+  const allStates = new Map([[regex.hash.value, regex]])
   const transitions: Table.Table<CharSet.CharSet> = new Map()
 
   const worklist = [regex]
@@ -31,13 +32,13 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
     for (const charSet of RE.derivativeClasses(sourceState, derivClassCache)) {
       const char = pickChar(charSet)
       const targetState = RE.codePointDerivative(char, sourceState)
-      const knownState = allStates.get(targetState.hash)
+      const knownState = allStates.get(targetState.hash.value)
 
       if (knownState === undefined) {
-        allStates.set(targetState.hash, targetState)
+        allStates.set(targetState.hash.value, targetState)
         Table.set(
-          sourceState.hash,
-          targetState.hash,
+          sourceState.hash.value,
+          targetState.hash.value,
           charSet,
           transitions,
         )
@@ -45,8 +46,8 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
         // console.debug('state count: ', allStates.size)
       } else {
         Table.setWith(
-          sourceState.hash,
-          knownState.hash,
+          sourceState.hash.value,
+          knownState.hash.value,
           charSet,
           transitions,
           CharSet.union
@@ -55,37 +56,37 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
     }
   }
 
-  const finalStates = new Set<number>()
+  const finalStates = new Set<bigint>()
   for (const state of allStates.values()) {
     if (RE.isNullable(state)) {
-      finalStates.add(state.hash)
+      finalStates.add(state.hash.value)
     }
   } 
 
   return {
     allStates,
-    startState: regex.hash,
+    startState: regex.hash.value,
     finalStates,
     transitions,
   }
 }
 
 type RipStateResult = {
-  predecessors: [number, RE.StdRegex][]
+  predecessors: [bigint, RE.StdRegex][]
   selfLoop: RE.StdRegex
-  successors: [number, RE.StdRegex][]
+  successors: [bigint, RE.StdRegex][]
 }
 
-function ripState(state: number, transitions: Table.Table<RE.StdRegex>): RipStateResult {
+function ripState(state: bigint, transitions: Table.Table<RE.StdRegex>): RipStateResult {
   const selfLoop = Table.get(state, state, transitions) ?? RE.epsilon
 
-  const successorsMap = transitions.get(state) ?? new Map<number, RE.StdRegex>()
+  const successorsMap = transitions.get(state) ?? new Map<bigint, RE.StdRegex>()
   // handle self loops separately:
   successorsMap.delete(state)
   const successors = [...successorsMap.entries()]
   transitions.delete(state)
 
-  const predecessors: [number, RE.StdRegex][] = []
+  const predecessors: [bigint, RE.StdRegex][] = []
   for (const [source, transitionsFromSource] of transitions) {
     // handle self loops separately:
     if (source !== state) {
@@ -103,7 +104,7 @@ function ripState(state: number, transitions: Table.Table<RE.StdRegex>): RipStat
 export function dfaToRegex(dfa: DFA): RE.StdRegex {
   const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
 
-  const newStartState = -1
+  const newStartState = -1n
   Table.set(
     newStartState,
     dfa.startState,
@@ -111,7 +112,7 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
     transitionsWithRegexLabels,
   )
 
-  const newFinalState = -2
+  const newFinalState = -2n
   for (const oldFinalState of dfa.finalStates) {
     Table.set(
       oldFinalState,
