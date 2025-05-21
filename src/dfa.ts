@@ -7,7 +7,7 @@ export type DFA = Readonly<{
   allStates: Map<number, RE.ExtRegex>
   startState: number
   finalStates: Set<number>
-  transitions: Table.Table<CharSet.CharSet>
+  transitions: Table.Table<RE.StdRegex>
 }>
 
 function pickChar(set: CharSet.CharSet): number {
@@ -16,8 +16,12 @@ function pickChar(set: CharSet.CharSet): number {
 }
 
 function regexToDFA(regex: RE.ExtRegex): DFA {
+  // console.debug(RE.toString(regex))
   const allStates = new Map([[regex.hash, regex]])
-  const transitions: Table.Table<CharSet.CharSet> = new Map()
+  const transitions: Table.Table<RE.StdRegex> = new Map()
+
+  const extraFinalState = RE.epsilon
+  allStates.set(extraFinalState.hash, extraFinalState)
 
   const worklist = [regex]
   const derivClassCache: Table.Table<CharSet.CharSet[]> = new Map()
@@ -26,6 +30,14 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
     const sourceState = worklist.shift()
     if (sourceState === undefined) {
       break
+    } else if (RE.isStdRegex(sourceState)) {
+      Table.set(
+        sourceState.hash,
+        extraFinalState.hash,
+        sourceState,
+        transitions,
+      )
+      continue
     }
 
     for (const charSet of RE.derivativeClasses(sourceState, derivClassCache)) {
@@ -38,29 +50,28 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
         Table.set(
           sourceState.hash,
           targetState.hash,
-          charSet,
+          RE.literal(charSet),
           transitions,
         )
         worklist.push(targetState)
-        // console.debug('state count: ', allStates.size)
       } else {
         Table.setWith(
           sourceState.hash,
           knownState.hash,
-          charSet,
+          RE.literal(charSet),
           transitions,
-          CharSet.union
+          RE.union
         )
       }  
     }
   }
 
-  const finalStates = new Set<number>()
+  const finalStates = new Set([extraFinalState.hash])
   for (const state of allStates.values()) {
     if (RE.isNullable(state)) {
       finalStates.add(state.hash)
     }
-  } 
+  }
 
   return {
     allStates,
@@ -101,7 +112,7 @@ function ripState(state: number, transitions: Table.Table<RE.StdRegex>): RipStat
 }
 
 export function dfaToRegex(dfa: DFA): RE.StdRegex {
-  const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
+  const transitionsWithRegexLabels = Table.map(dfa.transitions, x => x)
 
   const newStartState = -1
   Table.set(
@@ -166,12 +177,12 @@ export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
   return dfaToRegex(dfa)
 }
 
-// function printTrans(trans: Table.Table<CharSet.CharSet>) {
-//   console.debug('=========trans===========')
-//   for (const [source, succs] of trans.entries()) {
-//     for (const [target, label] of succs) {
-//       console.debug(source, target, new RegExp(CharSet.toString(label)))
-//       // console.debug(source, target, RE.toString(label))
-//     }
-//   }
-// }
+function printTrans(trans: Table.Table<RE.StdRegex>) {
+  console.debug('=========trans===========')
+  for (const [source, succs] of trans.entries()) {
+    for (const [target, label] of succs) {
+      console.debug(source, target, RE.toRegExp(label))
+      // console.debug(source, target, RE.toString(label))
+    }
+  }
+}

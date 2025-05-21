@@ -933,3 +933,23 @@ export function debugShow(regex: ExtRegex): any {
   }
   checkedAllCases(regex)
 }
+
+export function isStdRegex(regex: ExtRegex): regex is StdRegex {
+  switch (regex.type) {
+    case 'epsilon':
+      return true
+    case 'literal':
+      return true
+    case 'concat':
+      return isStdRegex(regex.left) && isStdRegex(regex.right)
+    case 'union':
+      return isStdRegex(regex.left) && isStdRegex(regex.right)
+    case 'star':
+      return isStdRegex(regex.inner)
+    case 'intersection':
+      return false
+    case 'complement':
+      return false
+  }
+  checkedAllCases(regex)
+}
