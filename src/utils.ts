@@ -146,3 +146,16 @@ export function hashStr(str: string, seed = 0): number {
 export function xor(a: number, b: number): number {
   return a^b
 }
+
+export function minBy<T>(iterable: Iterable<T>, scoreOf: (item: T) => number): T | undefined {
+  let minItem = undefined
+  let minScore = Infinity
+  for (const item of iterable) {
+    const score = scoreOf(item)
+    if (scoreOf(item) < minScore) {
+      minItem = item
+      minScore = score
+    }
+  }
+  return minItem
+}

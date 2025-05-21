@@ -199,14 +199,3 @@ describe('rewrite rules', () => {
   })
   
 })
-
-// describe('equivalent', () => {
-//   it('every regex is equivalent to itself', () => {
-//     fc.assert(
-//       fc.property(extRegex(), (tree) => {
-//         expect(RegexTree.equivalent(tree, tree)).toBe(true)
-//       })
-//     )
-//   })
-// })
-

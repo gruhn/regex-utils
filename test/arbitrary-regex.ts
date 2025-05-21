@@ -56,6 +56,18 @@ export function stdRegexNoStar(size = 100): fc.Arbitrary<RE.StdRegex> {
     )
 }
 
+export function stdRegexNoNestedStar(size = 100): fc.Arbitrary<RE.StdRegex> {
+  if (size <= 0)
+    return literal()
+  else
+    return fc.oneof(
+      star(() => stdRegexNoStar(Math.floor(size/2))),
+      concat(() => stdRegexNoNestedStar(Math.floor(size/2))),
+      union(() => stdRegexNoNestedStar(Math.floor(size/2))),
+      literal(),
+    )
+}
+
 export function stdRegexString(): fc.Arbitrary<string> {
   return stdRegex().map(RE.toString)
 }

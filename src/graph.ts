@@ -41,6 +41,13 @@ export function outDegree<A>(node: number, graph: Graph<A>): number {
     return succs.size
 }
 
+/**
+ * Number of in- and out-going edges at `node` (not counting self-loop).
+ */
+export function degree<A>(node: number, graph: Graph<A>): number {
+  return inDegree(node, graph) + outDegree(node, graph)
+}
+
 export type RipNodeResult<A> = {
   predecessors: [number, A][]
   selfLoop: A | undefined

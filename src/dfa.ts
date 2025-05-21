@@ -94,25 +94,65 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
       graph
     )
   }
+ 
+  // All states except `newStartState` and `newFinalState` need to be eliminated.
+  // After that, the only remaining transition is between `newStartState` and
+  // `newFinalState` and is labeled with the result regex.
+  // Thus, we put all these states in worklist to be iteratively eliminated. 
+  // Ripping out states with small in/out-degree earlier can result in smaller expressions.
+  // For example:
+  //                                 b            d
+  //                            +---------(s2)---------+
+  //                 a         /                        \
+  //      (s0) ------------- (s1)                      (s4)
+  //                           \     c            e     /
+  //                            +---------(s3)---------+
+  //                         
+  // Ripping states in the order s2, s3, s1 produces:
+  // 
+  //                           a(bd|ce)
+  //      (s0) --------------------------------------- (s4)
+  // 
+  // Ripping states in the order s1, s2, s3 produces:
+  // 
+  //                           (abd)|(ace)
+  //      (s0) --------------------------------------- (s4)
+  // 
+  // Thus, we sort the worklist by degree. Note, that the degree of nodes changes during
+  // the later iteration so it can still be that nodes with higher degree are sometimes
+  // ripped out first. However, keeping the worklist sorted at the same time also has a  
+  // cost. Maybe this can be improved by choosing some heap structure:
+  const worklist = [...dfa.allStates.keys()]
+    // Avoid constantly re-computing degree during sorting by computing it once in a first pass:
+    .map(state => ({ state, degree: Graph.degree(state, graph)}))
+    // Sort states by degree:
+    .sort((a,b) => a.degree - b.degree)
+    // Through degree away again after sorting:
+    .map(({ state }) => state)
 
-  for (const state of dfa.allStates.keys()) {
-    const result = Graph.ripNode(state, graph)
-
-    for (const [pred, predLabel] of result.predecessors) {
-      for (const [succ, succLabel] of result.successors) {
-        const transitiveLabel = RE.seq([
-          predLabel,
-          RE.star(result.selfLoop ?? RE.epsilon),
-          succLabel,
-        ])
-
-        Graph.setEdge(
-          pred, 
-          succ,
-          transitiveLabel,
-          graph, 
-          RE.union,
-        )
+  while (true) {
+    const state = worklist.shift()
+    if (state === undefined) {
+      break
+    } else {
+      const result = Graph.ripNode(state, graph)
+      for (const [pred, predLabel] of result.predecessors) {
+        for (const [succ, succLabel] of result.successors) {
+          const transitiveLabel = RE.seq([
+            predLabel,
+            RE.star(result.selfLoop ?? RE.epsilon),
+            succLabel,
+          ])
+          Graph.setEdge(
+            pred, 
+            succ,
+            transitiveLabel,
+            graph, 
+            // Flipping the arguments avoids that the associativity rewrite rule of `union`
+            // keeps getting triggered. This makes a segnificant performance difference:
+            (oldValue, newValue) => RE.union(newValue, oldValue),
+          )
+        }
       }
     }
   }
