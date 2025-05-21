@@ -2,6 +2,7 @@ import * as CharSet from "./char-set"
 import * as RE from "./regex"
 import { assert } from "./utils"
 import * as Table from './table'
+import * as Graph from './graph'
 
 export type DFA = Readonly<{
   allStates: Map<number, RE.ExtRegex>
@@ -44,7 +45,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
         worklist.push(targetState)
         // console.debug('state count: ', allStates.size)
       } else {
-        Table.setWith(
+        Table.set(
           sourceState.hash,
           knownState.hash,
           charSet,
@@ -70,81 +71,54 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
   }
 }
 
-type RipStateResult = {
-  predecessors: [number, RE.StdRegex][]
-  selfLoop: RE.StdRegex
-  successors: [number, RE.StdRegex][]
-}
-
-function ripState(state: number, transitions: Table.Table<RE.StdRegex>): RipStateResult {
-  const selfLoop = Table.get(state, state, transitions) ?? RE.epsilon
-
-  const successorsMap = transitions.get(state) ?? new Map<number, RE.StdRegex>()
-  // handle self loops separately:
-  successorsMap.delete(state)
-  const successors = [...successorsMap.entries()]
-  transitions.delete(state)
-
-  const predecessors: [number, RE.StdRegex][] = []
-  for (const [source, transitionsFromSource] of transitions) {
-    // handle self loops separately:
-    if (source !== state) {
-      const label = transitionsFromSource.get(state)
-      if (label !== undefined) {
-        predecessors.push([source, label])
-        transitionsFromSource.delete(state)
-      }
-    }
+export function dfaToRegex(dfa: DFA): RE.StdRegex {
+  const graph = Graph.create<RE.StdRegex>()
+  for (const [source, target, charSet] of Table.entries(dfa.transitions)) {
+    Graph.setEdge(source, target, RE.literal(charSet), graph)   
   }
 
-  return { selfLoop, successors, predecessors }
-}
-
-export function dfaToRegex(dfa: DFA): RE.StdRegex {
-  const transitionsWithRegexLabels = Table.map(dfa.transitions, RE.literal)
-
   const newStartState = -1
-  Table.set(
+  Graph.setEdge(
     newStartState,
     dfa.startState,
     RE.epsilon,
-    transitionsWithRegexLabels,
+    graph
   )
 
   const newFinalState = -2
   for (const oldFinalState of dfa.finalStates) {
-    Table.set(
+    Graph.setEdge(
       oldFinalState,
       newFinalState,
       RE.epsilon,
-      transitionsWithRegexLabels,
+      graph
     )
   }
 
   for (const state of dfa.allStates.keys()) {
-    const result = ripState(state, transitionsWithRegexLabels)
+    const result = Graph.ripNode(state, graph)
 
     for (const [pred, predLabel] of result.predecessors) {
       for (const [succ, succLabel] of result.successors) {
         const transitiveLabel = RE.seq([
           predLabel,
-          RE.star(result.selfLoop),
+          RE.star(result.selfLoop ?? RE.epsilon),
           succLabel,
         ])
 
-        Table.setWith(
-          pred,
+        Graph.setEdge(
+          pred, 
           succ,
           transitiveLabel,
-          transitionsWithRegexLabels,
+          graph, 
           RE.union,
         )
       }
     }
   }
 
-  assert(transitionsWithRegexLabels.size === 1)
-  const transitionsFromNewStart = transitionsWithRegexLabels.get(newStartState)
+  assert(graph.successors.size === 1)
+  const transitionsFromNewStart = graph.successors.get(newStartState)
   assert(transitionsFromNewStart !== undefined)
 
   if (transitionsFromNewStart.size === 0) {

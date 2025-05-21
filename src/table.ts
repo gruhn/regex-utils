@@ -14,27 +14,16 @@ export function remove<T>(
   return table.get(rowIndex)?.delete(colIndex)
 }
 
+function crashOnConflict<T>(): T {
+  throw new Error('Table.set cell non-empty')
+}
+
 export function set<T>(
   rowIndex: number,
   colIndex: number,
   newValue: T,
   table: Table<T>,
-): void {
-  return setWith(
-    rowIndex,
-    colIndex,
-    newValue,
-    table,
-    () => { throw new Error('Table.set cell non-empty') } 
-  )
-}
-
-export function setWith<T>(
-  rowIndex: number,
-  colIndex: number,
-  newValue: T,
-  table: Table<T>,
-  combine: (oldValue: T, newValue: T) => T
+  combine: (oldValue: T, newValue: T) => T = crashOnConflict
 ): void {
   let row = table.get(rowIndex)
   if (row === undefined) {
@@ -59,4 +48,20 @@ export function map<A,B>(table: Table<A>, fn: (_: A) => B): Table<B> {
       )]
     )
   ) 
+}
+
+export function* entries<A>(table: Table<A>): Generator<[number, number, A]> {
+  for (const [rowIndex, row] of table.entries()) {
+    for (const [colIndex, value] of row.entries()) {
+      yield [rowIndex, colIndex, value]
+    }
+  }
+}
+
+export function fromEntries<A>(items: Iterable<[number, number, A]>): Table<A> {
+  const table: Table<A> = new Map()
+  for (const [rowIndex, colIndex, value] of items) {
+    set(rowIndex, colIndex, value, table)
+  }
+  return table
 }
