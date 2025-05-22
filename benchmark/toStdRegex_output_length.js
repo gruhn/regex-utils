@@ -39,9 +39,6 @@ const hardInstances = new Set([
 ])
 
 function run(inputRegExp, index) {
-  // skip some hard early instances:
-  if (hardInstances.has(index)) return
-
   console.log('#' + index, inputRegExp)
 
   const outputRegex = toStdRegex(parse(inputRegExp))
@@ -71,9 +68,15 @@ function run(inputRegExp, index) {
 
 const timeStart = performance.now()
 
-regexDataset
-  // do short (likely easier) instances first and see how far we get:
-  .sort((a,b) => a.source.length - b.source.length)
-  .forEach(run)
+// do short (likely easier) instances first and see how far we get:
+const regexDatasetSorted = regexDataset.sort(
+  (a,b) => a.source.length - b.source.length
+)
+
+run(regexDatasetSorted[689], 689)
+
+// regexDatasetSorted
+//   .filter(inst => !hardInstances.includes(inst))
+//   .forEach(run)
 
 console.log('time:', performance.now() - timeStart)
