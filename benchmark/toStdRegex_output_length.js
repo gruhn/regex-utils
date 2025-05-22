@@ -8,17 +8,39 @@ let maxMult = -Infinity
 
 const hardInstances = new Set([
   290, // call-stack overflow
-  556, // takes very long
-  658, // takes very long
+  556, // ???
+  658, // ???
   689, // call-stack overflow
-  724, // takes very long
+  724, // ???
+  777, // ???
+  783, // out of memory
+  787, // ??? 
+  791, // ???
+  831, // ???
+  840, // stack overflow
+  860, // ???
+  871, // ???
+  883, // ???
+  884, // ???
+  894, // ???
+  900, // stack overflow
+  908, // ???
+  940, // ???
+  948, // ???
+  949, // ???
+  954, // ???
+  958, // ???
+  961, // stack overflow
+  964, // ???
+  981, // ???
+  991, // ???
+  994, // ???
+  996, // ???
 ])
 
 function run(inputRegExp, index) {
   // skip some hard early instances:
   if (hardInstances.has(index)) return
-  // only consider first 800 instances for now:
-  if (index > 750) return
 
   console.log('#' + index, inputRegExp)
 
