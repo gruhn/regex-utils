@@ -177,6 +177,8 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r* + ε = r*
     return left
 
+  // These rules sort union members and eliminate duplicates, e.g.
+  // /b|a|b/ --> /a|b|b/ --> /a|b/
   if (right.type == 'union') {
     if (equal(left, right.left))
       // r + (r + s) = r + s
@@ -184,13 +186,9 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     if (equal(left, right.right))
       // r + (s + r) = r + s
       return union(left, right.left)
-
-    // const [leftHead, leftTail] = extractFront(left)
-    // const [rightHead, rightTail] = extractFront(right.left)
-    // if (equal(leftHead, rightHead))
-    //   // (r · s) + ((r · t) + u) = (r · (s + t)) + u
-    //   return union(concat(left, union(leftTail, rightTail)), right.right)
-    //   // return concat(left, optional(union(leftTail, right.right)))
+    if (left.hash > right.left.hash)
+      // s + (r + t) = r + (s + t)
+      return union(right.left, union(left, right.right))
   }
 
   const [leftHead, leftTail] = extractFront(left)
