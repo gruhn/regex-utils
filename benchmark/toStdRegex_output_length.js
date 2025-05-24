@@ -7,19 +7,11 @@ let avgMult = 0
 let maxMult = -Infinity
 
 const hardInstances = new Set([
-  290, // call-stack overflow
-  556, // takes very long
-  658, // takes very long
-  689, // call-stack overflow
-  724, // takes very long
+  883, // ???
+  964, // ???
 ])
 
 function run(inputRegExp, index) {
-  // skip some hard early instances:
-  if (hardInstances.has(index)) return
-  // only consider first 800 instances for now:
-  if (index > 750) return
-
   console.log('#' + index, inputRegExp)
 
   const outputRegex = toStdRegex(parse(inputRegExp))
@@ -42,6 +34,8 @@ function run(inputRegExp, index) {
       avg. multiplier     : ${avgMult}
       worst multiplier    : ${maxMult}
     `) 
+
+    console.log('#' + index, outputRegExp)
   } catch (err) {
     console.log('too many captures')
   }
@@ -49,9 +43,15 @@ function run(inputRegExp, index) {
 
 const timeStart = performance.now()
 
-regexDataset
-  // do short (likely easier) instances first and see how far we get:
-  .sort((a,b) => a.source.length - b.source.length)
-  .forEach(run)
+// do short (likely easier) instances first and see how far we get:
+const regexDatasetSorted = regexDataset.sort(
+  (a,b) => a.source.length - b.source.length
+)
+
+run(regexDatasetSorted[689], 0)
+
+// regexDatasetSorted
+//   .filter((inst, i) => !hardInstances.has(i))
+//   .forEach(run)
 
 console.log('time:', performance.now() - timeStart)
