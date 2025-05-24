@@ -51,12 +51,24 @@ describe('parseRegexString', () => {
   it('inverts RE.toString', () => {
     fc.assert(
       fc.property(
-        Arb.stdRegex(),
+        // Arb.stdRegex(),
+        Arb.stdRegex(10),
         (stdRegex) => {
         const regexStr = RE.toString(stdRegex)
         const result = parseRegexString(regexStr)
+
+        console.debug(RE.toRegExp(stdRegex))
+        console.debug(RE.toRegExp(result))
+        // console.debug([...stdRegex.children.values()].map(RE.debugShow)[3].inner.children)
+        // console.debug([...result.children.values()].map(RE.debugShow)[3].inner.children)
+
+        console.debug(JSON.stringify(RE.debugShow(stdRegex), null, 2))
+        console.debug(JSON.stringify(RE.debugShow(result), null, 2))
+        
         expect(result.hash).toBe(stdRegex.hash)
       }),
+      // { seed: -1811385930, path: "79:0:0:0:0:2:2:2", endOnFailure: true }
+      { seed: -1928456392, path: "88:2:2:2", endOnFailure: true }
     )   
   })
 

@@ -2,6 +2,7 @@ import { hashStr, checkedAllCases, assert, uniqWith, hashNums } from './utils'
 import * as CharSet from './char-set'
 import * as Stream from './stream';
 import * as Table from './table';
+import { Map as IMap } from 'immutable';
 
 /**
  * TODO
@@ -10,7 +11,7 @@ type StdRegexWithoutHash = (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: StdRegex, right: StdRegex }
-  | { type: "union", left: StdRegex, right: StdRegex }
+  | { type: "union", children: IMap<number, StdRegex> }
   | { type: "star", inner: StdRegex }
 )
 
@@ -21,8 +22,10 @@ type ExtRegexWithoutHash = (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: ExtRegex, right: ExtRegex }
-  | { type: "union", left: ExtRegex, right: ExtRegex }
-  | { type: "star", inner: ExtRegex  }
+  // Using a `Map` for `children` so duplicates are automatically eliminated,
+  // e.g. /a|b|a/ becomes /a|b/.
+  | { type: "union", children: IMap<number, ExtRegex> }
+  | { type: "star", inner: ExtRegex }
   // Extended with intersection and complement operator:
   | { type: "intersection", left: ExtRegex, right: ExtRegex }
   | { type: "complement", inner: ExtRegex }
@@ -45,7 +48,17 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
     return { ...regex, hash: hashStr(regex.type) }
   else if (regex.type === 'literal')
     return { ...regex, hash: hashNums([hashStr(regex.type), regex.charset.hash]) }
-  else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
+  else if (regex.type === 'union')
+    return {
+      ...regex,
+      hash: hashNums([
+        hashStr(regex.type),
+        // Sorting keys before hashing to normalize commutativity away,
+        // e.g. /b|c|a/ and /a|b|c/ should be recognized as equal:
+        ...[...regex.children.keys()].sort()
+      ])
+    }
+  else if (regex.type === 'concat' || regex.type === 'intersection')
     return { ...regex, hash: hashNums([
       hashStr(regex.type),
       // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
@@ -58,7 +71,7 @@ export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
 }
 
 //////////////////////////////////////////////
-///// primitive composite constructors ///////
+/////      primitive constructors      ///////
 //////////////////////////////////////////////
 
 export const epsilon: StdRegex = withHash({ type: 'epsilon'  })
@@ -87,11 +100,11 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
   if (right.type === "epsilon")
     // r · ε ≈ r
     return left
-  if (left.type === 'union' && equal(left.right, epsilon)) {
-    if (equal(left.left, right))
+  if (left.type === 'union' && left.children.size === 2 && left.children.has(epsilon.hash)) {
+    if (left.children.has(right.hash))
       // (r + ε) · r ≈ r · (r + ε)
       return concat(right, left)
-    if (right.type === 'concat' && equal(left.left, right.left)) 
+    if (right.type === 'concat' && left.children.has(right.left.hash)) 
       // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
       return concat(right.left, concat(left, right.right)) 
   }
@@ -149,9 +162,6 @@ function extractBack(regex: ExtRegex): [ExtRegex, ExtRegex] {
 export function union(left: StdRegex, right: StdRegex): StdRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex
 export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
-  if (left.type === 'union')
-    // (r + s) + t ≈ r + (s + t)
-    return union(left.left, union(left.right, right))
   if (equal(left, right))
     // r + r ≈ r
     return left
@@ -177,22 +187,6 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r* + ε = r*
     return left
 
-  if (right.type == 'union') {
-    if (equal(left, right.left))
-      // r + (r + s) = r + s
-      return union(left, right.right)
-    if (equal(left, right.right))
-      // r + (s + r) = r + s
-      return union(left, right.left)
-
-    // const [leftHead, leftTail] = extractFront(left)
-    // const [rightHead, rightTail] = extractFront(right.left)
-    // if (equal(leftHead, rightHead))
-    //   // (r · s) + ((r · t) + u) = (r · (s + t)) + u
-    //   return union(concat(left, union(leftTail, rightTail)), right.right)
-    //   // return concat(left, optional(union(leftTail, right.right)))
-  }
-
   const [leftHead, leftTail] = extractFront(left)
   const [rightHead, rightTail] = extractFront(right)
 
@@ -212,7 +206,42 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r       + (s · r) = (s + ε) · r
     return concat(union(leftInit, rightInit), leftLast)
 
-  return withHash({ type: 'union', left, right })
+  if (left.type === 'union') {
+    if (right.type === 'union')
+      return withHash({
+        type: 'union',
+        children: mergeLiterals(left.children.merge(right.children)),
+      })
+    else
+      return withHash({
+        ...left,
+        children: mergeLiterals(left.children.set(right.hash, right)),
+      })
+  }
+  if (right.type === 'union')
+    return withHash({
+      ...right,
+      children: mergeLiterals(right.children.set(left.hash, left)),
+    })
+  
+  return withHash({
+    type: 'union',
+    children: IMap([
+      [left.hash, left],
+      [right.hash, right]
+    ])
+  })
+}
+
+function mergeLiterals(children: IMap<number, ExtRegex>): IMap<number, ExtRegex> {
+  const [rest, literals] = children.partition(child => child.type === 'literal')
+  if (literals.size > 1) {
+    const charsetsMerged = literals.map(lit => lit.charset).reduce(CharSet.union)
+    const mergedLit = literal(charsetsMerged)
+    return rest.set(mergedLit.hash, mergedLit)
+  } else {
+    return children
+  }
 }
 
 export function star(inner: StdRegex): StdRegex
@@ -496,10 +525,9 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRege
         )
     }
     case "union":
-      return union(
-        codePointDerivative(codePoint, regex.left),
-        codePointDerivative(codePoint, regex.right)
-      )
+      return [...regex.children.values()]
+        .map(child => codePointDerivative(codePoint, child))
+        .reduce(union, empty)
     case "intersection":
       return intersection(
         codePointDerivative(codePoint, regex.left),
@@ -550,7 +578,7 @@ export function isNullable(regex: ExtRegex): boolean {
     case "concat":
       return isNullable(regex.left) && isNullable(regex.right)
     case "union":
-      return isNullable(regex.left) || isNullable(regex.right)
+      return [...regex.children.values()].some(isNullable)
     case "intersection":
       return isNullable(regex.left) && isNullable(regex.right)
     case "star":
@@ -630,11 +658,9 @@ export function derivativeClasses(
         return derivativeClasses(regex.left, cache)
     }
     case "union":
-      return allNonEmptyIntersections(
-        derivativeClasses(regex.left, cache),
-        derivativeClasses(regex.right, cache),
-        cache,
-      )
+      return [...regex.children.values()]
+        .map(child => derivativeClasses(child, cache))
+        .reduce((a,b) => allNonEmptyIntersections(a,b,cache))
     case "intersection":
       return allNonEmptyIntersections(
         derivativeClasses(regex.left, cache),
@@ -728,16 +754,16 @@ function toRegExpAST(regex: ExtRegex): RegExpAST {
       }
     }
     case 'union': {
-      // The `union` smart constructor should guarantee that there is only 
-      // ever a right epsilon (never only on the left or on both sides):
-      if (regex.right.type === 'epsilon')
-        return { type: 'optional', inner: toRegExpAST(regex.left) }
+      const inner: RegExpAST = regex.children
+        .remove(epsilon.hash)
+        .sortBy(a => a.hash)
+        .map(toRegExpAST)
+        .reduce((left, right) => ({ type: 'union', left, right }))
+
+      if (regex.children.has(epsilon.hash))
+        return { type: 'optional', inner }
       else
-        return {
-          type: 'union',
-          left: toRegExpAST(regex.left),
-          right: toRegExpAST(regex.right),
-        }
+        return inner
     }
     case 'star':
       return { type: 'star', inner: toRegExpAST(regex.inner) }
@@ -824,10 +850,9 @@ export function enumerateAux(regex: StdRegex): Stream.Stream<string> {
         enumerateAux(regex.right),
       )
     case 'union':
-      return Stream.interleave(
-        enumerateAux(regex.left),
-        enumerateAux(regex.right),
-      )
+      return regex.children
+        .map(enumerateAux)
+        .reduce(Stream.interleave)
     case 'star':
       return Stream.cons(
         '',
@@ -884,12 +909,13 @@ function sizeMemoizedAux(
         return undefined
     }
     case 'union': {
-      const leftSize = sizeMemoized(regex.left, cache)
-      const rightSize = sizeMemoized(regex.right, cache)
-      if (leftSize !== undefined && rightSize !== undefined)
-        return leftSize + rightSize
-      else
-        return undefined
+      return [...regex.children.values()].reduce((acc: bigint | undefined, child) => {
+        const childSize = sizeMemoized(child, cache)
+        if (acc === undefined || childSize === undefined)
+          return undefined
+        else 
+          return acc + childSize
+      }, 0n)
     }
     case 'star': {
       const innerSize = sizeMemoized(regex.inner, cache)
@@ -921,15 +947,19 @@ export function debugShow(regex: ExtRegex): any {
     case 'literal':
       return CharSet.toString(regex.charset)
     case 'concat':
-      return { type: 'concat', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return { type: 'concat', left: debugShow(regex.left), right: debugShow(regex.right), hash: regex.hash }
     case 'union':
-      return { type: 'union', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return {
+        type: 'union',
+        children: [...regex.children.values()].sort((a,b) => a.hash - b.hash).map(debugShow),
+        hash: regex.hash
+      }
     case 'star':
-      return { type: 'star', inner: debugShow(regex.inner) }
+      return { type: 'star', inner: debugShow(regex.inner), hash: regex.hash }
     case 'intersection':
-      return { type: 'intersection', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return { type: 'intersection', left: debugShow(regex.left), right: debugShow(regex.right), hash: regex.hash }
     case 'complement':
-      return { type: 'complement', inner: debugShow(regex.inner) }
+      return { type: 'complement', inner: debugShow(regex.inner), hash: regex.hash }
   }
   checkedAllCases(regex)
 }

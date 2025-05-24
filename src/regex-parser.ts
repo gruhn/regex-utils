@@ -15,7 +15,7 @@ const regExpFlags = [
   'sticky',
 ] as const
 
-type RegExpFlag = typeof regExpFlags[number]
+export type RegExpFlag = typeof regExpFlags[number]
 
 // TODO:
 // - parse \uXXXX notation
