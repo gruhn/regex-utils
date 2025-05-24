@@ -7,36 +7,35 @@ let avgMult = 0
 let maxMult = -Infinity
 
 const hardInstances = new Set([
-  // 290, // call-stack overflow
-  461, // ???
-  // 556, // ???
-  // 658, // ???
-  // 689, // call-stack overflow
-  // 724, // ???
-  // 777, // ???
-  // 783, // out of memory
-  // 787, // ??? 
-  // 791, // ???
-  // 831, // ???
-  // 840, // stack overflow
-  // 860, // ???
-  // 871, // ???
-  // 883, // ???
-  // 884, // ???
-  // 894, // ???
-  // 900, // stack overflow
-  // 908, // ???
-  // 940, // ???
-  // 948, // ???
-  // 949, // ???
-  // 954, // ???
-  // 958, // ???
-  // 961, // stack overflow
-  // 964, // ???
-  // 981, // ???
-  // 991, // ???
-  // 994, // ???
-  // 996, // ???
+  290, // call-stack overflow
+  556, // ???
+  658, // ???
+  689, // call-stack overflow
+  724, // ???
+  777, // ???
+  783, // out of memory
+  787, // ??? 
+  791, // ???
+  831, // ???
+  840, // stack overflow
+  860, // ???
+  871, // ???
+  883, // ???
+  884, // ???
+  894, // ???
+  900, // stack overflow
+  908, // ???
+  940, // ???
+  948, // ???
+  949, // ???
+  954, // ???
+  958, // ???
+  961, // stack overflow
+  964, // ???
+  981, // ???
+  991, // ???
+  994, // ???
+  996, // ???
 ])
 
 function run(inputRegExp, index) {
@@ -62,7 +61,6 @@ function run(inputRegExp, index) {
       avg. multiplier     : ${avgMult}
       worst multiplier    : ${maxMult}
     `) 
-    console.debug(outputRegExp)
   } catch (err) {
     console.log('too many captures')
   }
@@ -75,13 +73,10 @@ const regexDatasetSorted = regexDataset.sort(
   (a,b) => a.source.length - b.source.length
 )
 
-// for (let i=0; i < 500; i++) {
-//   if (hardInstances.has(i)) {
-//     continue
-//   }
-//   run(regexDatasetSorted[i], i)
-// }
+run(regexDatasetSorted[689], 689)
 
-run(regexDatasetSorted[454], 454)
+// regexDatasetSorted
+//   .filter(inst => !hardInstances.includes(inst))
+//   .forEach(run)
 
 console.log('time:', performance.now() - timeStart)

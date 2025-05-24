@@ -1,10 +1,11 @@
 import fc from "fast-check"
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, test } from "vitest"
 import * as RE from "../src/regex"
 import * as DFA from '../src/dfa'
 import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
 import * as CharSet from '../src/char-set'
+import { toRegExp } from "../src/regex"
 import { parseRegExp } from "../src/regex-parser"
 
 describe('toString', () => {

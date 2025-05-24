@@ -1,6 +1,7 @@
 import fc from 'fast-check'
 import * as RE from '../src/regex'
 import * as CharSet from '../src/char-set'
+import { checkedAllCases } from '../src/utils'
 
 // TODO: try larger alphabet:
 export function charSet(): fc.Arbitrary<CharSet.CharSet> {

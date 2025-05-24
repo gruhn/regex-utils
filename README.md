@@ -1,6 +1,6 @@
 # Regex Utils
 
-TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
+Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
 ```typescript
