@@ -1,3 +1,4 @@
+import { sum } from "./utils"
 
 
 export type Table<T> = Map<number, Map<number, T>>
@@ -64,4 +65,8 @@ export function fromEntries<A>(items: Iterable<[number, number, A]>): Table<A> {
     set(rowIndex, colIndex, value, table)
   }
   return table
+}
+
+export function size<A>(table: Table<A>): number {
+  return sum([...table.values()].map(row => row.size))
 }

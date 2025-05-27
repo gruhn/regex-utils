@@ -48,7 +48,9 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
           transitions,
         )
         worklist.push(targetState)
-        // console.debug('state count: ', allStates.size)
+        // if (allStates.size % 100 === 0) {
+        //   console.debug({ stateCount: allStates.size })
+        // }
       } else {
         Table.set(
           sourceState.hash,
@@ -179,10 +181,10 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 }
 
 // TODO: can this round-trip through DFA construction be avoided?
-export function toStdRegex(regex: RE.ExtRegex): RE.StdRegex {
-  const dfa = regexToDFA(regex)
-  // console.debug('dfa done')
-  return dfaToRegex(dfa)
+export function toStdRegex(inputRegex: RE.ExtRegex): RE.StdRegex {
+  const dfa = regexToDFA(inputRegex)
+  const outputRegex = dfaToRegex(dfa)
+  return outputRegex
 }
 
 // function printTrans(trans: Table.Table<CharSet.CharSet>) {

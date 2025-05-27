@@ -50,6 +50,8 @@ const codePoint = singleChar.map(char => {
   return result
 })
 
+export class UnsupportedSyntaxError extends Error {}
+
 const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar => {
   switch (escapedChar) {
     case 'w': return CharSet.wordChars
@@ -64,12 +66,12 @@ const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar =>
     case 'v': return CharSet.singleton('\v') // vertical tab
     case 'f': return CharSet.singleton('\f') // form feed
     case '0': return CharSet.singleton('\0') // NUL character
-    case 'b': throw new Error('\b word-boundary assertion not supported')
-    case 'c': throw new Error('\cX control characters not supported')
-    case 'x': throw new Error('\\x not supported')
-    case 'u': throw new Error('\\u not supported')
-    case 'p': throw new Error('\\p not supported')
-    case 'P': throw new Error('\\P not supported')
+    case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion not supported')
+    case 'c': throw new UnsupportedSyntaxError('\cX control characters not supported')
+    case 'x': throw new UnsupportedSyntaxError('\\x not supported')
+    case 'u': throw new UnsupportedSyntaxError('\\u not supported')
+    case 'p': throw new UnsupportedSyntaxError('\\p not supported')
+    case 'P': throw new UnsupportedSyntaxError('\\P not supported')
     default: return CharSet.singleton(escapedChar) // match character literally
   }
 })

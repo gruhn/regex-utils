@@ -1,57 +1,77 @@
 import fc from 'fast-check'
 import * as RE from '../dist/regex.js'
+import { ParseError } from '../dist/parser.js'
+import { UnsupportedSyntaxError } from '../dist/regex-parser.js'
 import { parse, toStdRegex } from '../dist/low-level-api.js'
-import regexDataset from './regex_random_unique_no-nested-star_1000.js'
+import { regexToDFA } from '../dist/dfa.js'
+import randomRegexDataset from './regex_random_unique_no-nested-star_1000.js'
+import handwrittenRegexDataset from './regex_handwritten.js'
+
+const fullRegexDataset = [
+  ...randomRegexDataset,
+  ...handwrittenRegexDataset,
+] 
+
 
 let avgMult = 0
 let maxMult = -Infinity
 
-const hardInstances = new Set([
-  290, // call-stack overflow
-  556, // takes very long
-  658, // takes very long
-  689, // call-stack overflow
-  724, // takes very long
-])
-
 function run(inputRegExp, index) {
-  // skip some hard early instances:
-  if (hardInstances.has(index)) return
-  // only consider first 800 instances for now:
-  if (index > 750) return
-
   console.log('#' + index, inputRegExp)
+  const startTime = performance.now()
 
-  const outputRegex = toStdRegex(parse(inputRegExp))
-  try {
-    const outputRegExp = RE.toRegExp(outputRegex)
+  const inputRegex = parse(inputRegExp)
+  const outputRegex = toStdRegex(inputRegex)
+  const outputRegExp = RE.toRegExp(outputRegex)
 
-    const inp = inputRegExp.source.length
-    const out = outputRegExp.source.length
-    const mult = out/inp
+  const inp = inputRegExp.source.length
+  const out = outputRegExp.source.length
+  const mult = out/inp
 
-    avgMult = (avgMult*index + mult)/(index+1)
-    if (mult > maxMult) {
-      maxMult = mult
-    }
-
-    console.log(`
-      regex input length  : ${inp}
-      regex ouptut length : ${out}
-      multiplier          : ${mult}
-      avg. multiplier     : ${avgMult}
-      worst multiplier    : ${maxMult}
-    `) 
-  } catch (err) {
-    console.log('too many captures')
+  avgMult = (avgMult*index + mult)/(index+1)
+  if (mult > maxMult) {
+    maxMult = mult
   }
+
+  console.log(`
+    regex input length  : ${inp}
+    regex ouptut length : ${out}
+    multiplier          : ${mult}
+    avg. multiplier     : ${avgMult}
+    worst multiplier    : ${maxMult}
+  `) 
 }
 
-const timeStart = performance.now()
+let parseError = 0
+let cacheOverflow = 0
+let veryLargeSyntaTree = 0
+let stackOverflow = 0
+let regexSyntaxError = 0
 
-regexDataset
-  // do short (likely easier) instances first and see how far we get:
-  .sort((a,b) => a.source.length - b.source.length)
-  .forEach(run)
+fullRegexDataset.forEach((regex, i) => {
+  try {
+    run(regex, i)
+  } catch (e) {
+    if (e instanceof ParseError || e instanceof UnsupportedSyntaxError) {
+      parseError++
+    } else if (e instanceof RE.CacheOverflowError) {
+      cacheOverflow++
+    } else if (e instanceof RE.VeryLargeSyntaxTreeError) {
+      veryLargeSyntaTree++
+    } else if (e instanceof RangeError) {
+      stackOverflow++
+    } else if (e instanceof SyntaxError) {
+      regexSyntaxError++
+    } else {
+      throw e
+    }
+  }
+})
 
-console.log('time:', performance.now() - timeStart)
+console.debug('failed instances: ', {
+  parseError,
+  cacheOverflow,
+  veryLargeSyntaTree,
+  stackOverflow,
+  regexSyntaxError
+})

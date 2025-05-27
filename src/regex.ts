@@ -471,6 +471,8 @@ export function isEmpty(regex: ExtRegex): boolean {
   return regex.type === 'literal' && CharSet.isEmpty(regex.charset)
 }
 
+export class CacheOverflowError extends Error {}
+
 export function codePointDerivative(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
 export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
 export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
@@ -521,6 +523,13 @@ function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table
 function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
   const cachedResult = Table.get(codePoint, regex.hash, cache)
   if (cachedResult === undefined) {
+    // Rather throw an error when cache grows too large than getting OOM killed.
+    // At least errors can be caught and handled. The limit is somewhat arbitrary.
+    // TODO: maybe make this user configurable:
+    if (Table.size(cache) >= 10_000) {
+      throw new CacheOverflowError('Cache overflow while computing DFA transitions.')
+    }
+
     const result = codePointDerivative(codePoint, regex, cache)
     Table.set(codePoint, regex.hash, result, cache)
     return result
@@ -608,6 +617,13 @@ function allNonEmptyIntersections(
     return resultCached
   }
 
+  // Rather throw an error when cache grows too large than getting OOM killed.
+  // At least errors can be caught and handled. The limit is somewhat arbitrary.
+  // TODO: maybe make this user configurable:
+  if (Table.size(cache) >= 10_000) {
+    throw new CacheOverflowError()
+  }
+
   const result: CharSet.CharSet[] = []
   for (const classA of classesA) {
     for (const classB of classesB) {
@@ -668,12 +684,20 @@ export function derivativeClasses(
   }  
   checkedAllCases(regex)
 }
+
 function derivativeClassesAux(
   regex: ExtRegex,
   cache: DerivativeClassesCache
 ) {
   const cachedResult = cache.classes.get(regex.hash)
   if (cachedResult === undefined) {
+    // Rather throw an error when cache grows too large than getting OOM killed.
+    // At least errors can be caught and handled. The limit is somewhat arbitrary.
+    // TODO: maybe make this user configurable:
+    if (cache.classes.size >= 10_000) {
+      throw new CacheOverflowError()
+    }
+
     const result = derivativeClasses(regex, cache)
     cache.classes.set(regex.hash, result)
     return result
@@ -687,6 +711,8 @@ function derivativeClassesAux(
 ///// exclusive standard regex utils     /////
 //////////////////////////////////////////////
 
+export class VeryLargeSyntaxTreeError extends Error {}
+
 /**
  * TODO: docs
  * 
@@ -697,7 +723,20 @@ export function toRegExp(regex: StdRegex): RegExp {
 }
 
 export function toString(regex: ExtRegex): string {
-  return '^(' + astToString(toRegExpAST(regex)) + ')$'
+  const size = nodeCount(regex)
+  if (size > 1_000_000) {
+    throw new VeryLargeSyntaxTreeError(
+      "Won't try to convert to RegExp. Syntax tree has over 1_000_000 nodes."
+    )
+  }
+
+  // Render parenthesis as non-capturing groups if there is a large number of them,
+  // i.e. `/(?:abc)` instead of `/(abc)/`. `new RegExp(...)` throws an error if there
+  // is a large number of capturing groups. Non-capturing groups are a bit more verbose
+  // but at large sizes like this it doesn't matter anyway:
+  const useNonCapturingGroups = size > 10_000
+
+  return '^(' + astToString(toRegExpAST(regex), { useNonCapturingGroups }) + ')$'
 }
 
 // TODO: information is duplicated in parser:
@@ -786,37 +825,43 @@ function toRegExpAST(regex: ExtRegex): RegExpAST {
   checkedAllCases(regex)
 }
 
-function astToString(ast: RegExpAST): string {
+type RenderOptions = {
+  useNonCapturingGroups: boolean
+}
+
+function astToString(ast: RegExpAST, options: RenderOptions): string {
   switch (ast.type) {
     case 'epsilon':
       return ''
     case 'literal':
       return CharSet.toString(ast.charset)
     case 'concat':
-      return maybeWithParens(ast.left, ast) + maybeWithParens(ast.right, ast)
+      return maybeWithParens(ast.left, ast, options) + maybeWithParens(ast.right, ast, options)
     case 'union': 
-      return maybeWithParens(ast.left, ast) + '|' + maybeWithParens(ast.right, ast)   
+      return maybeWithParens(ast.left, ast, options) + '|' + maybeWithParens(ast.right, ast, options)   
     case 'star':
-      return maybeWithParens(ast.inner, ast) + '*'
+      return maybeWithParens(ast.inner, ast, options) + '*'
     case 'plus':
-      return maybeWithParens(ast.inner, ast) + '+'
+      return maybeWithParens(ast.inner, ast, options) + '+'
     case 'optional':
-      return maybeWithParens(ast.inner, ast) + '?'
+      return maybeWithParens(ast.inner, ast, options) + '?'
     case 'boundedQuantifier':
-      return maybeWithParens(ast.inner, ast) + '{' + ast.count + '}'
+      return maybeWithParens(ast.inner, ast, options) + '{' + ast.count + '}'
     case 'complement':
-      return '¬' + maybeWithParens(ast.inner, ast)
+      return '¬' + maybeWithParens(ast.inner, ast, options)
     case 'intersection':
-      return maybeWithParens(ast.left, ast) + '∩' + maybeWithParens(ast.right, ast)
+      return maybeWithParens(ast.left, ast, options) + '∩' + maybeWithParens(ast.right, ast, options)
   }
   checkedAllCases(ast)
 }
 
-function maybeWithParens(ast: RegExpAST, parent: RegExpAST): string {
+function maybeWithParens(ast: RegExpAST, parent: RegExpAST, options: RenderOptions): string {
   if (ast.type === parent.type || precLevel(ast.type) > precLevel(parent.type)) 
-    return astToString(ast)
+    return astToString(ast, options)
+  else if (options.useNonCapturingGroups)
+    return '(?:' + astToString(ast, options) + ')'
   else
-    return '(' + astToString(ast) + ')'
+    return '(' + astToString(ast, options) + ')'
 }
 
 /**
@@ -935,6 +980,43 @@ function sizeMemoizedAux(
         // since we normalize that away in the smart constructors.
         return undefined
     }
+  }
+}
+
+export function nodeCount(
+  regex: ExtRegex,
+  cache: Map<number, number> = new Map()
+): number {
+  switch (regex.type) {
+    case 'epsilon':
+      return 1
+    case 'literal':
+      return 1
+    case 'concat':
+      return nodeCountAux(regex.left, cache) + nodeCountAux(regex.right, cache) + 1
+    case 'union':
+      return nodeCountAux(regex.left, cache) + nodeCountAux(regex.right, cache) + 1
+    case 'star':
+      return nodeCountAux(regex.inner, cache) + 1
+    case 'intersection':
+      return nodeCountAux(regex.left, cache) + nodeCountAux(regex.right, cache) + 1
+    case 'complement':
+      return nodeCountAux(regex.inner, cache) + 1
+  }
+  checkedAllCases(regex)
+}
+
+function nodeCountAux(
+  regex: ExtRegex,
+  cache: Map<number, number>
+): number {
+  const cachedResult = cache.get(regex.hash)
+  if (cachedResult === undefined) {
+    const result = nodeCount(regex, cache)   
+    cache.set(regex.hash, result)
+    return result
+  } else {
+    return cachedResult
   }
 }
 
