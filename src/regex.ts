@@ -471,9 +471,9 @@ export function isEmpty(regex: ExtRegex): boolean {
   return regex.type === 'literal' && CharSet.isEmpty(regex.charset)
 }
 
-export function codePointDerivative(codePoint: number, regex: StdRegex): StdRegex
-export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex
-export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRegex {
+export function codePointDerivative(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
+export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
+export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
   switch (regex.type) {
     case "epsilon":
       return empty
@@ -486,35 +486,50 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex): ExtRege
     case "concat": {
       if (isNullable(regex.left))
         return union(
-          concat(codePointDerivative(codePoint, regex.left), regex.right),
-          codePointDerivative(codePoint, regex.right)
+          concat(codePointDerivativeAux(codePoint, regex.left, cache), regex.right),
+          codePointDerivativeAux(codePoint, regex.right, cache)
         )
       else 
         return concat(
-          codePointDerivative(codePoint, regex.left),
+          codePointDerivativeAux(codePoint, regex.left, cache),
           regex.right
         )
     }
     case "union":
       return union(
-        codePointDerivative(codePoint, regex.left),
-        codePointDerivative(codePoint, regex.right)
+        codePointDerivativeAux(codePoint, regex.left, cache),
+        codePointDerivativeAux(codePoint, regex.right, cache)
       )
     case "intersection":
       return intersection(
-        codePointDerivative(codePoint, regex.left),
-        codePointDerivative(codePoint, regex.right)
+        codePointDerivativeAux(codePoint, regex.left, cache),
+        codePointDerivativeAux(codePoint, regex.right, cache)
       )
     case "star":
       return concat(
-        codePointDerivative(codePoint, regex.inner),
+        codePointDerivativeAux(codePoint, regex.inner, cache),
         star(regex.inner)
       )
     case "complement":
-      return complement(codePointDerivative(codePoint, regex.inner))
+      return complement(codePointDerivativeAux(codePoint, regex.inner, cache))
   }  
   checkedAllCases(regex)
 }
+
+function codePointDerivativeAux(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
+function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
+function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
+  const cachedResult = Table.get(codePoint, regex.hash, cache)
+  if (cachedResult === undefined) {
+    const result = codePointDerivative(codePoint, regex, cache)
+    Table.set(codePoint, regex.hash, result, cache)
+    return result
+  } else {
+    return cachedResult
+  }
+}
+
+
 
 /**
  * TODO: docs
@@ -529,7 +544,7 @@ export function derivative(str: string, regex: ExtRegex): ExtRegex {
     return regex
   } else {
     const restStr = str.slice(1) 
-    const restRegex = codePointDerivative(firstCodePoint, regex)
+    const restRegex = codePointDerivative(firstCodePoint, regex, new Map())
 
     if (equal(empty, restRegex)) 
       return empty
@@ -608,9 +623,14 @@ function allNonEmptyIntersections(
   return finalResult
 }
 
+export type DerivativeClassesCache = {
+  classes: Map<number, CharSet.CharSet[]>
+  intersections: Table.Table<CharSet.CharSet[]>
+}
+
 export function derivativeClasses(
   regex: ExtRegex,
-  cache: Table.Table<CharSet.CharSet[]>
+  cache: DerivativeClassesCache
 ): CharSet.CharSet[] {
   switch (regex.type) {
     case "epsilon":
@@ -622,31 +642,44 @@ export function derivativeClasses(
     case "concat": {
       if (isNullable(regex.left))
         return allNonEmptyIntersections(
-          derivativeClasses(regex.left, cache),
-          derivativeClasses(regex.right, cache),
-          cache,
+          derivativeClassesAux(regex.left, cache),
+          derivativeClassesAux(regex.right, cache),
+          cache.intersections,
         )
       else 
-        return derivativeClasses(regex.left, cache)
+        return derivativeClassesAux(regex.left, cache)
     }
     case "union":
       return allNonEmptyIntersections(
-        derivativeClasses(regex.left, cache),
-        derivativeClasses(regex.right, cache),
-        cache,
+        derivativeClassesAux(regex.left, cache),
+        derivativeClassesAux(regex.right, cache),
+        cache.intersections,
       )
     case "intersection":
       return allNonEmptyIntersections(
-        derivativeClasses(regex.left, cache),
-        derivativeClasses(regex.right, cache),
-        cache
+        derivativeClassesAux(regex.left, cache),
+        derivativeClassesAux(regex.right, cache),
+        cache.intersections
       )
     case "star":
-      return derivativeClasses(regex.inner, cache)
+      return derivativeClassesAux(regex.inner, cache)
     case "complement":
-      return derivativeClasses(regex.inner, cache)
+      return derivativeClassesAux(regex.inner, cache)
   }  
   checkedAllCases(regex)
+}
+function derivativeClassesAux(
+  regex: ExtRegex,
+  cache: DerivativeClassesCache
+) {
+  const cachedResult = cache.classes.get(regex.hash)
+  if (cachedResult === undefined) {
+    const result = derivativeClasses(regex, cache)
+    cache.classes.set(regex.hash, result)
+    return result
+  } else {
+    return cachedResult
+  }
 }
 
 

@@ -91,7 +91,7 @@ function part2() {
 }
 
 const sol1 = part1() // best time:   992ms
-const sol2 = part2() // best time: 20095ms
+const sol2 = part2() // best time: 13182ms
 
 console.log('Part 1:', sol1.totalCount, `(time: ${Math.ceil(sol1.time)}ms)`)
 console.log('Part 2:', sol2.totalCount, `(time: ${Math.ceil(sol2.time)}ms)`)
