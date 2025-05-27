@@ -4,26 +4,31 @@ import { intersection } from '../dist/index.js'
 const emailRegex = /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/
 
 function runIntersection(sampleCount) {
-  return fc.sample(fc.stringMatching(intersection(/^.{3,10}$/, emailRegex)), sampleCount)
+  const startTime = performance.now()
+  fc.sample(fc.stringMatching(intersection(/^.{3,10}$/, emailRegex)), sampleCount)
+  return performance.now() - startTime
 }
 
 function runFilter(count) {
-  return fc.sample(fc.stringMatching(emailRegex).filter(
+  const startTime = performance.now()
+  fc.sample(fc.stringMatching(emailRegex).filter(
     str => 3 <= str.length && str.length <= 10
   ), count)
+  return performance.now() - startTime
 }
 
-
-for (const sampleCount of [10,50,100,500,1000,2000/* ,10_000,20_000,50_000,100_000 */]) {
-  const filterStart = performance.now()
-  runFilter(sampleCount)
-  const filterTime = performance.now() - filterStart
-
-  const interStart = performance.now()
-  runIntersection(sampleCount)
-  const interTime = performance.now() - interStart
+for (const sampleCount of [10,50,100,500,1000,2000]) {
+  const filterTime = runFilter(sampleCount)
+  const interTime = runIntersection(sampleCount)
 
   console.debug('\nsample count:', sampleCount)
   console.debug('time (post-hoc filter)    : ', filterTime)
+  console.debug('time (regex intersection) : ', interTime)
+}
+
+for (const sampleCount of [10_000,20_000,50_000,100_000,1_000_000]) {
+  const interTime = runIntersection(sampleCount)
+
+  console.debug('\nsample count:', sampleCount)
   console.debug('time (regex intersection) : ', interTime)
 }
