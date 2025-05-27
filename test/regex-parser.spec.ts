@@ -31,6 +31,7 @@ describe('parseRegexString', () => {
     [/^\.$/, RE.literal(CharSet.singleton('.'))],
     [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
     [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
+    [/^(?:ab)$/, RE.string('ab')], // non-capturing groups
   ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)
   })

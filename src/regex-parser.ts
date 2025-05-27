@@ -102,7 +102,7 @@ const charSet = P.choice([
 ])
 
 const group = P.between(
-  P.string('('),
+  P.string('(').andThen(() => P.optional(P.string('?:'))),
   P.string(')'),
   regex(),
 )
