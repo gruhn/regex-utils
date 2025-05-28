@@ -1,27 +1,46 @@
 import fc from "fast-check"
 import { describe, it, expect, test } from "vitest"
-import { isEmpty } from '../src/regex'
+import { CacheOverflowError, isEmpty, VeryLargeSyntaxTreeError } from '../src/regex'
 import * as RE from "../src/low-level-api"
 import * as Arb from './arbitrary-regex'
-import * as Stream from '../src/stream'
-import { assert } from "../src/utils"
 
 /**
  * Stochastically verifies that `regex1` is a subset of `regex2`.
  * It samples a bunch of matches from `regex1` and checks whether
  * they match `regex2` as well. If a mismatch is found it is returned.
- * Otherwise, `true` is returned.
+ * Otherwise, `undefined` is returned.
  */
-function isSubsetOf(regex1: RE.StdRegex, regex2: RE.StdRegex, maxSamples = 30): true | string {
-  const re2 = RE.toRegExp(regex2)
-
+function expectSubsetOf(regex1: RE.StdRegex, regex2: RE.StdRegex, maxSamples = 30) {
+  const re2 = toRegExp_ignoreBlowUp(regex2)
   for (const match1 of RE.enumerate(regex1).take(maxSamples)) {
-    if (!re2.test(match1)) {
-      return match1
-    }
+    expect(match1).toMatch(re2)
   }
+}
 
-  return true
+function toRegExp_ignoreBlowUp(regex: RE.StdRegex) {
+  try {
+    return RE.toRegExp(regex)
+  } catch (e) {
+    if (e instanceof VeryLargeSyntaxTreeError) {
+      console.warn(e)
+      fc.pre(false)
+    } else {
+      throw e
+    }     
+  }
+}
+
+function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
+  try {
+    return RE.toStdRegex(regex)
+  } catch (e) {
+    if (e instanceof CacheOverflowError) {
+      console.warn(e)
+      fc.pre(false)
+    } else {
+      throw e
+    }     
+  }
 }
 
 describe('toStdRegex', () => {
@@ -29,25 +48,25 @@ describe('toStdRegex', () => {
   it('is idempotent on StdRegex', () => {
     fc.assert(
       fc.property(
-        // FIXME: `star` often leads to exponential blow up.
-        Arb.stdRegexNoStar(),
+        Arb.stdRegex(),
         inputRegex => {
-          const outputRegex = RE.toStdRegex(inputRegex)
-          expect(isSubsetOf(inputRegex, outputRegex)).toBe(true)
-          expect(isSubsetOf(outputRegex, inputRegex)).toBe(true)
+          const outputRegex = toStdRegex_ignoreBlowUp(inputRegex)
+          expectSubsetOf(inputRegex, outputRegex)
+          expectSubsetOf(outputRegex, inputRegex)
         }
       ),
+      { numRuns: 100, maxSkipsPerRun: 100 }
     )
-  })
+  }, 10_000)
 
 })
 
 test('A ∩ ¬A = ∅', () => {
   fc.assert(
     fc.property(
-      Arb.stdRegexNoStar(),
+      Arb.stdRegex(),
       regexA => {
-        const outputRegex = RE.toStdRegex(
+        const outputRegex = toStdRegex_ignoreBlowUp(
           RE.and([regexA, RE.not(regexA)])
         )
         expect(isEmpty(outputRegex)).toBe(true)
@@ -59,14 +78,14 @@ test('A ∩ ¬A = ∅', () => {
 test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
   fc.assert(
     fc.property(
-      Arb.stdRegexNoStar(),
-      Arb.stdRegexNoStar(),
-      Arb.stdRegexNoStar(),
+      Arb.stdRegex(),
+      Arb.stdRegex(),
+      Arb.stdRegex(),
       (regexA, regexB, regexC) => {
         const unionAB = RE.or([regexA, regexB])
         const unionBC = RE.or([regexB, regexC])
-        const interRegex = RE.toStdRegex(RE.and([unionAB, unionBC]))
-        expect(isSubsetOf(regexB, interRegex)).toBe(true)
+        const interRegex = toStdRegex_ignoreBlowUp(RE.and([unionAB, unionBC]))
+        expectSubsetOf(regexB, interRegex)
       }
     ),
   )   
@@ -76,10 +95,10 @@ test('intersection with regex /^.{N}$/ has only words of length N', () => {
   fc.assert(
     fc.property(
       fc.nat({ max: 10 }),
-      Arb.stdRegexNoStar(),
+      Arb.stdRegex(),
       (length, regexA) => {
         const regexB = RE.repeat(RE.anySingleChar, length)
-        const interAB = RE.toStdRegex(RE.and([regexA, regexB]))
+        const interAB = toStdRegex_ignoreBlowUp(RE.and([regexA, regexB]))
 
         for (const word of RE.enumerate(interAB).take(100)) {
           expect(word).toHaveLength(length)

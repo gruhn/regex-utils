@@ -124,7 +124,7 @@ function extractFront(regex: ExtRegex): [ExtRegex, ExtRegex] {
     case 'literal': return [regex, epsilon]
     case 'concat': return [regex.left, regex.right]
     case 'union': return [regex, epsilon]
-    case 'star': return [regex.inner, regex]
+    case 'star': return [regex, epsilon]
     case 'intersection': return [regex, epsilon]
     case 'complement': return [regex, epsilon]
   }
@@ -139,7 +139,7 @@ function extractBack(regex: ExtRegex): [ExtRegex, ExtRegex] {
     case 'literal': return [epsilon, regex]
     case 'concat': return [regex.left, regex.right]
     case 'union': return [epsilon, regex]
-    case 'star': return [regex, regex.inner]
+    case 'star': return [epsilon, regex]
     case 'intersection': return [epsilon, regex]
     case 'complement': return [epsilon, regex]
   }

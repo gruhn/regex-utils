@@ -1,7 +1,6 @@
 import fc from 'fast-check'
 import * as RE from '../src/regex'
 import * as CharSet from '../src/char-set'
-import { checkedAllCases } from '../src/utils'
 
 // TODO: try larger alphabet:
 export function charSet(): fc.Arbitrary<CharSet.CharSet> {
@@ -38,33 +37,10 @@ export function stdRegex(size = 100): fc.Arbitrary<RE.StdRegex> {
     return literal()
   else
     return fc.oneof(
-      star(() => stdRegex(Math.floor(size/2))),
-      concat(() => stdRegex(Math.floor(size/2))),
-      union(() => stdRegex(Math.floor(size/2))),
-      literal(),
-    )
-}
-
-export function stdRegexNoStar(size = 100): fc.Arbitrary<RE.StdRegex> {
-  if (size <= 0)
-    return literal()
-  else
-    return fc.oneof(
-      concat(() => stdRegexNoStar(Math.floor(size/2))),
-      union(() => stdRegexNoStar(Math.floor(size/2))),
-      literal(),
-    )
-}
-
-export function stdRegexNoNestedStar(size = 100): fc.Arbitrary<RE.StdRegex> {
-  if (size <= 0)
-    return literal()
-  else
-    return fc.oneof(
-      star(() => stdRegexNoStar(Math.floor(size/2))),
-      concat(() => stdRegexNoNestedStar(Math.floor(size/2))),
-      union(() => stdRegexNoNestedStar(Math.floor(size/2))),
-      literal(),
+      { arbitrary: literal(), weight: 5 },
+      { arbitrary: concat(() => stdRegex(Math.floor(size/2))), weight: 3 },
+      { arbitrary: union(() => stdRegex(Math.floor(size/2))), weight: 3 },
+      { arbitrary: star(() => stdRegex(Math.floor(size/2))), weight: 1 },
     )
 }
 

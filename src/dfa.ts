@@ -134,7 +134,7 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
     .map(state => ({ state, degree: Graph.degree(state, graph)}))
     // Sort states by degree:
     .sort((a,b) => a.degree - b.degree)
-    // Through degree away again after sorting:
+    // Throw degree away again after sorting:
     .map(({ state }) => state)
 
   while (true) {
@@ -183,13 +183,16 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 // TODO: can this round-trip through DFA construction be avoided?
 export function toStdRegex(inputRegex: RE.ExtRegex): RE.StdRegex {
   const dfa = regexToDFA(inputRegex)
+  // printTrans(dfa)
   const outputRegex = dfaToRegex(dfa)
   return outputRegex
 }
 
-// function printTrans(trans: Table.Table<CharSet.CharSet>) {
+// function printTrans(dfa: DFA) {
+//   console.debug({ start: dfa.startState })
+//   console.debug({ final: dfa.finalStates })
 //   console.debug('=========trans===========')
-//   for (const [source, succs] of trans.entries()) {
+//   for (const [source, succs] of dfa.transitions.entries()) {
 //     for (const [target, label] of succs) {
 //       console.debug(source, target, new RegExp(CharSet.toString(label)))
 //       // console.debug(source, target, RE.toString(label))

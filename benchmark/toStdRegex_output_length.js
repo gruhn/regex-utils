@@ -3,18 +3,15 @@ import * as RE from '../dist/regex.js'
 import { ParseError } from '../dist/parser.js'
 import { UnsupportedSyntaxError } from '../dist/regex-parser.js'
 import { parse, toStdRegex } from '../dist/low-level-api.js'
-import { regexToDFA } from '../dist/dfa.js'
 import randomRegexDataset from './regex_random_unique_no-nested-star_1000.js'
 import handwrittenRegexDataset from './regex_handwritten.js'
 
 const fullRegexDataset = [
   ...randomRegexDataset,
   ...handwrittenRegexDataset,
-] 
+]
 
-
-let avgMult = 0
-let maxMult = -Infinity
+const mults = []
 
 function run(inputRegExp, index) {
   console.log('#' + index, inputRegExp)
@@ -27,18 +24,12 @@ function run(inputRegExp, index) {
   const inp = inputRegExp.source.length
   const out = outputRegExp.source.length
   const mult = out/inp
-
-  avgMult = (avgMult*index + mult)/(index+1)
-  if (mult > maxMult) {
-    maxMult = mult
-  }
+  mults.push(mult)
 
   console.log(`
     regex input length  : ${inp}
     regex ouptut length : ${out}
     multiplier          : ${mult}
-    avg. multiplier     : ${avgMult}
-    worst multiplier    : ${maxMult}
   `) 
 }
 
@@ -75,3 +66,15 @@ console.debug('failed instances: ', {
   stackOverflow,
   regexSyntaxError
 })
+
+const mean = mults.reduce((a,b) => a+b, 0) / mults.length
+const median = mults[Math.ceil(mults.length / 2)]
+const worst = mults.reduce((a,b) => Math.max(a,b), -Infinity)
+
+console.log(`
+multipliers:
+  mean   : ${mean}
+  median : ${median}
+  max    : ${worst}
+`) 
+
