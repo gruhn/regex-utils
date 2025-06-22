@@ -6,7 +6,7 @@ import * as Table from './table';
 /**
  * TODO
  */
-type StdRegexWithoutHash = (
+type StdRegexWithoutMetaInfo = (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: StdRegex, right: StdRegex }
@@ -17,7 +17,7 @@ type StdRegexWithoutHash = (
 /**
  * TODO
  */
-type ExtRegexWithoutHash = (
+type ExtRegexWithoutMetaInfo = (
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: ExtRegex, right: ExtRegex }
@@ -31,40 +31,81 @@ type ExtRegexWithoutHash = (
 /**
  * TODO: docs
  */
-export type StdRegex = StdRegexWithoutHash & { hash: number }
+export type StdRegex = StdRegexWithoutMetaInfo & { hash: number, isStdRegex: true }
 
 /**
  * TODO: docs
  */
-export type ExtRegex = ExtRegexWithoutHash & { hash: number }
+export type ExtRegex = ExtRegexWithoutMetaInfo & { hash: number, isStdRegex: boolean }
 
-export function withHash(regex: StdRegexWithoutHash): StdRegex
-export function withHash(regex: ExtRegexWithoutHash): ExtRegex 
-export function withHash(regex: ExtRegexWithoutHash): ExtRegex {
+export function withMetaInfo(regex: StdRegexWithoutMetaInfo): StdRegex
+export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex 
+export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
   if (regex.type === 'epsilon')
-    return { ...regex, hash: hashStr(regex.type) }
+    return {
+      ...regex,
+      hash: hashStr(regex.type),
+      isStdRegex: true,
+    }
   else if (regex.type === 'literal')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.charset.hash]) }
-  else if (regex.type === 'concat' || regex.type === 'union' || regex.type === 'intersection')
-    return { ...regex, hash: hashNums([
-      hashStr(regex.type),
-      // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
-      regex.left.hash,
-      regex.right.hash,
-    ])}
-  else if (regex.type === 'star' || regex.type === 'complement')
-    return { ...regex, hash: hashNums([hashStr(regex.type), regex.inner.hash]) }
+    return {
+      ...regex,
+      hash: hashNums([hashStr(regex.type), regex.charset.hash]),
+      isStdRegex: true,
+    }
+  else if (regex.type === 'concat' || regex.type === 'union')
+    return {
+      ...regex,
+      hash: hashNums([
+        hashStr(regex.type),
+        // Need non-commutative hash operator for `concat`, otherwise "ac" and "ca" are the same:
+        regex.left.hash,
+        regex.right.hash,
+      ]),
+      isStdRegex: regex.left.isStdRegex && regex.right.isStdRegex,
+    }
+  else if (regex.type === 'intersection')
+    return {
+      ...regex,
+      hash: hashNums([
+        hashStr(regex.type),
+        regex.left.hash,
+        regex.right.hash,
+      ]),
+      isStdRegex: false,
+    }
+  else if (regex.type === 'star')
+    return {
+      ...regex,
+      hash: hashNums([hashStr(regex.type), regex.inner.hash]),
+      isStdRegex: regex.inner.isStdRegex,
+    }
+  else if (regex.type === 'complement')
+    return {
+      ...regex,
+      hash: hashNums([hashStr(regex.type), regex.inner.hash]),
+      isStdRegex: false
+    }
   checkedAllCases(regex)  
+}
+
+/**
+ * TODO
+ *
+ * @public
+ */
+export function isStdRegex(regex: ExtRegex): regex is StdRegex {
+  return regex.isStdRegex
 }
 
 //////////////////////////////////////////////
 ///// primitive composite constructors ///////
 //////////////////////////////////////////////
 
-export const epsilon: StdRegex = withHash({ type: 'epsilon'  })
+export const epsilon: StdRegex = withMetaInfo({ type: 'epsilon'  })
 
 export function literal(charset: CharSet.CharSet): StdRegex {
-  return withHash({ type: 'literal', charset })
+  return withMetaInfo({ type: 'literal', charset })
 }
 
 export const empty: StdRegex = literal(CharSet.empty)
@@ -113,7 +154,7 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
       return concat(left, right.right)
   }
 
-  return withHash({ type: 'concat', left, right })
+  return withMetaInfo({ type: 'concat', left, right })
 }
 
 function extractFront(regex: StdRegex): [StdRegex, StdRegex]
@@ -212,7 +253,7 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // r       + (s · r) = (s + ε) · r
     return concat(union(leftInit, rightInit), leftLast)
 
-  return withHash({ type: 'union', left, right })
+  return withMetaInfo({ type: 'union', left, right })
 }
 
 export function star(inner: StdRegex): StdRegex
@@ -231,7 +272,7 @@ export function star(inner: ExtRegex): ExtRegex {
     // (r∗ · s∗)∗ = (r + s)∗
     return star(union(inner.left.inner, inner.right.inner))
   else
-    return withHash({ type: "star", inner })
+    return withMetaInfo({ type: "star", inner })
 }
 
 export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
@@ -257,7 +298,7 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
     // R & S ≈ R∩S
     return literal(CharSet.intersection(left.charset, right.charset))
 
-  return withHash({ type: "intersection", left, right })
+  return withMetaInfo({ type: "intersection", left, right })
 }
 
 /**
@@ -274,7 +315,7 @@ export function complement(inner: ExtRegex): ExtRegex {
   //   // ¬S ≈ (Σ\S
   //   return literal(CharSet.complement(inner.charset))
   else
-    return withHash({ type: "complement", inner })
+    return withMetaInfo({ type: "complement", inner })
 }
 
 //////////////////////////////////////////////
@@ -733,7 +774,7 @@ export function toString(regex: ExtRegex): string {
   // Render parenthesis as non-capturing groups if there is a large number of them,
   // i.e. `/(?:abc)` instead of `/(abc)/`. `new RegExp(...)` throws an error if there
   // is a large number of capturing groups. Non-capturing groups are a bit more verbose
-  // but at large sizes like this it doesn't matter anyway:
+  // but at large sizes like this it hardly still hurts readability:
   const useNonCapturingGroups = size > 10_000
 
   return '^(' + astToString(toRegExpAST(regex), { useNonCapturingGroups }) + ')$'

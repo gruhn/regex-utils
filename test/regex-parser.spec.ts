@@ -32,6 +32,9 @@ describe('parseRegexString', () => {
     [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
     [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
     [/^(?:ab)$/, RE.string('ab')], // non-capturing groups
+    [/^(?=^a$)a$/, RE.intersection(RE.string('a'), RE.string('a'))], // positive lookahead
+    [/^(?!^a$)b$/, RE.intersection(RE.complement(RE.string('a')), RE.string('b'))], // negative lookahead
+    [/^(?!^a$)b|c$/, RE.union(RE.intersection(RE.complement(RE.string('a')), RE.string('b')), RE.string('c'))],
   ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)
   })

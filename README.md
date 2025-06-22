@@ -98,24 +98,17 @@ RE.size(
 
 ## Limitations
 
-* Syntax support
-  - The library implements a custom parser for regular expressions,
-    so only a subset of the syntax is supported:
-    - quantifiers: `*`, `+`, `?`, `{3,5}`, ...
-    - alternation: `|`
-    - character classes: `.`, `\w`, `[a-z]`, ...
-    - optional start/end markers: `^` / `$` but only at the start/end
-      (technically they are allowed anywhere in the expression)
-    - escaped meta characters: `\$`, `\.`, ...
-    - capturing groups: `(...)`
-  - regex flags are not supported at all
-* performance of `intersection` and `complement`
-  - These function have worst case exponential complexity.
-    But often the worst case is not realized.
-    - Nested quantifiers are especially dangerous, e.g. `(a*|b)*`.
-  - A bigger problem is: even if computation is fast,
-    the output regex can be extremely large to the point that
-    the `new RegExp(...)` constructor crashes.
+The library implements a custom parser for regular expressions,
+so only a subset of the syntax is supported:
+ - quantifiers: `*`, `+`, `?`, `{3,5}`, ...
+ - alternation: `|`
+ - character classes: `.`, `\w`, `[a-z]`, ...
+ - optional start/end markers: `^` / `$` but only at the start/end
+   (technically they are allowed anywhere in the expression)
+ - escaped meta characters: `\$`, `\.`, ...
+ - (non-)capturing groups: `(...)`, `(?...)`
+ - positive/negative lookahead: `(?!...)`, `(?=...)`
+Regex flags are not supported at all.
 
 ## References
 

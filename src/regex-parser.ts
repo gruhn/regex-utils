@@ -107,7 +107,7 @@ const group = P.between(
   regex(),
 )
 
-const boundedQuantifier: P.Parser<(inner: RE.StdRegex) => RE.StdRegex> = P.between(
+const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.between(
   P.string('{'),
   P.string('}'),
   P.optional(P.decimal).andThen(min => {
@@ -142,9 +142,24 @@ function regexTerm() {
     charSet.map(RE.literal),
   ])
 }
+
+function lookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
+  return P.between(
+    P.string('(?'),
+    P.string(')'),
+    P.choice([
+      // positive lookahead
+      P.string('=').andThen(_ => regexWithBounds()),
+      // negative lookahead
+      P.string('!').andThen(_ => regexWithBounds().map(RE.complement)),
+    ]).map(
+      left => right => RE.intersection(left, right)
+    )
+  )
+}
  
-function regex(): P.Parser<RE.StdRegex> {
-  return P.lazy(() => P.Expr.makeExprParser<RE.StdRegex>(
+function regex(): P.Parser<RE.ExtRegex> {
+  return P.lazy(() => P.Expr.makeExprParser<RE.ExtRegex>(
     regexTerm(),
     [
       { type: 'postfix', op: P.string('*').map(_ => RE.star) },
@@ -152,6 +167,7 @@ function regex(): P.Parser<RE.StdRegex> {
       { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
       { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
+      { type: 'prefix', op: lookAhead() },
       { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
     ]
   ))
@@ -159,16 +175,18 @@ function regex(): P.Parser<RE.StdRegex> {
 
 // TODO: start- and end marker are not necessarily at the 
 // beginning/end of the regex:
-const regexWithBounds = P.sequence([
-  startMarker,
-  regex(),
-  endMarker,
-]).map<RE.StdRegex>(RE.seq)
+function regexWithBounds() {
+  return P.sequence([
+    startMarker,
+    regex(),
+    endMarker,
+  ]).map<RE.ExtRegex>(RE.seq)
+}
 
 export function parseRegexString(
   regexStr: string,
-): RE.StdRegex {
-  const { value, restInput } = regexWithBounds.run(regexStr)
+): RE.ExtRegex {
+  const { value, restInput } = regexWithBounds().run(regexStr)
   if (restInput === '') {
     // TODO: parsing should always return stdandard regex instances:
     return value
@@ -182,7 +200,7 @@ export function parseRegexString(
  * 
  * @public
  */
-export function parseRegExp(regexp: RegExp): RE.StdRegex {
+export function parseRegExp(regexp: RegExp): RE.ExtRegex {
   for (const flag of regExpFlags) {
     assert(!regexp[flag], `[regex-utils] RegExp flags not supported`)
   }

@@ -124,7 +124,12 @@ export function complement(re: RegExp): RegExp {
  * ```
  */
 export function* enumerate(re: RegExp): Generator<string> {
-  yield* RE.enumerate(RE.parse(re))
+  const regex = RE.parse(re)
+  if (RE.isStdRegex(regex)) {
+    yield* RE.enumerate(regex)
+  } else {
+    yield* RE.enumerate(RE.toStdRegex(regex))
+  }
 }
 
 /**
@@ -151,7 +156,12 @@ export function* enumerate(re: RegExp): Generator<string> {
  * > The value should always be an upper bound though.
  */
 export function size(re: RegExp): bigint | undefined {
-  return RE.size(RE.parse(re))
+  const regex = RE.parse(re)
+  if (RE.isStdRegex(regex)) {
+    return RE.size(regex)
+  } else {
+    return RE.size(RE.toStdRegex(regex))
+  }
 }
 
 /**
@@ -160,5 +170,10 @@ export function size(re: RegExp): bigint | undefined {
  * TODO: examples.
  */
 export function derivative(prefix: string, re: RegExp): RegExp {
-  return RE.toRegExp(RE.derivative(prefix, RE.parse(re)))
+  const regex = RE.derivative(prefix, RE.parse(re))
+  if (RE.isStdRegex(regex)) {
+    return RE.toRegExp(regex)
+  } else {
+    return RE.toRegExp(RE.toStdRegex(regex))
+  }
 }

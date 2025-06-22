@@ -24,6 +24,7 @@ export {
   type StdRegex,
   type ExtRegex,
   type RepeatBounds,
+  isStdRegex,
   // constructors:
   and,
   or,
