@@ -1,6 +1,6 @@
 import fs from 'fs'
 import { parseRegexString } from '../dist/regex-parser.js'
-import { enumerate } from '../dist/index.js'
+import { RB } from '../dist/index.js'
 
 export function* readDataset() {
   const jsonStr = fs.readFileSync('./benchmark/regex-dataset.json', 'utf-8')
@@ -24,9 +24,9 @@ for (const { regex, flags } of readDataset()) {
   try {
     const time = performance.now()
     // parseRegexString(regex)
-    const regexp = new RegExp(regex, flags)
+    const regexp = RB(new RegExp(regex, flags))
     console.log('====', regexp, '====')
-    for (const word of enumerate(regexp).take(10)) {
+    for (const word of RB(regexp).enumerate().take(10)) {
       console.log(JSON.stringify(word))
     }
     console.log(`time: ${Math.round(performance.now() - time)}ms`)
