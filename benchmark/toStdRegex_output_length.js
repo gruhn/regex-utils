@@ -1,8 +1,8 @@
 import fc from 'fast-check'
 import * as RE from '../dist/regex.js'
 import { ParseError } from '../dist/parser.js'
-import { UnsupportedSyntaxError } from '../dist/regex-parser.js'
-import { parse, toStdRegex } from '../dist/low-level-api.js'
+import { UnsupportedSyntaxError, parseRegExp } from '../dist/regex-parser.js'
+import { toStdRegex } from '../dist/dfa.js'
 import randomRegexDataset from './regex_random_unique_no-nested-star_1000.js'
 import handwrittenRegexDataset from './regex_handwritten.js'
 
@@ -17,7 +17,7 @@ function run(inputRegExp, index) {
   console.log('#' + index, inputRegExp)
   const startTime = performance.now()
 
-  const inputRegex = parse(inputRegExp)
+  const inputRegex = parseRegExp(inputRegExp)
   const outputRegex = toStdRegex(inputRegex)
   const outputRegExp = RE.toRegExp(outputRegex)
 

@@ -1,11 +1,12 @@
 import fc from 'fast-check'
-import { intersection } from '../dist/index.js'
+import { RB } from '../dist/index.js'
 
 const emailRegex = /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/
 
 function runIntersection(sampleCount) {
   const startTime = performance.now()
-  fc.sample(fc.stringMatching(intersection(/^.{3,10}$/, emailRegex)), sampleCount)
+  const intersection = RB(emailRegex).and(/^.{3,10}$/).toRegExp()
+  fc.sample(fc.stringMatching(intersection), sampleCount)
   return performance.now() - startTime
 }
 
