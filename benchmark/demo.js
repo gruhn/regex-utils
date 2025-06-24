@@ -1,10 +1,4 @@
-# Regex Utils
-
-Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
-These are surprisingly hard to come by for any programming language.
-
-```typescript
-import { RB } from '@gruhn/regex-utils'
+import { RB } from '../dist/index.js'
 
 const passwordRegex = RB(/^[a-zA-Z0-9]{12,32}$/) // 12-32 alphanumeric characters
   .and(/[0-9]/) // at least one number
@@ -29,16 +23,3 @@ for (const sample of passwordRegex.enumerate().take(10)) {
 // AAAAAAAAAA0a
 // aaaaaaaaaAA1
 // aaaaaaaaaa0B
-```
-
-## Installation
-
-```bash
-npm install @gruhn/regex-utils
-```
-
-## References
-
-Heavily informed by these papers:
-- https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
-- https://courses.grainger.illinois.edu/cs374/fa2017/extra_notes/01_nfa_to_reg.pdf

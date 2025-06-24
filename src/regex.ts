@@ -91,8 +91,6 @@ export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
 
 /**
  * TODO
- *
- * @public
  */
 export function isStdRegex(regex: ExtRegex): regex is StdRegex {
   return regex.isStdRegex
@@ -352,8 +350,6 @@ export function singleChar(char: string): StdRegex {
  * ```typescript
  * string('abc') // like /abc/
  * ```
- * 
- * @public
  */
 export function string(str: string): StdRegex {
   return seq([...str].map(singleChar))
@@ -366,8 +362,6 @@ export function string(str: string): StdRegex {
  * ```typescript
  * optional(singleChar('a')) // like /a?/
  * ```
- * 
- * @public
  */
 export function optional(regex: StdRegex): StdRegex
 export function optional(regex: ExtRegex): ExtRegex
@@ -410,8 +404,6 @@ export function seq(res: ExtRegex[]): ExtRegex {
  * ```typescript
  * or([ singleChar('a'), singleChar('b') ]) // like /a|b/
  * ```
- * 
- * @public
  */
 export function or(res: StdRegex[]): StdRegex
 export function or(res: ExtRegex[]): ExtRegex
@@ -424,23 +416,6 @@ export function or(res: ExtRegex[]): ExtRegex {
  * Constructs a regex that matches the intersection of all input regex.
  * This operator has no analog in standard regular expressions, so the
  * return type is always an `ExtRegex`.
- * 
- * NOTE: This is just a cheap constructor. There is no heavy computation
- * until you call `toStdRegex`.
- *
- * @example
- * ```typescript
- * import { and, parse } from '@gruhn/regex-utils/low-level-api'
- *
- * const passwordRegex = and(
- *   parse(/.{12,}/), // 12 letters or more
- *   parse(/[0-9]/),  // at least one number
- *   parse(/[A-Z]/),  // at least one upper case letter   
- *   parse(/[a-z]/),  // at least one lower case letter
- * )
- * ```
- * 
- * @public
  */
 export function and(res: ExtRegex[]): ExtRegex {
   if (res.length === 0)
@@ -463,18 +438,6 @@ export type RepeatBounds =
 /**
  * Constructs quantified regular expressions, subsuming all these
  * regex operators: `*`, `+`, `{n,m}`, `?`.
- *
- * @example
- * ```typescript
- * repeat(r) // r*
- * repeat(r, 4) // r{4}
- * repeat(r, { min: 3, max: 5 }) // r{3,5}
- * repeat(r, { max: 5 }) // r{,5}
- * repeat(r, { min: 3 }) // r{3,}
- * repeat(r, { min: 0, max: 1 }) // r?
- * ```
- * 
- * @public
  */
 export function repeat(regex: StdRegex, bounds?: RepeatBounds): StdRegex
 export function repeat(regex: ExtRegex, bounds?: RepeatBounds): ExtRegex
@@ -961,8 +924,6 @@ export function enumerateAux(regex: StdRegex): Stream.Stream<string> {
 
 /**
  * TODO
- *
- * @public
  */
 export function size(regex: StdRegex): bigint | undefined {
   return sizeMemoized(regex, new Map())

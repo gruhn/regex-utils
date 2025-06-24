@@ -1,10 +1,8 @@
-import { adjacentPairs, assert, checkedAllCases, hashNums, hashStr, xor, zip } from './utils'
+import { assert, checkedAllCases, hashStr, xor } from './utils'
 import * as Range from './code-point-range'
 import * as Stream from './stream'
 
 type WithHash<T> = T & { hash: number }
-
-type EmptyCharSet = WithHash<{ type: 'empty' }>
 
 // TODO: ensure tree is balanced
 type CharSetWithoutHash =
@@ -202,7 +200,7 @@ export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet 
   } else if (set.type === 'empty') {
     return empty
   } else if (set.type === 'node') {
-    const [rangeBeforeStart, rangeRest1] = Range.splitAt(set.range.start-1, range)
+    const [rangeBeforeStart, _rangeRest1] = Range.splitAt(set.range.start-1, range)
     const [rangeRest2, rangeAfterEnd] = Range.splitAt(set.range.end, range)
 
     const newLeft = deleteRange(set.left, rangeBeforeStart)
