@@ -29,12 +29,21 @@ describe('parseRegexString', () => {
     [/^\W$/, RE.literal(CharSet.nonWordChars)],
     [/^\n$/, RE.literal(CharSet.singleton('\n'))],
     [/^\.$/, RE.literal(CharSet.singleton('.'))],
+    // char class from range:
     [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
+    // negative char class:
     [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
-    [/^(?:ab)$/, RE.string('ab')], // non-capturing groups
-    [/^(?=^a$)a$/, RE.intersection(RE.string('a'), RE.string('a'))], // positive lookahead
-    [/^(?!^a$)b$/, RE.intersection(RE.complement(RE.string('a')), RE.string('b'))], // negative lookahead
+    // non-capturing groups
+    [/^(?:ab)$/, RE.string('ab')],
+    // positive lookahead
+    [/^(?=^a$)a$/, RE.intersection(RE.string('a'), RE.string('a'))], 
+    // negative lookahead
+    [/^(?!^a$)b$/, RE.intersection(RE.complement(RE.string('a')), RE.string('b'))], 
     [/^(?!^a$)b|c$/, RE.union(RE.intersection(RE.complement(RE.string('a')), RE.string('b')), RE.string('c'))],
+    // some special chars don't need escape when inside brackets:
+    [/^[.^$*+?()[{-|]$/, RE.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
+    // other special chars need escaped even inside brackets:
+    [/^[\\\]\/]$/, RE.literal(CharSet.fromArray([...'\\]/']))],
   ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)
   })

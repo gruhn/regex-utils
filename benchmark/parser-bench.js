@@ -19,17 +19,20 @@ export function* readDataset() {
 
 let hasError = 0
 let noError = 0
+let totalParseTime = 0
 
 for (const { regex, flags } of readDataset()) {
   try {
-    const time = performance.now()
     // parseRegexString(regex)
-    const regexp = RB(new RegExp(regex, flags))
+    const regexp = new RegExp(regex, flags)
     console.log('====', regexp, '====')
-    for (const word of RB(regexp).enumerate().take(10)) {
-      console.log(JSON.stringify(word))
-    }
-    console.log(`time: ${Math.round(performance.now() - time)}ms`)
+
+    const timeStart = performance.now()
+    const parsed = RB(regexp)
+    const timeEnd = performance.now()
+
+    console.log(`time: ${Math.round(timeEnd - timeStart)}ms`)
+    totalParseTime += timeEnd - timeStart
     noError++
   } catch (e) {
     // console.error(new RegExp(regex, flags))
@@ -37,4 +40,6 @@ for (const { regex, flags } of readDataset()) {
   }
 }
 
-console.debug(hasError, '/', hasError + noError)
+console.log('error ratio:', hasError, '/', hasError + noError)
+console.log('total parse time:', Math.round(totalParseTime), 'ms')
+

@@ -1,5 +1,4 @@
-import { isSingleton } from './char-set'
-import { assert, checkedAllCases } from './utils'
+import { assert } from './utils'
 
 export type CodePointRange = { start: number, end: number }
 
@@ -106,14 +105,34 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
   return union(before, after)
 }
 
-export function isMetaChar(char: string): boolean {
-  return /^[.^$*+?()[\]{\|\\\/]$/.test(char)
+/**
+ * Returns true iff the given char must always be escaped to occur literally
+ * in a regular expression. Some special chars like `$` don't need to be 
+ * escaped when inside brackets (e.g. `/[$]/`). But `/`, `\` and `]` must 
+ * even be escaped when inside brackets. 
+ */
+export function mustAlwaysBeEscaped(char: string) {
+  return '\\\]\/'.includes(char)
+}
+
+/**
+ * Returns true iff the given char must be escaped to occur literally
+ * in a regular expression, unless within square brackets. That's true
+ * for special chars like `$`. Outside brackets we have to write `\$`. 
+ * Inside brackets `[$]` is allowed.
+ */
+export function mustBeEscapedOrInBrackets(char: string) {
+  return '.^$*+?()[{-|'.includes(char)
+}
+
+export function neverMustBeEscaped(char: string) {
+  return !mustAlwaysBeEscaped(char) && !mustBeEscapedOrInBrackets(char)
 }
 
 function codePointToString(codePoint: number): string {
   const char = String.fromCharCode(codePoint)
 
-  if (isMetaChar(char)) 
+  if (mustAlwaysBeEscaped(char) || mustBeEscapedOrInBrackets(char)) 
     // e.g. \$ \+ \. 
     return '\\' + char
   else if (codePoint > 126)

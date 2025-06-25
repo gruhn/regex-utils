@@ -42,13 +42,10 @@ const wildcard = P.string('.').map(
   () => RE.literal(CharSet.wildcard({ dotAll: false }))
 )
 
-const singleChar = P.satisfy(char => !Range.isMetaChar(char))
+const unescapedChar = P.satisfy(Range.neverMustBeEscaped)
 
-const codePoint = singleChar.map(char => {
-  const result = char.codePointAt(0)!
-  assert(result !== undefined)
-  return result
-})
+const unescapedCharInsideBrackets = P.satisfy(Range.mustBeEscapedOrInBrackets)
+  .map(CharSet.singleton)
 
 export class UnsupportedSyntaxError extends Error {}
 
@@ -77,9 +74,9 @@ const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar =>
 })
 
 const codePointRange: P.Parser<CharSet.CharSet> =
-  codePoint.andThen(start =>
-    P.optional(P.string('-').andThen(_ => codePoint))
-     .map(end => CharSet.fromRange({ start, end: end ?? start }))
+  unescapedChar.andThen(start =>
+    P.optional(P.string('-').andThen(_ => unescapedChar))
+     .map(end => CharSet.charRange(start, end ?? start))
   )
 
 const charSet = P.choice([
@@ -88,7 +85,7 @@ const charSet = P.choice([
     P.string('['),
     P.string(']'),
     P.optional(P.string('^')).andThen(negated =>
-      P.many(P.choice([escapeSequence, codePointRange])).map(
+      P.many(P.choice([escapeSequence, codePointRange, unescapedCharInsideBrackets])).map(
         sets => {
           if (negated === undefined)
             return sets.reduce(CharSet.union, CharSet.empty)
@@ -98,7 +95,7 @@ const charSet = P.choice([
       )
     )
   ),
-  singleChar.map(CharSet.singleton),
+  unescapedChar.map(CharSet.singleton),
 ])
 
 const group = P.between(
