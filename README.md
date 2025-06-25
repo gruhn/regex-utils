@@ -1,9 +1,14 @@
 # Regex Utils
 
-Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
+Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
-- [Documentation](https://gruhn.github.io/regex-utils/)
+- [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
+- [.not(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#not) - Compute the complement of a regex.
+- [.isEquivalent(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
+- [.size()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#size) - Count the number of strings that a regex matches.
+- [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
+- [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
 ## Installation
 

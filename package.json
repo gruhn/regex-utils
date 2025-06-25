@@ -1,6 +1,6 @@
 {
   "name": "@gruhn/regex-utils",
-  "description": "TypeScript library for regex intersection, complement and other utilities that go beyond string matching.",
+  "description": "TypeScript library for regex equivalence, intersection, complement and other utilities that go beyond string matching.",
   "author": "Niklas Gruhn",
   "license": "MIT",
   "repository": "github:gruhn/regex-utils",

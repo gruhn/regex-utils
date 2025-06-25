@@ -1,4 +1,4 @@
-import { toStdRegex } from './dfa'
+import { equivalent as isEquivalent, toStdRegex } from './dfa'
 import * as RE from './regex'
 import { parseRegExp } from './regex-parser'
 
@@ -323,6 +323,20 @@ class RegexBuilder {
     return RE.isEmpty(this.getStdRegex())
   }
 
+  /**
+   * Checks if two regular expressions are semantically equivalent, i.e.
+   * they match the exact same set of strings.
+   *
+   * @example
+   * ```typescript 
+   * RB(/a{1,}/).isEquivalent(/a+/) // true
+   * ```
+   *
+   * @public
+   */
+  isEquivalent(re: RegexLike): boolean {
+    return isEquivalent(this.regex, fromRegexLike(re))
+  }
 }
 
 /**

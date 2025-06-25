@@ -59,6 +59,23 @@ describe('toStdRegex', () => {
 
 })
 
+describe('isEquivalent', () => {
+
+  test.each([
+    [/a+/, /a{1,}/],
+    [/(a|b|c)*/, /(((ab)*)*c*)*/],
+  ])('%s is equivalent to %s', (re1, re2) => {
+    expect(RB(re1).isEquivalent(re2)).toBe(true)
+  })
+
+  test.each([
+    [/a{2}|a*/,  /a(a|a*)/],
+  ])('%s is not equivalent to %s', (re1, re2) => {
+    expect(RB(re1).isEquivalent(re2)).toBe(false)
+  })
+})
+
+
 test('A ∩ ¬A = ∅', () => {
   fc.assert(
     fc.property(
