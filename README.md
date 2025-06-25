@@ -3,12 +3,19 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
-- [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
-- [.not(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#not) - Compute the complement of a regex.
-- [.isEquivalent(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
-- [.size()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#size) - Count the number of strings that a regex matches.
-- [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
-- [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
+- Set-like operations:
+  - [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
+  - [.not()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#not) - Compute the complement of a regex.
+  - [.without(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#without) - Compute the difference of two regex.
+- Set-like predicates:
+  - [.isEquivalent(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
+  - [.isSubsetOf(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isSubsetOf)
+  - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isSupersetOf)
+  - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isDisjointFrom)
+- Miscellaneous:
+  - [.size()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#size) - Count the number of strings that a regex matches.
+  - [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
+  - [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
 ## Installation
 

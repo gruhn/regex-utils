@@ -1,4 +1,4 @@
-import { equivalent as isEquivalent, toStdRegex } from './dfa'
+import { isEquivalent, toStdRegex } from './dfa'
 import * as RE from './regex'
 import { parseRegExp } from './regex-parser'
 
@@ -337,6 +337,50 @@ class RegexBuilder {
   isEquivalent(re: RegexLike): boolean {
     return isEquivalent(this.regex, fromRegexLike(re))
   }
+
+  /**
+   * Constructs the difference of the current regex and `re`.
+   * That is, this returns a new regex which matches all strings that
+   * the current regex matches EXCEPT everything that `re` matches.
+   *
+   * @example
+   * ```typescript 
+   * RB(/^a*$/).without(/^a{5}$/) // /^(a{0,4}|a{6,})$/
+   * ```
+   *
+   * @public
+   */
+  without(re: RegexLike): RegexBuilder {
+    return this.and(RB(re).not())
+  }
+
+  /**
+   * TODO
+   *
+   * @public
+   */
+  isSubsetOf(re: RegexLike): boolean {
+    return this.without(re).isEmpty()
+  }
+
+  /**
+   * TODO
+   *
+   * @public
+   */
+  isSupersetOf(re: RegexLike): boolean {
+    return RB(re).without(this).isEmpty()
+  }
+
+  /**
+   * TODO
+   *
+   * @public
+   */
+  isDisjointFrom(re: RegexLike): boolean {
+    return this.and(RB(re)).isEmpty()
+  }
+ 
 }
 
 /**

@@ -206,7 +206,7 @@ export function toStdRegex(inputRegex: RE.ExtRegex): RE.StdRegex {
  *
  * TODO: maybe expose `equal` as dedicated function.
  */
-export function equivalent(regexA: RE.ExtRegex, regexB: RE.ExtRegex): boolean {
+export function isEquivalent(regexA: RE.ExtRegex, regexB: RE.ExtRegex): boolean {
   if (RE.equal(regexA, regexB)) { // First check hash based equality: cheap but weak.
     return true
   } else {

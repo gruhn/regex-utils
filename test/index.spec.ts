@@ -73,8 +73,20 @@ describe('isEquivalent', () => {
   ])('%s is not equivalent to %s', (re1, re2) => {
     expect(RB(re1).isEquivalent(re2)).toBe(false)
   })
+
 })
 
+describe('without', () => {
+
+  test.each([
+    [/^a*$/, /^a{3,10}$/, /^(a{,2}|a{11,})$/],
+  ])('%s without %s is %s', (re1, re2, expected) => {
+    const actual = RB(re1).without(re2)
+    expectSubsetOf(RB(expected), actual)
+    expectSubsetOf(actual, RB(expected))
+  })
+
+})
 
 test('A ∩ ¬A = ∅', () => {
   fc.assert(
