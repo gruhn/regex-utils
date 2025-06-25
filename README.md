@@ -119,9 +119,11 @@ Both patterns describe a class of strings and the task is to count the number of
 In the first pattern, `.` and `#` stand for the literal characters "dot" and "hash".
 The `?` stands for either `.` or `#`.
 This can be written as a regular expression:
+
  - for `#` we simply write `#`
  - for `.` we write `o` (since `.` has a special meaning in regular expressions)
  - for `?` we write `(o|#)`
+
 So the pattern `.??..??...?##.` would be written as:
 ```typescript
 const firstRegex = /^o(o|#)(o|#)oo(o|#)(o|#)ooo(o|#)##o$/
@@ -129,10 +131,12 @@ const firstRegex = /^o(o|#)(o|#)oo(o|#)(o|#)ooo(o|#)##o$/
 
 In the second pattern, each digit stands for a sequence of `#` separated by at least one `o`.
 This can also be written as a regular expression:
+
  - For a digit like `3` we write `#{3}`.
  - Between digits we write `o+`.
  - Additionally, arbitrary many `o` are allowed at the start and end,
    so we add `o*` at the start and end.
+   
 Thus, `1,1,3` would be written as:
 ```typescript
 const secondRegex = /^o*#{1}o+#{1}o+#{3}o*$/
@@ -153,7 +157,7 @@ console.log(intersection.size())
 4n
 ```
 
-As an add-on, we can use `.enumerate()` to list all matches:
+While at it, we can also try `.enumerate()` to list all these matches:
 ```typescript
 for (const str of intersection.enumerate()) {
   console.log(str)
