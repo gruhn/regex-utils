@@ -3,6 +3,66 @@
 Zero-dependency TypeScript library for regex intersection, complement and other utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
+- [Documentation](https://gruhn.github.io/regex-utils/)
+
+## Installation
+
+```bash
+npm install @gruhn/regex-utils
+```
+```typescript
+import { RB } from '@gruhn/regex-utils'
+```
+
+## Examples
+
+### Comment Regex using Complement
+
+How do you write a regex that matches comments like:
+```
+/* This is a comment */
+```
+A straight forward attempt would be:
+```typescript
+\/\*.*\*\/
+```
+where
+ - `\/\*` matches the start `/*`
+ - `\*\/` matches the end `*/`
+ - and `.*` matches everything in between
+
+The problem is that `.*` also matches the end marker `*/`, 
+so this is also a match:
+```typescript
+/* This is a comment */ and this shouldn't be part of it */
+```
+We need to specify that the inner part can be anything except `*/`.
+With `.not()` (aka. regex complement) this is easy:
+
+```typescript
+import { RB } from '@gruhn/regex-utils'
+
+const commentStart = RB('/*')
+const commentEnd = RB('*/')
+const commentInner = commentEnd.not()
+
+const commentRegex = commentStart.concat(commentInner).concat(commentEnd)
+```
+
+With `.toRegExp()` we can convert back to a native JavaScript regex:
+```typescript
+commentRegex.toRegExp()
+```
+```
+/^(\/\*((\*{2}(\/?\*)*(\/[^\*]|[^\*\/])|\*(\/.|[^\*\/])|[^\*])(\*(\/?\*)*(\/[^\*]|[^\*\/])|[^\*])*\*(\/?\*)*\/|\*(\*(\/?\*)*\/|\/)))$/
+```
+
+### Password Regex using Intersections
+
+It's difficult to write a single regex for multiple independent constraints.
+For example, to specify a valid password.
+But with regex intersections it's very natural:
+
 ```typescript
 import { RB } from '@gruhn/regex-utils'
 
@@ -10,32 +70,103 @@ const passwordRegex = RB(/^[a-zA-Z0-9]{12,32}$/) // 12-32 alphanumeric character
   .and(/[0-9]/) // at least one number
   .and(/[A-Z]/) // at least one upper case letter   
   .and(/[a-z]/) // at least one lower case letter
+```
 
-// `size` calculates the number of strings matching the regex: 
+We can convert this back to a native JavaScript RegExp with:
+```typescript
+passwordRegex.toRegExp()
+```
+> [!NOTE]  
+> The output `RegExp` can be very large.
+
+We can also use other utilities like `.size()` to determine how many potential passwords match this regex:
+```typescript
 console.log(passwordRegex.size())
-// 2301586451429392354821768871006991487961066695735482449920n
+```
+```
+2301586451429392354821768871006991487961066695735482449920n
+```
 
-// `enumerate` returns a stream of strings matching the regex:
+With `.enumerate()` we can list some of these matches:
+```typescript
 for (const sample of passwordRegex.enumerate().take(10)) {
   console.log(sample)
 }
-// aaaaaaaaaaA0
-// aaaaaaaaaa0A
-// aaaaaaaaaAA0
-// aaaaaaaaaA00
-// aaaaaaaaaaA1
-// aaaaaaaaa00A
-// baaaaaaaaaA0
-// AAAAAAAAAA0a
-// aaaaaaaaaAA1
-// aaaaaaaaaa0B
+```
+```
+aaaaaaaaaaA0
+aaaaaaaaaa0A
+aaaaaaaaaAA0
+aaaaaaaaaA00
+aaaaaaaaaaA1
+aaaaaaaaa00A
+baaaaaaaaaA0
+AAAAAAAAAA0a
+aaaaaaaaaAA1
+aaaaaaaaaa0B
 ```
 
-## Installation
 
-```bash
-npm install @gruhn/regex-utils
+
+
+### Solve _Advent Of Code 2023 - Day 12_
+
+In the coding puzzle [Advent Of Code 2023 - Day 12](https://adventofcode.com/2023/day/12)
+you are given pairs of string patterns.
+An example pair is `.??..??...?##.` and `1,1,3`.
+Both patterns describe a class of strings and the task is to count the number of strings that match both patterns.
+
+In the first pattern, `.` and `#` stand for the literal characters "dot" and "hash".
+The `?` stands for either `.` or `#`.
+This can be written as a regular expression:
+ - for `#` we simply write `#`
+ - for `.` we write `o` (since `.` has a special meaning in regular expressions)
+ - for `?` we write `(o|#)`
+So the pattern `.??..??...?##.` would be written as:
+```typescript
+const firstRegex = /^o(o|#)(o|#)oo(o|#)(o|#)ooo(o|#)##o$/
 ```
+
+In the second pattern, each digit stands for a sequence of `#` separated by at least one `o`.
+This can also be written as a regular expression:
+ - For a digit like `3` we write `#{3}`.
+ - Between digits we write `o+`.
+ - Additionally, arbitrary many `o` are allowed at the start and end,
+   so we add `o*` at the start and end.
+Thus, `1,1,3` would be written as:
+```typescript
+const secondRegex = /^o*#{1}o+#{1}o+#{3}o*$/
+```
+
+To solve the task and find the number of strings that match both regex,
+we can use `.and(...)` and `.size()` from `regex-utils`.
+`.and(...)` computes the intersection of two regular expressions.
+That is, it creates a new regex which exactly matches the strings matched by both input regex.
+```typescript
+const intersection = RB(firstRegex).and(secondRegex)
+```
+With `.size()` we can then determine the number of matched strings:
+```typescript
+console.log(intersection.size())
+```
+```
+4n
+```
+
+As an add-on, we can use `.enumerate()` to list all matches:
+```typescript
+for (const str of intersection.enumerate()) {
+  console.log(str)
+}
+```
+```
+oo#ooo#ooo###o
+o#oooo#ooo###o
+oo#oo#oooo###o
+o#ooo#oooo###o
+```
+
+For a full solution checkout: [./benchmark/aoc2023-day12.js](./benchmark/aoc2023-day12.js).
 
 ## References
 
