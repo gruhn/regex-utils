@@ -107,7 +107,7 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
 }
 
 export function isMetaChar(char: string): boolean {
-  return /^[.^$*+?()[\]{\|]$/.test(char)
+  return /^[.^$*+?()[\]{\|\\\/]$/.test(char)
 }
 
 function codePointToString(codePoint: number): string {
