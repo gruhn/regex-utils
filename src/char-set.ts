@@ -381,6 +381,7 @@ export const nonDigitChars = complement(digitChars)
 export const wordChars = [
   charRange('a', 'z'),
   charRange('A', 'Z'),
+  charRange('0', '9'),
   singleton('_')
 ].reduce(union)
 
