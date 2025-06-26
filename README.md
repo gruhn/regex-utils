@@ -3,6 +3,11 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
+<p align="center">
+  <a href="https://gruhn.github.io/regex-utils/">Documentation</a> | 
+  <a href="https://gruhn.github.io/regex-utils/">Web Demo</a>
+</p>
+
 - Set-like operations:
   - [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
   - [.not()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#not) - Compute the complement of a regex.
@@ -16,11 +21,6 @@ These are surprisingly hard to come by for any programming language.
   - [.size()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#size) - Count the number of strings that a regex matches.
   - [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
   - [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
-
-<p align="center">
-  <a href="https://gruhn.github.io/regex-utils/">Documentation</a> | 
-  <a href="https://gruhn.github.io/regex-utils/">RegExp Equivalence Checker</a>
-</p>
 
 ## Installation
 
