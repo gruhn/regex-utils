@@ -10,7 +10,8 @@
     "test": "vitest",
     "bench": "npm run build && 0x --output-dir prof",
     "build": "tsc --project tsconfig.build.json && tsc-alias",
-    "build:docs": "typedoc --tsconfig tsconfig.build.json"
+    "build:docs": "npm run build && typedoc --tsconfig tsconfig.build.json && cp -r dist/ docs/dist/ && cp ./*.html docs/",
+    "serve:docs": "http-server -p 8080 -o docs/"
   },
   "main": "./dist/index.js",
   "exports": {
@@ -25,6 +26,7 @@
   "devDependencies": {
     "0x": "^5.8.0",
     "fast-check": "^3.23.2",
+    "http-server": "^14.1.1",
     "semantic-release": "^24.2.3",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.15",

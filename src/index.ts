@@ -2,6 +2,12 @@ import { isEquivalent, toStdRegex } from './dfa'
 import * as RE from './regex'
 import { parseRegExp } from './regex-parser'
 
+export { ParseError } from './parser'
+
+export { CacheOverflowError, VeryLargeSyntaxTreeError } from './regex'
+
+export { type RegexBuilder }
+
 /**
  * Union of types which can be converted to a `RegexBuilder` instance.
  * 
@@ -392,6 +398,4 @@ class RegexBuilder {
 export function RB(re: RegexLike) {
   return new RegexBuilder(fromRegexLike(re))
 }
-
-export { type RegexBuilder }
 
