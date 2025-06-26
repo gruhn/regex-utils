@@ -297,20 +297,25 @@
         <li>RegExp flags: <code>g</code>, <code>i</code>, <code>m</code>, <code>s</code>, <code>u</code>, <code>y</code></li>
         <li>Unicode property escapes: <code>\p{...}</code>, <code>\P{...}</code></li>
         <li>Backreferences: <code>\1</code>, <code>\2</code>, ...</li>
-        <li>Lookbehind assertions: <code>(?<=...)</code>, <code>(?<!...)</code></li>
+        <li>Lookbehind assertions: <code>(?&lt;=...)</code>, <code>(?&lt;!...)</code></li>
         <li>Word boundary: <code>\b</code>, <code>\B</code></li>
       </ul>
 
-        <h4>Powered by:</h4>
-        <a href="https://github.com/gruhn/regex-utils" target="_blank" style="color: #667eea; text-decoration: none;">
-          📦 @gruhn/regex-utils
-        </a> - TypeScript library for regex equivalence, intersection, complement and other utilities
+      <h4>Powered by:</h4>
+      <a href="https://github.com/gruhn/regex-utils" target="_blank" style="color: #667eea; text-decoration: none;">
+        📦 @gruhn/regex-utils
+      </a> - TypeScript library for regex equivalence, intersection, complement and other utilities
     </div>
   </div>
 
   <script type="module">
     // Import the regex-utils library from CDN
-    const {RB} = await import('https://cdn.jsdelivr.net/npm/@gruhn/regex-utils@2.2.1/dist/index.min.js');
+    import {
+      RB,
+      ParseError,
+      VeryLargeSyntaxTreeError,
+      CacheOverflowError
+    } from './dist/index.js';
 
     // Global function to check equivalence
     window.checkEquivalence = async function () {
@@ -377,8 +382,10 @@
       } catch (error) {
         if (error instanceof SyntaxError) {
           showResult(`❌ Invalid regex syntax: ${error.message}<br>Please check that your regular expressions use valid JavaScript regex syntax.`, 'error');
-        } else if (error.constructor.name === 'ParseError') {
-          showResult(`❌ Unsupported regex syntax: The syntax is valid but not supported by the checker yet<br/><br/>${error.message}`, 'error');
+        } else if (error instanceof ParseError) {
+          showResult(`🚧 Unsupported regex syntax: The syntax is valid but not supported by the checker yet<br/><br/>${error.message}`, 'error');
+        } else if (error instanceof VeryLargeSyntaxTreeError || error instanceof CacheOverflowError) {
+          showResult(`☠️ Excessive resource use detected: This example might be computationally hard.`, 'error');
         } else {
           showResult(`❌ Unexpected error: ${error.message}`, 'error');
         }

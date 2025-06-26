@@ -17,6 +17,11 @@ These are surprisingly hard to come by for any programming language.
   - [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
   - [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
+<p align="center">
+  <a href="https://gruhn.github.io/regex-utils/">Documentation</a> | 
+  <a href="https://gruhn.github.io/regex-utils/">RegExp Equivalence Checker</a>
+</p>
+
 ## Installation
 
 ```bash
