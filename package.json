@@ -10,7 +10,7 @@
     "test": "vitest",
     "bench": "npm run build && 0x --output-dir prof",
     "build": "tsc --project tsconfig.build.json && tsc-alias",
-    "build:docs": "typedoc --tsconfig tsconfig.build.json"
+    "build:docs": "typedoc --tsconfig tsconfig.build.json && cp ./demo/*.html docs/"
   },
   "main": "./dist/index.js",
   "exports": {
