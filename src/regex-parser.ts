@@ -15,7 +15,7 @@ const regExpFlags = [
   'sticky',
 ] as const
 
-type RegExpFlag = typeof regExpFlags[number]
+// type RegExpFlag = typeof regExpFlags[number]
 
 // TODO:
 // - parse \uXXXX notation
@@ -99,7 +99,11 @@ const charSet = P.choice([
 ])
 
 const group = P.between(
-  P.string('(').andThen(() => P.optional(P.string('?:'))),
+  P.choice([
+    P.string('(?:'),
+    // TODO: named group: (?<name>...)
+    P.string('('),
+  ]),
   P.string(')'),
   regex(),
 )
@@ -134,23 +138,56 @@ const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.between(
 function regexTerm() {
   return P.choice([
     wildcard, 
-    group,
+    P.tryElseBacktrack(group),
     escapeSequence.map(RE.literal),
     charSet.map(RE.literal),
   ])
 }
 
-function lookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
+function positiveLookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
   return P.between(
-    P.string('(?'),
+    P.string('(?='),
     P.string(')'),
-    P.choice([
-      // positive lookahead
-      P.string('=').andThen(_ => regexWithBounds()),
-      // negative lookahead
-      P.string('!').andThen(_ => regexWithBounds().map(RE.complement)),
-    ]).map(
-      left => right => RE.intersection(left, right)
+    regexWithBounds()    
+  ).map(inner => right =>
+    RE.intersection(inner, right)
+  )
+}
+
+function negativeLookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
+  return P.between(
+    P.string('(?!'),
+    P.string(')'),
+    regexWithBounds()    
+  ).map(inner => right =>
+    RE.intersection(RE.complement(inner), right)
+  )
+}
+
+/**
+ * We treat lookAheads like a right-associative infix operator
+ * even though it only "acts" on the right hand side:
+ * 
+ *     aaa (?=bbb) ccc
+ * 
+ * We could treat it as a prefix operator but then it's 
+ * unclear what should have higher precedence: concat or 
+ * lookAhead? But even when treating lookAheads as infix
+ * operators, they need special treatment because the left- and
+ * right operand can be optional:
+ * 
+ *     (?=bbb) fff
+ *     aaa (?=bbb) 
+ *     aaa (?=bbb) (?!ccc) ddd
+ */
+function lookAheadOp(): P.Expr.BinaryOperator<RE.ExtRegex | undefined, RE.ExtRegex> {
+  return P.choice([
+    positiveLookAhead(),
+    negativeLookAhead(),
+  ]).map(op => (left, right) =>
+    RE.concat(
+      left ?? RE.string(''),
+      op(right ?? RE.string(''))
     )
   )
 }
@@ -164,7 +201,7 @@ function regex(): P.Parser<RE.ExtRegex> {
       { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
       { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
-      { type: 'prefix', op: lookAhead() },
+      { type: 'infixRightOptional', op: lookAheadOp() },
       { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
     ]
   ))
@@ -185,7 +222,6 @@ export function parseRegexString(
 ): RE.ExtRegex {
   const { value, restInput } = regexWithBounds().run(regexStr)
   if (restInput === '') {
-    // TODO: parsing should always return stdandard regex instances:
     return value
   } else {
     throw new P.ParseError('Expected end of input.', restInput)

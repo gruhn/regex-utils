@@ -36,13 +36,18 @@ describe('parseRegexString', () => {
     // non-capturing groups
     [/^(?:ab)$/, RE.string('ab')],
     // positive lookahead
-    [/^(?=^a$)a$/, RE.intersection(RE.string('a'), RE.string('a'))], 
+    [/^(?=^a$)b$/, RE.intersection(RE.string('a'), RE.string('b'))], 
+    [/^(?=^a$)(?:b)$/, RE.intersection(RE.string('a'), RE.string('b'))], 
+    [/^(?=^a$)(?=^b$)c$/, RE.intersection(RE.string('a'), RE.intersection(RE.string('b'), RE.string('b')))], 
+    [/^a(?=^b$)c$/, RE.concat(RE.singleChar('a'), RE.intersection(RE.string('b'), RE.string('c')))], 
+    [/^a(?=^b$)$/, RE.concat(RE.string('a'), RE.intersection(RE.string('b'), RE.string('')))], 
+    [/^a(?=^b$)c(?=^d$)e$/, RE.concat(RE.string('a'), RE.intersection(RE.string('b'), RE.concat(RE.string('c'), RE.intersection(RE.string('d'), RE.string('e')))))], 
     // negative lookahead
     [/^(?!^a$)b$/, RE.intersection(RE.complement(RE.string('a')), RE.string('b'))], 
     [/^(?!^a$)b|c$/, RE.union(RE.intersection(RE.complement(RE.string('a')), RE.string('b')), RE.string('c'))],
     // some special chars don't need escape when inside brackets:
     [/^[.^$*+?()[{-|]$/, RE.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
-    // other special chars need escaped even inside brackets:
+    // other special chars need escape even inside brackets:
     [/^[\\\]\/]$/, RE.literal(CharSet.fromArray([...'\\]/']))],
   ])('can parse %s', (regexp, expected) => {
     expect(parseRegExp(regexp)).toEqual(expected)

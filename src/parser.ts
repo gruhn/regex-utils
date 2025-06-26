@@ -150,8 +150,15 @@ export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
       return parser.run(input)
     } catch (error) {
       if (error instanceof ParseError) {
-        // parser failed ==> return `undefined` and consume no characters:
-        return { value: undefined, restInput: input }
+        if (error.restInput === input) {
+          // parser failed but did not consume any characters
+          // ==> return `undefined` and consume no characters:
+          return { value: undefined, restInput: input }
+        } else {
+          // parser failed and consumed characters. 
+          // ==> don't backtrack by default:
+          throw error
+        }
       } else {
         // Only catch parse errors, otherwise we silence logic errors:
         throw error
@@ -191,11 +198,27 @@ export function lazy<T>(createParser: () => Parser<T>): Parser<T> {
   return pure(null).andThen(createParser)
 }
 
+export function tryElseBacktrack<T>(parser: Parser<T>): Parser<T> {
+  return new Parser(input => {
+    try {
+      return parser.run(input)
+    } catch (error) {
+      if (error instanceof ParseError) {
+        // restore original `input` and pretend that the parser did
+        // not consume any characters:
+        throw new ParseError(error.message, input)
+      } else {
+        throw error
+      }
+    }
+  })
+}
+
 export namespace Expr {
 
   export type UnaryOperator<T> = Parser<(inner: T) => T>
 
-  export type BinaryOperator<T> = Parser<(left: T, right: T) => T>
+  export type BinaryOperator<T, R=T> = Parser<(left: T, right: T) => R>
 
   function prefixOp<T>(
     operator: UnaryOperator<T>,
@@ -245,11 +268,31 @@ export namespace Expr {
     )
   } 
 
+  /**
+   * Right-associative infix operator where both left- and right 
+   * operand can be optional.
+   */
+  export function infixOpRightAssocOptional<T>(
+    left: T | undefined,   
+    operatorParser: BinaryOperator<T | undefined, T>,
+    rightParser: Parser<T>,
+  ): Parser<T> {
+    return operatorParser.andThen(op =>
+      optional(rightParser).andThen(right =>
+        choice([
+          infixOpRightAssocOptional(right, operatorParser, rightParser),
+          pure(right)
+        ])
+      ).map(right => op(left, right))
+    )
+  } 
+
   export type Operator<T> = Readonly<
     | { type: 'prefix', op: Expr.UnaryOperator<T> }
     | { type: 'postfix', op: Expr.UnaryOperator<T> }
     | { type: 'infixLeft', op: Expr.BinaryOperator<T> }
     | { type: 'infixRight', op: Expr.BinaryOperator<T> }
+    | { type: 'infixRightOptional', op: Expr.BinaryOperator<T | undefined, T> }
   >
 
   function addPrecLevel<T>(
@@ -281,6 +324,16 @@ export namespace Expr {
             pure(left)
           ])
         )
+      case 'infixRightOptional':
+        return optional(termParser).andThen(left => {
+          if (left === undefined)
+            return infixOpRightAssocOptional(left, operator.op, termParser)
+          else
+            return choice([
+              infixOpRightAssocOptional(left, operator.op, termParser),
+              pure(left)
+            ])
+        })
     }
     checkedAllCases(operator)
   }

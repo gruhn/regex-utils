@@ -333,9 +333,6 @@
           const diffAB = RB(regexA).without(regexB);
           const diffBA = RB(regexB).without(regexA);
 
-          console.log(diffAB.toRegExp())
-          console.log(diffBA.toRegExp())
-          
           if (diffAB.isEmpty() && diffBA.isEmpty()) {
             // Equivalent
             showResult('✅ The regular expressions are equivalent!<br>Both expressions match exactly the same set of strings.', 'equivalent');
@@ -363,7 +360,7 @@
           if (error instanceof SyntaxError) {
             showResult(`❌ Invalid regex syntax: ${error.message}<br>Please check that your regular expressions use valid JavaScript regex syntax.`, 'error');
           } else if (error instanceof ParseError) {
-            showResult(`🚧 Unsupported regex syntax: The syntax is valid but not supported by the checker yet<br/><br/>${error.message}`, 'error');
+            showResult(`🚧 Unsupported regex syntax: The syntax is valid but not yet supported by the tool.<br/><br/>${error.message}`, 'error');
           } else if (error instanceof VeryLargeSyntaxTreeError || error instanceof CacheOverflowError) {
             showResult(`☠️ Excessive resource use detected: This example might be computationally hard.`, 'error');
           } else {
@@ -399,7 +396,6 @@
         html += '<div class="examples-list">';
         examples.forEach(str => {
           // const displayStr = str === '' ? '(empty string)' : str;
-          console.debug({ str })
           html += `<code>${JSON.stringify(str)}</code> `;
         });
         html += '</div></div>';
