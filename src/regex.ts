@@ -1022,15 +1022,6 @@ function nodeCountAux(
   }
 }
 
-// export function equivalent(regex1: ExtRegex, regex2: ExtRegex): boolean {
-//   if (equal(regex1, regex2)) {
-//     return true
-//   } else {
-//     // TODO: check if empty:
-//     intersection(regex1, complement(regex2))
-//   }
-// }
-
 export function debugShow(regex: ExtRegex): any {
   switch (regex.type) {
     case 'epsilon':

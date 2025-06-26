@@ -6,7 +6,7 @@ import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
 import * as CharSet from '../src/char-set'
 import { parseRegExp } from "../src/regex-parser"
-
+import { assert } from "src/utils"
 
 function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
   try {
@@ -80,8 +80,7 @@ describe('enumerate', () => {
           }
         }
       ),
-      // { endOnFailure: true }
-      { seed: -1078936918, path: "13", endOnFailure: true }
+      { endOnFailure: true }
     )
   })
 
@@ -189,7 +188,9 @@ describe('rewrite rules', () => {
     [/^(a*)*$/, /^(a*)$/],
     [/^(a*b*)*$/, /^([ab]*)$/],
   ])('rewrites %s to %s', (source, target) => {
-    expect(RE.toRegExp(parseRegExp(source))).toEqual(target)
+    const parsed = parseRegExp(source)
+    assert(RE.isStdRegex(parsed))
+    expect(RE.toRegExp(parsed)).toEqual(target)
   })
   
 })
@@ -204,6 +205,7 @@ describe('derivative', () => {
     [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(a{3})*|a*)$/],
   ])('of %s with respect to "%s" is %s', (input, str, expected) => {
     const actual = RE.derivative(str, parseRegExp(input))
+    assert(RE.isStdRegex(actual))
     expect(RE.toRegExp(actual)).toEqual(expected)
   })
   
