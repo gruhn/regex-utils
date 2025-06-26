@@ -3,10 +3,10 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
-<p align="center">
-  <a href="https://gruhn.github.io/regex-utils/">Documentation</a> | 
-  <a href="https://gruhn.github.io/regex-utils/">Web Demo</a>
-</p>
+- [Documentation](https://gruhn.github.io/regex-utils/)
+- [Web demo: RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
+
+## API Overview
 
 - Set-like operations:
   - [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
@@ -31,7 +31,7 @@ npm install @gruhn/regex-utils
 import { RB } from '@gruhn/regex-utils'
 ```
 
-## Examples
+## Example Use Cases
 
 ### Comment Regex using Complement
 
