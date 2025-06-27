@@ -44,6 +44,8 @@ const wildcard = P.string('.').map(
 
 const unescapedChar = P.satisfy(Range.neverMustBeEscaped)
 
+const alphaNumChar = P.satisfy(char => /^[a-zA-Z0-9]$/.test(char))
+
 const unescapedCharInsideBrackets = P.satisfy(Range.mustBeEscapedOrInBrackets)
   .map(CharSet.singleton)
 
@@ -73,11 +75,25 @@ const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar =>
   }
 })
 
-const codePointRange: P.Parser<CharSet.CharSet> =
-  unescapedChar.andThen(start =>
-    P.optional(P.string('-').andThen(_ => unescapedChar))
-     .map(end => CharSet.charRange(start, end ?? start))
-  )
+// E.g. "a-z", "0-9", "A-Z"
+const alphaNumRange: P.Parser<CharSet.CharSet> = alphaNumChar.andThen(start =>
+  P.optional(P.string('-')).andThen(dash => {
+    if (dash === undefined) {
+      // e.g. [a]
+      return P.pure(CharSet.singleton(start))
+    } else {
+      return P.optional(alphaNumChar).map(end => {
+        if (end === undefined) {
+          // e.g. [a-] so dash is interpreted literally
+          return CharSet.fromArray([start, dash])
+        } else {
+          // e.g. [a-z]
+          return CharSet.charRange(start, end)
+        }
+      })
+    }
+  })
+)
 
 const charSet = P.choice([
   P.between(
@@ -85,7 +101,12 @@ const charSet = P.choice([
     P.string('['),
     P.string(']'),
     P.optional(P.string('^')).andThen(negated =>
-      P.many(P.choice([escapeSequence, codePointRange, unescapedCharInsideBrackets])).map(
+      P.many(P.choice([
+        escapeSequence, // e.g. "\$", "\]"
+        alphaNumRange, // e.g. "a-z", "0-9" (will also match just "a", "3")
+        unescapedCharInsideBrackets, // e.g. "$", "."
+        unescapedChar.map(CharSet.singleton), // e.g. "#", "%"
+      ])).map(
         sets => {
           if (negated === undefined)
             return sets.reduce(CharSet.union, CharSet.empty)

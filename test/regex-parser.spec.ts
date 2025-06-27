@@ -31,6 +31,7 @@ describe('parseRegexString', () => {
     [/^\.$/, RE.literal(CharSet.singleton('.'))],
     // char class from range:
     [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
+    [/^[a-]$/, RE.literal(CharSet.fromArray(['a', '-']))],
     // negative char class:
     [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
     // non-capturing groups
@@ -52,14 +53,19 @@ describe('parseRegexString', () => {
     // other special chars need escape even inside brackets:
     [/^[\\\]\/]$/, RE.literal(CharSet.fromArray([...'\\]/']))],
   ])('can parse %s', (regexp, expected) => {
-    expect(parseRegExp(regexp)).toEqual(expected)
+    expect(parseRegExp(regexp).hash).toBe(expected.hash)
   })
 
   it.each([
-    ['a+*'],
+    // unclosed parenthesis:
     ['(a'],
+    // combined quantifiers:
+    ['a+*'],
     ['a?{2}'],
     ['a+{2}'],
+    // TODO: invalid ranges:
+    // ['[a-#]'],
+    // ['[%-#]'],
   ])('rejects invalid regex /%s/', (regexStr) => {
     expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
   })
