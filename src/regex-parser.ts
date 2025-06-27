@@ -136,31 +136,37 @@ const group = P.between(
   regex(),
 )
 
-const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.between(
-  P.string('{'),
-  P.string('}'),
-  P.optional(P.decimal).andThen(min => {
-    if (min === undefined)
-      // e.g. a{,5}
-      return P.string(',')
-        .andThen(_ => P.decimal)
-        .map(max => regex => RE.repeat(regex, { max }))
-    else
-      return P.optional(P.string(',')).andThen(comma => {
-        if (comma === undefined)
-          // e.g. a{3}
-          return P.pure(regex => RE.repeat(regex, min))
-        else
-          return P.optional(P.decimal).map(max => regex => {
-            if (max === undefined)
-              // e.g. a{3,}
-              return RE.repeat(regex, { min })
-            else
-              // e.g. a{3,5}
-              return RE.repeat(regex, { min, max })
-          })
-      })
-  })
+// Need to backtrack on bounded quantifier because if the curly bracket is
+// not terminated (e.g. "a{2,3") then all characters are interpreted literally.
+// FIXME: However, this breaks something else. E.g. "a*{3}" must still be rejected as
+// invalid and not interpreted as "a*" and then literal charactesr "{3}".
+const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.tryElseBacktrack(
+  P.between(
+    P.string('{'),
+    P.string('}'),
+    P.optional(P.decimal).andThen(min => {
+      if (min === undefined)
+        // e.g. a{,5}
+        return P.string(',')
+          .andThen(_ => P.decimal)
+          .map(max => regex => RE.repeat(regex, { max }))
+      else
+        return P.optional(P.string(',')).andThen(comma => {
+          if (comma === undefined)
+            // e.g. a{3}
+            return P.pure(regex => RE.repeat(regex, min))
+          else
+            return P.optional(P.decimal).map(max => regex => {
+              if (max === undefined)
+                // e.g. a{3,}
+                return RE.repeat(regex, { min })
+              else
+                // e.g. a{3,5}
+                return RE.repeat(regex, { min, max })
+            })
+        })
+    })
+  )
 )
 
 function regexTerm() {
