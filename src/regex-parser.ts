@@ -99,9 +99,16 @@ const charSet = P.choice([
 ])
 
 const group = P.between(
-  P.choice([
+  P.choice<unknown>([
+    // non-capture group:
     P.string('(?:'),
-    // TODO: named group: (?<name>...)
+    // named capture group:
+    P.sequence([
+      P.string('(?<'),
+      P.some(P.satisfy(char => /^\w$/.test(char))),
+      P.string('>'),
+    ]),
+    // regular capture group:
     P.string('('),
   ]),
   P.string(')'),

@@ -35,6 +35,8 @@ describe('parseRegexString', () => {
     [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
     // non-capturing groups
     [/^(?:ab)$/, RE.string('ab')],
+    // named capturing groups
+    [/^(?<abc_012>abc)$/, RE.string('abc')],
     // positive lookahead
     [/^(?=^a$)b$/, RE.intersection(RE.string('a'), RE.string('b'))], 
     [/^(?=^a$)(?:b)$/, RE.intersection(RE.string('a'), RE.string('b'))], 
