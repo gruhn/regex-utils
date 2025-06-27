@@ -108,11 +108,11 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
 /**
  * Returns true iff the given char must always be escaped to occur literally
  * in a regular expression. Some special chars like `$` don't need to be 
- * escaped when inside brackets (e.g. `/[$]/`). But `/`, `\` and `]` must 
+ * escaped when inside brackets (e.g. `/[$]/`). But `\` and `]` must 
  * even be escaped when inside brackets. 
  */
 export function mustAlwaysBeEscaped(char: string) {
-  return '\\\]\/'.includes(char)
+  return '\\\]/'.includes(char)
 }
 
 /**
@@ -122,7 +122,7 @@ export function mustAlwaysBeEscaped(char: string) {
  * Inside brackets `[$]` is allowed.
  */
 export function mustBeEscapedOrInBrackets(char: string) {
-  return '.^$*+?()[{-|'.includes(char)
+  return '.^$*+?()[{-|/'.includes(char)
 }
 
 export function neverMustBeEscaped(char: string) {
