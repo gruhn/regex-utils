@@ -122,7 +122,7 @@ export function mustAlwaysBeEscaped(char: string) {
  * Inside brackets `[$]` is allowed.
  */
 export function mustBeEscapedOrInBrackets(char: string) {
-  return '.^$*+?()[{-|/'.includes(char)
+  return '.^$*+?()[{|/'.includes(char)
 }
 
 export function neverMustBeEscaped(char: string) {
