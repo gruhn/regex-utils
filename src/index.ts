@@ -1,3 +1,4 @@
+import { RepeatBounds } from './ast'
 import { isEquivalent, toStdRegex } from './dfa'
 import * as RE from './regex'
 import { parseRegExp } from './regex-parser'
@@ -50,7 +51,7 @@ function fromRegexLike(re: RegexLike): RE.ExtRegex {
   else if (typeof re === 'string')
     return RE.string(re)
   else if (re instanceof RegExp)
-    return parseRegExp(re)
+    return RE.fromRegExpAST(parseRegExp(re))
   else if (re instanceof RegexBuilder)
     return re.regex
   else
@@ -180,7 +181,7 @@ class RegexBuilder {
    * 
    * @public
    */
-  repeat(bounds: RE.RepeatBounds = { min: 0 }): RegexBuilder {
+  repeat(bounds: RepeatBounds = { min: 0 }): RegexBuilder {
     return new RegexBuilder(
       RE.repeat(this.regex, bounds)
     )
