@@ -152,6 +152,38 @@
       color: #721c24;
     }
 
+    .result.subset {
+      background: #cce5ff;
+      border: 1px solid #99ccff;
+      color: #003d7a;
+    }
+
+    .result.superset {
+      background: #e5ccff;
+      border: 1px solid #cc99ff;
+      color: #4d0080;
+    }
+
+    .venn-container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .venn-diagram {
+      max-width: 300px;
+      width: 100%;
+    }
+
+    .result code {
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      margin: 2px;
+      display: inline-block;
+    }
+
     .result.error {
       background: #fff3cd;
       border: 1px solid #ffeaa7;
@@ -211,7 +243,7 @@
 
     <div class="input-container">
       <div class="input-group">
-        <label for="regex1">Regular Expression 1:</label>
+        <label for="regex1">RegExp 1:</label>
         <div class="regex-input-wrapper">
           <span class="regex-slash">/</span>
           <input type="text" id="regex1" placeholder="^a{1,3}$" />
@@ -221,7 +253,7 @@
       </div>
 
       <div class="input-group">
-        <label for="regex2">Regular Expression 2:</label>
+        <label for="regex2">RegExp 2:</label>
         <div class="regex-input-wrapper">
           <span class="regex-slash">/</span>
           <input type="text" id="regex2" placeholder="^(a|aa|aaa)$" />
@@ -235,13 +267,35 @@
       <button id="check-equiv-button">Check Equivalence</button>
     </div>
 
-    <div class="result" id="result"></div>
+    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-superset" style="display: none;">
+      <circle cx="100" cy="100" r="60" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#e9ecef"></circle>
+      <circle cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#764ba2" cx="120" r="30"></circle>
+      <text x="70" y="80" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
+      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="115" y="105">2</text>
+    </svg>
+
+    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-subset" style="display: none;">
+      <circle cx="80" cy="100" r="30" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#667eea"></circle>
+      <circle cx="100" cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#e9ecef" r="60"></circle>
+      <text x="75" y="105" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
+      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="120" y="80">2</text>
+    </svg>
+
+    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-intersection" style="display: none;">
+      <circle cx="80" cy="100" r="60" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#667eea"></circle>
+      <circle cx="140" cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#764ba2" r="60"></circle>
+      <text x="50" y="105" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
+      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="150" y="80">2</text>
+    </svg>
+
+    <div class="result" id="result">
+
+    </div>
 
     <div class="info">
       <h4>How to use:</h4>
       Enter two JavaScript regular expressions (without the surrounding slashes) and click "Check Equivalence".
-      The tool will determine if both expressions match exactly the same set of strings.
-      If they're not equivalent, it will show example strings that demonstrate the difference.
+      The tool will determine the relationship between the two expressions: equivalent, subset, superset, or neither.
 
       <h4>Examples:</h4>
       <ul>
@@ -329,32 +383,35 @@
           const regexA = new RegExp(pattern1);
           const regexB = new RegExp(pattern2);
 
-          // Then compute symmetric difference of the two regex:
-          const diffAB = RB(regexA).without(regexB);
-          const diffBA = RB(regexB).without(regexA);
+          // Compute differences between the two regex
+          const diffAB = RB(regexA).without(regexB); // strings in A but not B
+          const diffBA = RB(regexB).without(regexA); // strings in B but not A
+          
+          const diffABEmpty = diffAB.isEmpty();
+          const diffBAEmpty = diffBA.isEmpty();
 
-          if (diffAB.isEmpty() && diffBA.isEmpty()) {
-            // Equivalent
-            showResult('✅ The regular expressions are equivalent!<br>Both expressions match exactly the same set of strings.', 'equivalent');
+          if (diffABEmpty && diffBAEmpty) {
+            // Equivalent: both differences are empty
+            showResultWithDiagram('✅ The regular expressions are equivalent! Both expressions match exactly the same strings.', 'equivalent');
+          } else if (diffABEmpty && !diffBAEmpty) {
+            // A is subset of B: no strings in A that aren't in B
+            const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
+            const examples = stringsMatchingBButNotA.length > 0 ? { regex2Only: stringsMatchingBButNotA } : null;
+            showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples);
+          } else if (!diffABEmpty && diffBAEmpty) {
+            // B is subset of A: no strings in B that aren't in A
+            const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
+            const examples = stringsMatchingAButNotB.length > 0 ? { regex1Only: stringsMatchingAButNotB } : null;
+            showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples);
           } else {
-            // Not equivalent - show counterexamples under respective text boxes
-            showResult('❌ The regular expressions are NOT equivalent.', 'not-equivalent');
-
-            // Show counterexamples under first regex (strings matching first but not second)
-            if (!diffAB.isEmpty()) {
-              const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-              if (stringsMatchingAButNotB.length > 0) {
-                showCounterexamples(counterexamples1, 'Matches only left regex:', stringsMatchingAButNotB);
-              }
-            }
-
-            // Show counterexamples under second regex (strings matching second but not first)
-            if (!diffBA.isEmpty()) {
-              const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-              if (stringsMatchingBButNotA.length > 0) {
-                showCounterexamples(counterexamples2, 'Matches only right regex:', stringsMatchingBButNotA);
-              }
-            }
+            // Neither subset nor equivalent: both differences are non-empty
+            const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
+            const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
+            const examples = {
+              regex1Only: stringsMatchingAButNotB.length > 0 ? stringsMatchingAButNotB : null,
+              regex2Only: stringsMatchingBButNotA.length > 0 ? stringsMatchingBButNotA : null
+            };
+            showResultWithDiagram('❌ The two RegExp are not equivalent. Neither matches a subset of the other.', 'not-equivalent', examples);
           }
         } catch (error) {
           if (error instanceof SyntaxError) {
@@ -390,6 +447,62 @@
         resultDiv.style.display = 'block';
       }
 
+      function showResultWithDiagram(message, type, examples = null) {
+        const resultDiv = document.getElementById('result');
+        
+        // Build the complete HTML structure
+        let html = message;
+        
+        // Add Venn diagram (only for subset/superset/not-equivalent cases)
+        if (type !== 'equivalent') {
+          html += '<div class="venn-container"></div>';
+        }
+        
+        // Add examples if provided
+        if (examples) {
+          html += '<p>For example, '
+
+          if (examples.regex1Only && examples.regex1Only.length > 0) {
+            html += `RegExp 1 matches `;
+            html += examples.regex1Only.map(str => `<code>${JSON.stringify(str)}</code>`).join(', ');
+            html += ' but RegExp 2 does not. ';
+          }
+          
+          if (examples.regex2Only && examples.regex2Only.length > 0) {
+            html += `RegExp 2 matches `;
+            html += examples.regex2Only.map(str => `<code>${JSON.stringify(str)}</code>`).join(', ');
+            html += 'but RegExp 1 does not. ';
+          }
+
+          html += '</p>'
+        }
+        
+        resultDiv.innerHTML = html;
+        
+        // Show/hide the appropriate hardcoded SVG
+        if (type !== 'equivalent') {
+          const vennContainer = resultDiv.querySelector('.venn-container');
+          let targetDiagram;
+          
+          if (type === 'subset') {
+            targetDiagram = document.querySelector('.venn-diagram-subset');
+          } else if (type === 'superset') {
+            targetDiagram = document.querySelector('.venn-diagram-superset');
+          } else if (type === 'not-equivalent') {
+            targetDiagram = document.querySelector('.venn-diagram-intersection');
+          }
+          
+          if (targetDiagram) {
+            const clonedDiagram = targetDiagram.cloneNode(true);
+            clonedDiagram.style.display = 'block';
+            vennContainer.appendChild(clonedDiagram);
+          }
+        }
+        
+        resultDiv.className = `result ${type}`;
+        resultDiv.style.display = 'block';
+      }
+
       function showCounterexamples(container, title, examples) {
         let html = '<div class="counterexamples">';
         html += `<h4>${title}</h4>`;
@@ -409,6 +522,7 @@
         div.textContent = text;
         return div.innerHTML;
       }
+
     })
   </script>
 </body>
