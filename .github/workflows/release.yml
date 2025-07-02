@@ -30,7 +30,7 @@ jobs:
       - name: Test
         run: npx vitest run
       - name: Build
-        run: npm run build
+        run: make dist
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
       - name: Release

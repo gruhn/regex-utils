@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: npm clean-install
       - name: Generate Docs
-        run: npm run build:docs
+        run: make docs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
