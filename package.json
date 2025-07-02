@@ -7,11 +7,10 @@
   "version": "0.0.0-development",
   "type": "module",
   "scripts": {
-    "test": "vitest",
-    "bench": "npm run build && 0x --output-dir prof",
-    "build": "tsc --project tsconfig.build.json && tsc-alias",
-    "build:docs": "npm run build && typedoc --tsconfig tsconfig.build.json && cp -r dist/ docs/dist/ && cp ./*.html docs/",
-    "serve:docs": "http-server -p 8080 -o docs/"
+    "test": "vitest run",
+    "build": "make",
+    "serve": "http-server -p 8080",
+    "bench": "0x --output-dir prof"
   },
   "main": "./dist/index.js",
   "exports": {
