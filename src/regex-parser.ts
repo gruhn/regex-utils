@@ -17,11 +17,6 @@ const regExpFlags = [
 
 // type RegExpFlag = typeof regExpFlags[number]
 
-// TODO:
-// - parse \uXXXX notation
-// - allow empty strings, e.g. regex like "(|)"
-//   const emptyString = P.string('').map(() => RE.epsilon)
-
 const startMarker = P.optional(P.string('^')).map(marker => {
   if (marker === undefined) {
     return RE.star(RE.anySingleChar)
@@ -225,6 +220,14 @@ function lookAheadOp(): P.Expr.BinaryOperator<RE.ExtRegex | undefined, RE.ExtReg
     )
   )
 }
+
+/**
+ * Parses expression like `(a|b)`. The left- and right operand are optional,
+ * e.g. `(a|)` and `(|)` are also valid expressions.
+ */
+function unionOp(): P.Expr.BinaryOperator<RE.ExtRegex | undefined, RE.ExtRegex> {
+  return P.string('|').map(_ => (left, right) => RE.union(left ?? RE.epsilon, right ?? RE.epsilon))
+}
  
 function regex(): P.Parser<RE.ExtRegex> {
   return P.lazy(() => P.Expr.makeExprParser<RE.ExtRegex>(
@@ -236,7 +239,7 @@ function regex(): P.Parser<RE.ExtRegex> {
       { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
       { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
       { type: 'infixRightOptional', op: lookAheadOp() },
-      { type: 'infixRight', op: P.string('|').map(_ => RE.union) },
+      { type: 'infixRightOptional', op: unionOp() },
     ]
   ))
 }

@@ -17,10 +17,15 @@ describe('parseRegexString', () => {
     [/^a+$/, RE.plus(RE.singleChar('a'))],
     [/^a?$/, RE.optional(RE.singleChar('a'))],
     [/^abc$/, RE.string('abc')],
+    [/^ab*$/, RE.concat(RE.singleChar('a'), RE.star(RE.singleChar('b')))],
+    // union:
     [/^a|b$/, RE.union(RE.singleChar('a'), RE.singleChar('b'))],
     [/^aa|bb$/, RE.union(RE.string('aa'), RE.string('bb'))],
     [/^(a|b)*$/, RE.star(RE.union(RE.singleChar('a'), RE.singleChar('b')))],
-    [/^ab*$/, RE.concat(RE.singleChar('a'), RE.star(RE.singleChar('b')))],
+    [/^(|a)$/, RE.optional(RE.singleChar('a'))],
+    [/^(a||)$/, RE.optional(RE.singleChar('a'))],
+    [/^(|a|)$/, RE.optional(RE.singleChar('a'))],
+    [/^(|)$/, RE.epsilon],
     // bounded quantifier:
     [/^a{3}$/, RE.repeat(RE.singleChar('a'), 3)],
     [/^a{3,}$/, RE.repeat(RE.singleChar('a'), { min: 3 })],
