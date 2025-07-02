@@ -1,4 +1,4 @@
-import { identity, checkedAllCases } from './utils'
+import { identity, checkedAllCases, assert } from './utils'
 
 export type ParseResult<T> = { value: T, restInput: string }
 
@@ -144,6 +144,17 @@ export function some<T>(parser: Parser<T>): Parser<[T, ...T[]]> {
     )
 }
 
+export function count<T>(n: number, parser: Parser<T>): Parser<T[]> {
+  assert(Number.isInteger(n) && n >= 0)
+
+  if (n === 0) 
+    return pure([])
+  else // n > 0
+    return parser.andThen(first => count(n-1, parser)
+      .map(rest => [first, ...rest])
+    )
+}
+
 export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
   return new Parser(input => {
     try {
@@ -179,16 +190,14 @@ export function satisfy(predicate: (char: string) => boolean): Parser<string> {
   })
 }
 
-export const digitChar: Parser<string> = satisfy(char => char.match(/^[0-9]$/) !== null)
+export const digitChar: Parser<string> = satisfy(char => /^[0-9]$/.test(char))
+
+export const hexChar: Parser<string> = satisfy(char => /^[0-9a-fA-F]$/.test(char))
 
 export const anyChar: Parser<string> = satisfy(_ => true)
 
-function digitsToDecimal(digits: number[]): number {
-  return digits.reduce((acc, digit) => 10*acc + digit, 0)
-}
-
 export const decimal: Parser<number> = some(digitChar).map(
-  digits => digitsToDecimal(digits.map(digit => parseInt(digit)))
+  digits => parseInt(digits.join(''), 10)
 )
 
 /**

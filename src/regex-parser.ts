@@ -46,27 +46,31 @@ const unescapedCharInsideBrackets = P.satisfy(Range.mustBeEscapedOrInBrackets)
 
 export class UnsupportedSyntaxError extends Error {}
 
-const escapeSequence = P.string('\\').andThen(_ => P.anyChar).map(escapedChar => {
+const escapeSequence = P.string('\\').andThen(_ => P.anyChar).andThen(escapedChar => {
   switch (escapedChar) {
-    case 'w': return CharSet.wordChars
-    case 'W': return CharSet.nonWordChars
-    case 's': return CharSet.whiteSpaceChars
-    case 'S': return CharSet.nonWhiteSpaceChars
-    case 'd': return CharSet.digitChars
-    case 'D': return CharSet.nonDigitChars
-    case 't': return CharSet.singleton('\t') // horizontal tab
-    case 'r': return CharSet.singleton('\r') // carriage return
-    case 'n': return CharSet.singleton('\n') // line feed
-    case 'v': return CharSet.singleton('\v') // vertical tab
-    case 'f': return CharSet.singleton('\f') // form feed
-    case '0': return CharSet.singleton('\0') // NUL character
+    case 'w': return P.pure(CharSet.wordChars)
+    case 'W': return P.pure(CharSet.nonWordChars)
+    case 's': return P.pure(CharSet.whiteSpaceChars)
+    case 'S': return P.pure(CharSet.nonWhiteSpaceChars)
+    case 'd': return P.pure(CharSet.digitChars)
+    case 'D': return P.pure(CharSet.nonDigitChars)
+    case 't': return P.pure(CharSet.singleton('\t')) // horizontal tab
+    case 'r': return P.pure(CharSet.singleton('\r')) // carriage return
+    case 'n': return P.pure(CharSet.singleton('\n')) // line feed
+    case 'v': return P.pure(CharSet.singleton('\v')) // vertical tab
+    case 'f': return P.pure(CharSet.singleton('\f')) // form feed
+    case '0': return P.pure(CharSet.singleton('\0')) // NUL character
     case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion not supported')
     case 'c': throw new UnsupportedSyntaxError('\cX control characters not supported')
-    case 'x': throw new UnsupportedSyntaxError('\\x not supported')
-    case 'u': throw new UnsupportedSyntaxError('\\u not supported')
+    case 'x': return P.count(2, P.hexChar).map(chars => 
+                CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
+              )
+    case 'u': return P.count(4, P.hexChar).map(chars =>
+                CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
+              )
     case 'p': throw new UnsupportedSyntaxError('\\p not supported')
     case 'P': throw new UnsupportedSyntaxError('\\P not supported')
-    default: return CharSet.singleton(escapedChar) // match character literally
+    default: return P.pure(CharSet.singleton(escapedChar)) // match character literally
   }
 })
 

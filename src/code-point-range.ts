@@ -42,10 +42,14 @@ export function strictlyDisjoint(rangeA: CodePointRange, rangeB: CodePointRange)
   return isStrictlyBefore(rangeA, rangeB) || isStrictlyAfter(rangeA, rangeB)
 }
 
-export function singleton(char: string): CodePointRange {
-  const codePoint = char.codePointAt(0) 
-  assert(codePoint !== undefined && char.length <= 1, `Invalid character: ${char}`)
-  return { start: codePoint, end: codePoint }
+export function singleton(char: string | number): CodePointRange {
+  if (typeof char === 'number') {
+    return { start: char, end: char }
+  } else {
+    const codePoint = char.codePointAt(0) 
+    assert(codePoint !== undefined && char.length <= 1, `Invalid character: ${char}`)
+    return { start: codePoint, end: codePoint }
+  }
 }
 
 export function size(range: CodePointRange): number {
