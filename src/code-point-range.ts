@@ -112,11 +112,11 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
 /**
  * Returns true iff the given char must always be escaped to occur literally
  * in a regular expression. Some special chars like `$` don't need to be 
- * escaped when inside brackets (e.g. `/[$]/`). But `\` and `]` must 
- * even be escaped when inside brackets. 
+ * escaped when inside brackets (e.g. `/[$]/`). But `\` must even be
+ * escaped when inside brackets. And `]` must only be escaped inside brackets.
  */
-export function mustAlwaysBeEscaped(char: string) {
-  return '\\\]/'.includes(char)
+export function mustBeEscapedInsideBrackets(char: string) {
+  return char === '\\' || char === ']'
 }
 
 /**
@@ -125,18 +125,14 @@ export function mustAlwaysBeEscaped(char: string) {
  * for special chars like `$`. Outside brackets we have to write `\$`. 
  * Inside brackets `[$]` is allowed.
  */
-export function mustBeEscapedOrInBrackets(char: string) {
-  return '.^$*+?()[|/'.includes(char)
-}
-
-export function neverMustBeEscaped(char: string) {
-  return !mustAlwaysBeEscaped(char) && !mustBeEscapedOrInBrackets(char)
+export function mustBeEscapedOutsideBrackets(char: string) {
+  return '.^$*+?()[|/\\'.includes(char)
 }
 
 function codePointToString(codePoint: number): string {
   const char = String.fromCharCode(codePoint)
 
-  if (mustAlwaysBeEscaped(char) || mustBeEscapedOrInBrackets(char)) 
+  if (mustBeEscapedInsideBrackets(char) || mustBeEscapedOutsideBrackets(char)) 
     // e.g. \$ \+ \. 
     return '\\' + char
   else if (codePoint > 126)
