@@ -37,11 +37,12 @@ const wildcard = P.string('.').map(
   () => RE.literal(CharSet.wildcard({ dotAll: false }))
 )
 
-const unescapedChar = P.satisfy(Range.neverMustBeEscaped)
-
 const alphaNumChar = P.satisfy(char => /^[a-zA-Z0-9]$/.test(char))
 
-const unescapedCharInsideBrackets = P.satisfy(Range.mustBeEscapedOrInBrackets)
+const unescapedCharInsideBrackets = P.satisfy(char => !Range.mustBeEscapedInsideBrackets(char))
+  .map(CharSet.singleton)
+
+const unescapedCharOutsideBrackets = P.satisfy(char => !Range.mustBeEscapedOutsideBrackets(char))
   .map(CharSet.singleton)
 
 export class UnsupportedSyntaxError extends Error {}
@@ -96,7 +97,7 @@ const alphaNumRange: P.Parser<CharSet.CharSet> = alphaNumChar.andThen(start =>
 
 const charSet = P.choice([
   P.between(
-    // QUESTION: can brackets be nested?
+    // square brackets cant't be nested
     P.string('['),
     P.string(']'),
     P.optional(P.string('^')).andThen(negated =>
@@ -104,7 +105,6 @@ const charSet = P.choice([
         escapeSequence, // e.g. "\$", "\]"
         alphaNumRange, // e.g. "a-z", "0-9" (will also match just "a", "3")
         unescapedCharInsideBrackets, // e.g. "$", "."
-        unescapedChar.map(CharSet.singleton), // e.g. "#", "%"
       ])).map(
         sets => {
           if (negated === undefined)
@@ -115,7 +115,7 @@ const charSet = P.choice([
       )
     )
   ),
-  unescapedChar.map(CharSet.singleton),
+  unescapedCharOutsideBrackets,
 ])
 
 const group = P.between(
