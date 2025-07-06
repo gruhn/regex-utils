@@ -35,38 +35,30 @@ import { RB } from '@gruhn/regex-utils'
 
 ### Comment Regex using Complement
 
-How do you write a regex that matches comments like:
+How do you write a regex that matches HTML comments like:
 ```
-/* This is a comment */
+<!-- This is a comment -->
 ```
 A straight forward attempt would be:
 ```typescript
-\/\*.*\*\/
+<!--.*-->
 ```
-where
- - `\/\*` matches the start `/*`
- - `\*\/` matches the end `*/`
- - and `.*` matches everything in between
-
-The problem is that `.*` also matches the end marker `*/`, 
+The problem is that `.*` also matches the end marker `-->`, 
 so this is also a match:
 ```typescript
-/* This is a comment */ and this shouldn't be part of it */
+<!-- This is a comment --> and this shouldn't be part of it -->
 ```
-We need to specify that the inner part can be anything except `*/`.
+We need to specify that the inner part can be any string that does not contain `-->`.
 With `.not()` (aka. regex complement) this is easy:
 
 ```typescript
 import { RB } from '@gruhn/regex-utils'
 
-const commentInner = RB(/^.*$/) // any string
-  .concat('*/') // followed by comment end marker
-  .concat(/^.*$/) // followed by any string
-  .not() // negate whole pattern
+const strContainingCommentEnd = RB(/.*-->.*/)
 
-const commentRegex = RB('/*')
-  .concat(commentInner)
-  .concat('*/')
+const commentRegex = RB('<!--')
+  .concat(strContainingEndMarker.not())
+  .concat('-->')
 ```
 
 With `.toRegExp()` we can convert back to a native JavaScript regex:
@@ -74,7 +66,7 @@ With `.toRegExp()` we can convert back to a native JavaScript regex:
 commentRegex.toRegExp()
 ```
 ```
-/^(\/\*[^\*]*\*([^\*\/][^\*]*\*|\*)*\/)$/
+/^(<!-{2}(-{2}-*[^->]|-?[^-])*-{2}-*>)$/
 ```
 
 ### Password Regex using Intersections
