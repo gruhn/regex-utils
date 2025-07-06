@@ -59,11 +59,14 @@ With `.not()` (aka. regex complement) this is easy:
 ```typescript
 import { RB } from '@gruhn/regex-utils'
 
-const commentStart = RB('/*')
-const commentEnd = RB('*/')
-const commentInner = commentEnd.not()
+const commentInner = RB(/^.*$/) // any string
+  .concat('*/') // followed by comment end marker
+  .concat(/^.*$/) // followed by any string
+  .not() // negate whole pattern
 
-const commentRegex = commentStart.concat(commentInner).concat(commentEnd)
+const commentRegex = RB('/*')
+  .concat(commentInner)
+  .concat('*/')
 ```
 
 With `.toRegExp()` we can convert back to a native JavaScript regex:
@@ -71,7 +74,7 @@ With `.toRegExp()` we can convert back to a native JavaScript regex:
 commentRegex.toRegExp()
 ```
 ```
-/^(\/\*((\*{2}(\/?\*)*(\/[^\*]|[^\*\/])|\*(\/.|[^\*\/])|[^\*])(\*(\/?\*)*(\/[^\*]|[^\*\/])|[^\*])*\*(\/?\*)*\/|\*(\*(\/?\*)*\/|\/)))$/
+/^(\/\*[^\*]*\*([^\*\/][^\*]*\*|\*)*\/)$/
 ```
 
 ### Password Regex using Intersections
