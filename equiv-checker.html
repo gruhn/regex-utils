@@ -316,7 +316,8 @@
 
       <h4>Unsupported syntax:</h4>
       <ul>
-        <li>RegExp flags: <code>g</code>, <code>i</code>, <code>m</code>, <code>s</code>, <code>u</code>, <code>y</code></li>
+        <li>RegExp flags: <code>g</code>, <code>i</code>, <code>m</code>, <code>s</code>, <code>u</code>, <code>y</code>
+        </li>
         <li>Unicode property escapes: <code>\p{...}</code>, <code>\P{...}</code></li>
         <li>Backreferences: <code>\1</code>, <code>\2</code>, ...</li>
         <li>Lookbehind assertions: <code>(?&lt;=...)</code>, <code>(?&lt;!...)</code></li>
@@ -339,8 +340,8 @@
       CacheOverflowError
     } from './dist/index.js';
 
-      document.addEventListener('DOMContentLoaded', () => {
-      
+    document.addEventListener('DOMContentLoaded', () => {
+
       const regex1Input = document.getElementById('regex1');
       const regex2Input = document.getElementById('regex2');
       const checkEquivButton = document.getElementById('check-equiv-button');
@@ -354,7 +355,15 @@
         counterexamples1.style.display = 'none';
         counterexamples1.innerHTML = '';
         counterexamples2.style.display = 'none';
-        counterexamples2.innerHTML = '';       
+        counterexamples2.innerHTML = '';
+      }
+
+      function assertMatchRegex(regex, strings) {
+        for (const str of strings) {
+          if (!regex.test(str)) {
+            throw new Error('logic error: generated example strings did not match input regex');
+          }
+        }
       }
 
       // clear results on new input:
@@ -386,7 +395,7 @@
           // Compute differences between the two regex
           const diffAB = RB(regexA).without(regexB); // strings in A but not B
           const diffBA = RB(regexB).without(regexA); // strings in B but not A
-          
+
           const diffABEmpty = diffAB.isEmpty();
           const diffBAEmpty = diffBA.isEmpty();
 
@@ -396,17 +405,21 @@
           } else if (diffABEmpty && !diffBAEmpty) {
             // A is subset of B: no strings in A that aren't in B
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            const examples = stringsMatchingBButNotA.length > 0 ? { regex2Only: stringsMatchingBButNotA } : null;
+            assertMatchRegex(regexB, stringsMatchingBButNotA)
+            const examples = stringsMatchingBButNotA.length > 0 ? {regex2Only: stringsMatchingBButNotA} : null;
             showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples);
           } else if (!diffABEmpty && diffBAEmpty) {
             // B is subset of A: no strings in B that aren't in A
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            const examples = stringsMatchingAButNotB.length > 0 ? { regex1Only: stringsMatchingAButNotB } : null;
+            assertMatchRegex(regexA, stringsMatchingAButNotB)
+            const examples = stringsMatchingAButNotB.length > 0 ? {regex1Only: stringsMatchingAButNotB} : null;
             showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples);
           } else {
             // Neither subset nor equivalent: both differences are non-empty
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
+            assertMatchRegex(regexA, stringsMatchingAButNotB)
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
+            assertMatchRegex(regexB, stringsMatchingBButNotA)
             const examples = {
               regex1Only: stringsMatchingAButNotB.length > 0 ? stringsMatchingAButNotB : null,
               regex2Only: stringsMatchingBButNotA.length > 0 ? stringsMatchingBButNotA : null
@@ -449,41 +462,41 @@
 
       function showResultWithDiagram(message, type, examples = null) {
         const resultDiv = document.getElementById('result');
-        
+
         // Build the complete HTML structure
         let html = message;
-        
+
         // Add Venn diagram (only for subset/superset/not-equivalent cases)
         if (type !== 'equivalent') {
           html += '<div class="venn-container"></div>';
         }
-        
+
         // Add examples if provided
         if (examples) {
           html += '<p>For example, '
 
           if (examples.regex1Only && examples.regex1Only.length > 0) {
             html += `RegExp 1 matches `;
-            html += examples.regex1Only.map(str => `<code>${JSON.stringify(str)}</code>`).join(', ');
+            html += examples.regex1Only.map(str => `<code>${encode(str)}</code>`).join(', ');
             html += ' but RegExp 2 does not. ';
           }
-          
+
           if (examples.regex2Only && examples.regex2Only.length > 0) {
             html += `RegExp 2 matches `;
-            html += examples.regex2Only.map(str => `<code>${JSON.stringify(str)}</code>`).join(', ');
+            html += examples.regex2Only.map(str => `<code>${encode(str)}</code>`).join(', ');
             html += 'but RegExp 1 does not. ';
           }
 
           html += '</p>'
         }
-        
+
         resultDiv.innerHTML = html;
-        
+
         // Show/hide the appropriate hardcoded SVG
         if (type !== 'equivalent') {
           const vennContainer = resultDiv.querySelector('.venn-container');
           let targetDiagram;
-          
+
           if (type === 'subset') {
             targetDiagram = document.querySelector('.venn-diagram-subset');
           } else if (type === 'superset') {
@@ -491,36 +504,26 @@
           } else if (type === 'not-equivalent') {
             targetDiagram = document.querySelector('.venn-diagram-intersection');
           }
-          
+
           if (targetDiagram) {
             const clonedDiagram = targetDiagram.cloneNode(true);
             clonedDiagram.style.display = 'block';
             vennContainer.appendChild(clonedDiagram);
           }
         }
-        
+
         resultDiv.className = `result ${type}`;
         resultDiv.style.display = 'block';
       }
 
-      function showCounterexamples(container, title, examples) {
-        let html = '<div class="counterexamples">';
-        html += `<h4>${title}</h4>`;
-        html += '<div class="examples-list">';
-        examples.forEach(str => {
-          // const displayStr = str === '' ? '(empty string)' : str;
-          html += `<code>${JSON.stringify(str)}</code> `;
-        });
-        html += '</div></div>';
+      function encode(text) { // <code id="3">\u0000</code>
+        const explicitUnicode = JSON.stringify(text) // "<code id=\"3\">\\u0000</code>"
+          .slice(1, -1) // <code id=\"3\">\\u0000</code>
+          .replaceAll('\\"', '"') // <code id="3">\\u0000</code>
 
-        container.innerHTML = html;
-        container.style.display = 'block';
-      }
-
-      function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        div.textContent = explicitUnicode;
+        return div.innerHTML; // &lt;code id="3"&gt;\\u0000&lt;/code&gt;
       }
 
     })
