@@ -1,5 +1,6 @@
 import * as Stream from '../src/stream'
-import { describe, test, expect } from 'vitest'
+import { describe, test } from 'node:test'
+import assert from 'node:assert'
 
 function pair<A,B>(a: A, b: B): [A,B] {
   return [a,b]
@@ -27,7 +28,7 @@ describe('diagonalize', () => {
 
     const first10 = [...Stream.take(10, allPairs)]
 
-    expect(first10).toEqual([
+    assert.deepStrictEqual(first10, [
       [1,1],
       [2,1], [1,2],
       [3,1], [2,2], [1,3],
@@ -44,7 +45,7 @@ describe('diagonalize', () => {
 
     const first10 = [...Stream.take(10, allPairs)]
 
-    expect(first10).toEqual([
+    assert.deepStrictEqual(first10, [
       ['a',1],
       ['b',1], ['a',2],
       ['c',1], ['b',2], ['a',3],
@@ -62,7 +63,7 @@ describe('diagonalize', () => {
 
     const first10 = [...Stream.take(10, allPairs)]
 
-    expect(first10).toEqual([
+    assert.deepStrictEqual(first10, [
       [1,'a'],
       [2,'a'], [1,'b'],
       [3,'a'], [2,'b'], [1,'c'],
@@ -72,7 +73,7 @@ describe('diagonalize', () => {
   })
 
   test('two finite streams, equal length', () => {
-    expect(diagonalizeArray([1,2,3], ['a','b','c'])).toEqual([
+    assert.deepStrictEqual(diagonalizeArray([1,2,3], ['a','b','c']), [
       [1,'a'],
       [2,'a'], [1,'b'],
       [3,'a'], [2,'b'], [1,'c'],
@@ -82,7 +83,7 @@ describe('diagonalize', () => {
   })
 
   test('two finite streams, unequal length', () => {
-    expect(diagonalizeArray([1,2,3], ['a','b'])).toEqual([
+    assert.deepStrictEqual(diagonalizeArray([1,2,3], ['a','b']), [
       [1,'a'], 
       [2,'a'], [1,'b'],
       [3,'a'], [2,'b'],
@@ -91,11 +92,11 @@ describe('diagonalize', () => {
   })
 
   test('left stream empty', () => {
-    expect(diagonalizeArray([1,2,3], [])).toEqual([])
+    assert.deepStrictEqual(diagonalizeArray([1,2,3], []), [])
   })
 
   test('right stream empty', () => {
-    expect(diagonalizeArray([], ['a','b','c'])).toEqual([])
+    assert.deepStrictEqual(diagonalizeArray([], ['a','b','c']), [])
   })
   
 })
@@ -116,15 +117,15 @@ describe('interleave', () => {
     )   
 
     const first10 = [...Stream.take(10, stream)]
-    expect(first10).toEqual([1,1,2,2,3,3,4,4,5,5])
+    assert.deepStrictEqual(first10, [1,1,2,2,3,3,4,4,5,5])
   })
 
   test('two finite streams, equal length', () => {
-    expect(interleaveArray([1,3,5], [2,4,6])).toEqual([1,2,3,4,5,6])
+    assert.deepStrictEqual(interleaveArray([1,3,5], [2,4,6]), [1,2,3,4,5,6])
   })
 
   test('two finite streams, unequal length', () => {
-    expect(interleaveArray([1,3], [2,4,5,6])).toEqual([1,2,3,4,5,6])
+    assert.deepStrictEqual(interleaveArray([1,3], [2,4,5,6]), [1,2,3,4,5,6])
   })
 
 })

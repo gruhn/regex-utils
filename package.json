@@ -7,7 +7,7 @@
   "version": "0.0.0-development",
   "type": "module",
   "scripts": {
-    "test": "vitest run",
+    "test": "node --test --import=tsx test/*.spec.ts",
     "build": "make",
     "serve": "http-server -p 8080",
     "bench": "0x --output-dir prof"
@@ -29,8 +29,8 @@
     "semantic-release": "^24.2.3",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.15",
+    "tsx": "^4.20.3",
     "typedoc": "^0.28.4",
-    "typescript": "^5.8.3",
-    "vitest": "^3.0.5"
+    "typescript": "^5.8.3"
   }
 }

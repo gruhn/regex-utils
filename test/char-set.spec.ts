@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { test } from 'node:test'
+import assert from 'node:assert'
 import * as CharSet from '../src/char-set'
 import fc from 'fast-check'
 import * as Range from '../src/code-point-range'
@@ -49,7 +50,7 @@ test('(A \\ B) ⋃ (A ⋂ B) = A', () => {
         const interAB = CharSet.intersection(setA, setB)
         const finalUnion = CharSet.union(diffAB, interAB)
 
-        expect(finalUnion.hash).toBe(setA.hash)
+        assert.strictEqual(finalUnion.hash, setA.hash)
       }
     ),
   )

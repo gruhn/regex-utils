@@ -1,5 +1,6 @@
 import fc from "fast-check"
-import { describe, it, expect, test } from "vitest"
+import { describe, it, test } from "node:test"
+import { strict as assert } from "node:assert"
 import { CacheOverflowError, VeryLargeSyntaxTreeError } from '../src/regex'
 import * as RE from "../src/regex"
 import { RB, RegexBuilder } from "../src/index"
@@ -16,7 +17,7 @@ function expectSubsetOf(regex1: RegexBuilder, regex2: RegexBuilder, maxSamples =
   try {
     const re2 = regex2.toRegExp()
     for (const match1 of regex1.enumerate().take(maxSamples)) {
-      expect(match1).toMatch(re2)
+      assert.match(match1, re2)
     }
   } catch (e) {
     if (e instanceof VeryLargeSyntaxTreeError) {
@@ -61,30 +62,42 @@ describe('toStdRegex', () => {
 
 describe('isEquivalent', () => {
 
-  test.each([
+  const equivalentCases = [
     [/a+/, /a{1,}/],
     [/(a|b|c)*/, /(((ab)*)*c*)*/],
-  ])('%s is equivalent to %s', (re1, re2) => {
-    expect(RB(re1).isEquivalent(re2)).toBe(true)
-  })
+  ]
+  
+  for (const [re1, re2] of equivalentCases) {
+    test(`${re1} is equivalent to ${re2}`, () => {
+      assert.equal(RB(re1).isEquivalent(re2), true)
+    })
+  }
 
-  test.each([
-    [/a{2}|a*/,  /a(a|a*)/],
-  ])('%s is not equivalent to %s', (re1, re2) => {
-    expect(RB(re1).isEquivalent(re2)).toBe(false)
-  })
+  const nonEquivalentCases = [
+    [/a{2}|a*/, /a(a|a*)/],
+  ]
+  
+  for (const [re1, re2] of nonEquivalentCases) {
+    test(`${re1} is not equivalent to ${re2}`, () => {
+      assert.equal(RB(re1).isEquivalent(re2), false)
+    })
+  }
 
 })
 
 describe('without', () => {
 
-  test.each([
+  const withoutCases = [
     [/^a*$/, /^a{3,10}$/, /^(a{,2}|a{11,})$/],
-  ])('%s without %s is %s', (re1, re2, expected) => {
-    const actual = RB(re1).without(re2)
-    expectSubsetOf(RB(expected), actual)
-    expectSubsetOf(actual, RB(expected))
-  })
+  ]
+  
+  for (const [re1, re2, expected] of withoutCases) {
+    test(`${re1} without ${re2} is ${expected}`, () => {
+      const actual = RB(re1).without(re2)
+      expectSubsetOf(RB(expected), actual)
+      expectSubsetOf(actual, RB(expected))
+    })
+  }
 
 })
 
@@ -96,7 +109,7 @@ test('A ∩ ¬A = ∅', () => {
         try {
           const regexA = RB(inputRegex)
           const outputRegex = regexA.and(regexA.not())
-          expect(outputRegex.isEmpty()).toBe(true)
+          assert.equal(outputRegex.isEmpty(), true)
         } catch (e) {
           if (e instanceof CacheOverflowError) {
             console.warn(e)
@@ -137,7 +150,7 @@ test('intersection with regex /^.{N}$/ has only words of length N', () => {
 
         try {
           for (const word of interAB.enumerate().take(100)) {
-            expect(word).toHaveLength(length)
+            assert.equal(word.length, length)
           }
         } catch (e) {
           if (e instanceof CacheOverflowError) {

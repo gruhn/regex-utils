@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest"
+import { describe, it } from "node:test"
+import assert from "node:assert"
 import { parseRegExp, parseRegexString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
 import * as RE from "../src/regex"
@@ -8,7 +9,7 @@ import * as Arb from './arbitrary-regex'
 
 describe('parseRegexString', () => { 
 
-  it.each([
+  const testCases = [
     [/^a$/, RE.singleChar('a')],
     [/^(a)$/, RE.singleChar('a')],
     [/^.$/, RE.literal(CharSet.wildcard({ dotAll: false }))],
@@ -61,24 +62,32 @@ describe('parseRegexString', () => {
     [/^[.^$*+?()[{-|]$/, RE.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
     // other special chars need escape even inside brackets:
     [/^[\\\]\/]$/, RE.literal(CharSet.fromArray([...'\\]/']))],
-  ])('can parse %s', (regexp, expected) => {
-    expect(parseRegExp(regexp).hash).toBe(expected.hash)
-  })
+  ] as const
 
-  it.each([
+  for (const [regexp, expected] of testCases) {
+    it(`can parse ${regexp}`, () => {
+      assert.strictEqual(parseRegExp(regexp).hash, expected.hash)
+    })
+  }
+
+  const invalidTestCases = [
     // unclosed parenthesis:
-    ['(a'],
+    '(a',
     // combined quantifiers:
-    ['a+*'],
+    'a+*',
     // FIXME:
-    // ['a?{2}'],
-    // ['a+{2}'],
+    // 'a?{2}',
+    // 'a+{2}',
     // FIXME: invalid ranges:
-    // ['[a-#]'],
-    // ['[%-#]'],
-  ])('rejects invalid regex /%s/', (regexStr) => {
-    expect(() => parseRegexString(regexStr)).toThrowError(ParseError)
-  })
+    // '[a-#]',
+    // '[%-#]',
+  ]
+
+  for (const regexStr of invalidTestCases) {
+    it(`rejects invalid regex /${regexStr}/`, () => {
+      assert.throws(() => parseRegexString(regexStr), ParseError)
+    })
+  }
 
   it('can parse email regex', () => {
     parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
@@ -91,7 +100,7 @@ describe('parseRegexString', () => {
         (stdRegex) => {
         const regexStr = RE.toString(stdRegex)
         const result = parseRegexString(regexStr)
-        expect(result.hash).toBe(stdRegex.hash)
+        assert.strictEqual(result.hash, stdRegex.hash)
       }),
     )   
   })

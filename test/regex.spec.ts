@@ -1,12 +1,12 @@
 import fc from "fast-check"
-import { describe, it, expect } from "vitest"
+import { describe, it } from "node:test"
+import { strict as assert } from "node:assert"
 import * as RE from "../src/regex"
 import * as DFA from '../src/dfa'
 import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
 import * as CharSet from '../src/char-set'
 import { parseRegExp } from "../src/regex-parser"
-import { assert } from "src/utils"
 
 function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
   try {
@@ -52,7 +52,7 @@ describe('enumerate', () => {
           const shortWords = Stream.takeWhile(word => word.length <= 30, allWords)
 
           for (const word of Stream.take(100, shortWords)) {
-            expect(word).toMatch(regexp)
+            assert.match(word, regexp)
           }
         }
       ),
@@ -76,7 +76,7 @@ describe('enumerate', () => {
           const shortWords = Stream.takeWhile(word => word.length <= 30, allComplementWords)
 
           for (const complementWord of Stream.take(100, shortWords)) {
-            expect(complementWord).not.toMatch(regexp)
+            assert.doesNotMatch(complementWord, regexp)
           }
         }
       ),
@@ -90,22 +90,22 @@ describe('size', () => {
 
   it('returns 1 for ∅ *', () => {
     const regex = RE.star(RE.empty) 
-    expect(RE.size(regex)).toBe(1n)
+    assert.equal(RE.size(regex), 1n)
   })
 
   it('returns 1 for ε*', () => {
     const regex = RE.star(RE.empty) 
-    expect(RE.size(regex)).toBe(1n)
+    assert.equal(RE.size(regex), 1n)
   })
 
   it('returns undefined for a*', () => {
     const regex = RE.star(RE.singleChar('a')) 
-    expect(RE.size(regex)).toBe(undefined)
+    assert.equal(RE.size(regex), undefined)
   })
 
   it('returns 1 for (a|a)', () => {
     const regex = RE.union(RE.singleChar('a'), RE.singleChar('a')) 
-    expect(RE.size(regex)).toBe(1n)
+    assert.equal(RE.size(regex), 1n)
   })
 
   it('returns 26 for ([a-z]|[a-z])', () => {
@@ -113,7 +113,7 @@ describe('size', () => {
       RE.literal(CharSet.charRange('a', 'z')),
       RE.literal(CharSet.charRange('a', 'z')),
     )
-    expect(RE.size(regex)).toBe(26n)
+    assert.equal(RE.size(regex), 26n)
   })
 
   it('returns 260 for [a-z][0-9]', () => {
@@ -121,12 +121,12 @@ describe('size', () => {
       RE.literal(CharSet.charRange('a', 'z')),
       RE.literal(CharSet.charRange('0', '9')) 
     )
-    expect(RE.size(regex)).toBe(260n)
+    assert.equal(RE.size(regex), 260n)
   })
 
   it('returns 26**60 for [a-z]{60}', () => {
     const regex = RE.repeat(RE.literal(CharSet.charRange('a', 'z')), 60)
-    expect(RE.size(regex)).toBe(26n**60n)
+    assert.equal(RE.size(regex), 26n**60n)
   })
 
   it('is same as length of exhausitve enumeration', () => {
@@ -138,7 +138,7 @@ describe('size', () => {
           fc.pre(predicatedSize !== undefined && predicatedSize <= 100n)
 
           const allWords = [...RE.enumerateAux(stdRegex)]
-          expect(predicatedSize).toBe(BigInt(allWords.length))
+          assert.equal(predicatedSize, BigInt(allWords.length))
         }       
       )
     )   
@@ -154,7 +154,7 @@ describe('rewrite rules', () => {
   //   (can't be tested right now because parser does not
   //   support empty set `$.^` and epsilon `()`.
 
-  it.each([
+  const rewriteCases = [
     // concat rules:
     [/^a*a$/, /^(aa*)$/],
     [/^a*(ab)$/, /^(aa*b)$/],
@@ -187,26 +187,34 @@ describe('rewrite rules', () => {
     // star rules:
     [/^(a*)*$/, /^(a*)$/],
     [/^(a*b*)*$/, /^([ab]*)$/],
-  ])('rewrites %s to %s', (source, target) => {
-    const parsed = parseRegExp(source)
-    assert(RE.isStdRegex(parsed))
-    expect(RE.toRegExp(parsed)).toEqual(target)
-  })
+  ] as const
+  
+  for (const [source, target] of rewriteCases) {
+    it(`rewrites ${source} to ${target}`, () => {
+      const parsed = parseRegExp(source)
+      assert(RE.isStdRegex(parsed))
+      assert.deepEqual(RE.toRegExp(parsed), target)
+    })
+  }
   
 })
 
 describe('derivative', () => {
 
-  it.each([
+  const derivativeCases = [
     [/^((aa*)?)$/, 'a', /^(a*)$/],
     [/^(a{2}(a{3})*)$/, 'a', /^(a(a{3})*)$/],
     [/^(a{2}(a*)|(aa*))$/, 'a', /^(a?a*)$/],
     [/^(a(a{3})*|(aa*)?)$/, 'a', /^((a{3})*|a*)$/],
     [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(a{3})*|a*)$/],
-  ])('of %s with respect to "%s" is %s', (input, str, expected) => {
-    const actual = RE.derivative(str, parseRegExp(input))
-    assert(RE.isStdRegex(actual))
-    expect(RE.toRegExp(actual)).toEqual(expected)
-  })
+  ] as const
+  
+  for (const [input, str, expected] of derivativeCases) {
+    it(`of ${input} with respect to "${str}" is ${expected}`, () => {
+      const actual = RE.derivative(str, parseRegExp(input))
+      assert(RE.isStdRegex(actual))
+      assert.deepEqual(RE.toRegExp(actual), expected)
+    })
+  }
   
 })
