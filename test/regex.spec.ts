@@ -7,7 +7,7 @@ import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
 import * as AST from '../src/ast'
 import * as CharSet from '../src/char-set'
-import { parseRegExp } from "../src/regex-parser"
+import { parseRegExp, parseRegExpString } from "../src/regex-parser"
 
 function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
   try {
@@ -34,6 +34,20 @@ describe('toString', () => {
       )
     )
   })
+
+  it('is inverted by parser', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        (inputRegex) => {
+          // Add anchors to ensure the parser produces the exact same AST
+          const regexStr = `^(${RE.toString(inputRegex)})$`
+          const outputRegex = RE.fromRegExpAST(parseRegExpString(regexStr))
+          assert.equal(inputRegex.hash, outputRegex.hash)
+        }
+      ),
+    )   
+  }) 
 
 })
 

@@ -7,7 +7,7 @@
   "version": "0.0.0-development",
   "type": "module",
   "scripts": {
-    "test": "node --test --import=tsx test/*.spec.ts",
+    "test": "node --test --import=tsx",
     "build": "make",
     "serve": "http-server -p 8080",
     "bench": "0x --output-dir prof"

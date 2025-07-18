@@ -1,8 +1,6 @@
 import { describe, it } from "node:test"
 import assert from "node:assert"
 import { parseRegExp, parseRegExpString } from "../src/regex-parser"
-// import fc from "fast-check"
-// import * as Arb from './arbitrary-regex'
 import { ParseError } from "../src/parser"
 import * as AST from "../src/ast"
 import * as CharSet from "../src/char-set"
@@ -114,20 +112,5 @@ describe('parseRegExp', () => {
   it('can parse email regex', () => {
     parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
   })
-
-  // TODO: Fix round-trip property test
-  // The test reveals issues with parser precedence/associativity vs AST construction
-  // it('inverts AST.toString', () => {
-  //   fc.assert(
-  //     fc.property(
-  //       Arb.regexpAST(),
-  //       (regexpAST) => {
-  //         // Add anchors to ensure the parser produces the exact same AST
-  //         const regexStr = `^${AST.toString(regexpAST, { useNonCapturingGroups: false })}$`
-  //         const result = parseRegExpString(regexStr)
-  //         expect(AST.debugShow(result)).toEqual(AST.debugShow(regexpAST))
-  //       }),
-  //   )   
-  // })
 
 })
