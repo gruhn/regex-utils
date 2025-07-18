@@ -7,7 +7,7 @@
   "version": "0.0.0-development",
   "type": "module",
   "scripts": {
-    "test": "node --test --import=tsx test/*.spec.ts",
+    "test": "node --test --import=tsx",
     "build": "make",
     "serve": "http-server -p 8080",
     "bench": "0x --output-dir prof"
@@ -23,7 +23,7 @@
     "dist"
   ],
   "devDependencies": {
-    "0x": "^5.8.0",
+    "0x": "^4.1.4",
     "fast-check": "^3.23.2",
     "http-server": "^14.1.1",
     "semantic-release": "^24.2.3",

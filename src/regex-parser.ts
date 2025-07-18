@@ -1,4 +1,4 @@
-import * as RE from "./regex"
+import * as AST from "./ast"
 import * as P from "./parser"
 import * as CharSet from './char-set'
 import * as Range from './code-point-range'
@@ -17,24 +17,8 @@ const regExpFlags = [
 
 // type RegExpFlag = typeof regExpFlags[number]
 
-const startMarker = P.optional(P.string('^')).map(marker => {
-  if (marker === undefined) {
-    return RE.star(RE.anySingleChar)
-  } else {
-    return RE.epsilon
-  }
-})
-
-const endMarker = P.optional(P.string('$')).map(marker => {
-  if (marker === undefined) {
-    return RE.star(RE.anySingleChar)
-  } else {
-    return RE.epsilon
-  }
-})
-
 const wildcard = P.string('.').map(
-  () => RE.literal(CharSet.wildcard({ dotAll: false }))
+  () => AST.literal(CharSet.wildcard({ dotAll: false }))
 )
 
 const alphaNumChar = P.satisfy(char => /^[a-zA-Z0-9]$/.test(char))
@@ -118,28 +102,36 @@ const charSet = P.choice([
   unescapedCharOutsideBrackets,
 ])
 
-const group = P.between(
-  P.choice<unknown>([
-    // non-capture group:
+const group = P.choice([
+  // non-capture group:
+  P.between(
     P.string('(?:'),
-    // named capture group:
-    P.sequence([
-      P.string('(?<'),
-      P.some(P.satisfy(char => /^\w$/.test(char))),
-      P.string('>'),
-    ]),
-    // regular capture group:
+    P.string(')'),
+    regex()
+  ), // returns inner directly
+  // named capture group:
+  P.sequence([
+    P.string('(?<'),
+    P.some(P.satisfy(char => /^\w$/.test(char))),
+    P.string('>'),
+    regex(),
+    P.string(')')
+  ]).map(([_, nameChars, __, inner, ___]) => 
+    AST.captureGroup(inner, nameChars.join(''))
+  ),
+  // regular capture group:
+  P.between(
     P.string('('),
-  ]),
-  P.string(')'),
-  regex(),
-)
+    P.string(')'),
+    regex()
+  ).map(AST.captureGroup)
+])
 
 // Need to backtrack on bounded quantifier because if the curly bracket is
 // not terminated (e.g. "a{2,3") then all characters are interpreted literally.
 // FIXME: However, this breaks something else. E.g. "a*{3}" must still be rejected as
 // invalid and not interpreted as "a*" and then literal charactesr "{3}".
-const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.tryElseBacktrack(
+const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrack(
   P.between(
     P.string('{'),
     P.string('}'),
@@ -148,20 +140,20 @@ const boundedQuantifier: P.Expr.UnaryOperator<RE.ExtRegex> = P.tryElseBacktrack(
         // e.g. a{,5}
         return P.string(',')
           .andThen(_ => P.decimal)
-          .map(max => regex => RE.repeat(regex, { max }))
+          .map(max => inner => AST.repeat(inner, { max }))
       else
         return P.optional(P.string(',')).andThen(comma => {
           if (comma === undefined)
             // e.g. a{3}
-            return P.pure(regex => RE.repeat(regex, min))
+            return P.pure(inner => AST.repeat(inner, min))
           else
-            return P.optional(P.decimal).map(max => regex => {
+            return P.optional(P.decimal).map(max => inner => {
               if (max === undefined)
                 // e.g. a{3,}
-                return RE.repeat(regex, { min })
+                return AST.repeat(inner, { min })
               else
                 // e.g. a{3,5}
-                return RE.repeat(regex, { min, max })
+                return AST.repeat(inner, { min, max })
             })
         })
     })
@@ -172,96 +164,67 @@ function regexTerm() {
   return P.choice([
     wildcard, 
     P.tryElseBacktrack(group),
-    escapeSequence.map(RE.literal),
-    charSet.map(RE.literal),
+    positiveLookAhead(),
+    negativeLookAhead(),
+    positiveLookBehind(),
+    negativeLookBehind(),
+    escapeSequence.map(AST.literal),
+    charSet.map(AST.literal),
   ])
 }
 
-function positiveLookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
+function positiveLookAhead(): P.Parser<AST.RegExpAST> {
   return P.between(
     P.string('(?='),
     P.string(')'),
-    regexWithBounds()    
-  ).map(inner => right =>
-    RE.intersection(inner, right)
-  )
+    regex()    
+  ).map(AST.positiveLookahead)
 }
 
-function negativeLookAhead(): P.Expr.UnaryOperator<RE.ExtRegex> {
+function negativeLookAhead(): P.Parser<AST.RegExpAST> {
   return P.between(
     P.string('(?!'),
     P.string(')'),
-    regexWithBounds()    
-  ).map(inner => right =>
-    RE.intersection(RE.complement(inner), right)
-  )
+    regex()    
+  ).map(AST.negativeLookahead)
 }
 
-/**
- * We treat lookAheads like a right-associative infix operator
- * even though it only "acts" on the right hand side:
- * 
- *     aaa (?=bbb) ccc
- * 
- * We could treat it as a prefix operator but then it's 
- * unclear what should have higher precedence: concat or 
- * lookAhead? But even when treating lookAheads as infix
- * operators, they need special treatment because the left- and
- * right operand can be optional:
- * 
- *     (?=bbb) fff
- *     aaa (?=bbb) 
- *     aaa (?=bbb) (?!ccc) ddd
- */
-function lookAheadOp(): P.Expr.BinaryOperator<RE.ExtRegex | undefined, RE.ExtRegex> {
-  return P.choice([
-    positiveLookAhead(),
-    negativeLookAhead(),
-  ]).map(op => (left, right) =>
-    RE.concat(
-      left ?? RE.string(''),
-      op(right ?? RE.string(''))
-    )
-  )
+function positiveLookBehind(): P.Parser<AST.RegExpAST> {
+  return P.between(
+    P.string('(?<='),
+    P.string(')'),
+    regex()    
+  ).map(AST.positiveLookbehind)
 }
 
-/**
- * Parses expression like `(a|b)`. The left- and right operand are optional,
- * e.g. `(a|)` and `(|)` are also valid expressions.
- */
-function unionOp(): P.Expr.BinaryOperator<RE.ExtRegex | undefined, RE.ExtRegex> {
-  return P.string('|').map(_ => (left, right) => RE.union(left ?? RE.epsilon, right ?? RE.epsilon))
+function negativeLookBehind(): P.Parser<AST.RegExpAST> {
+  return P.between(
+    P.string('(?<!'),
+    P.string(')'),
+    regex()    
+  ).map(AST.negativeLookbehind)
 }
- 
-function regex(): P.Parser<RE.ExtRegex> {
-  return P.lazy(() => P.Expr.makeExprParser<RE.ExtRegex>(
+
+function regex(): P.Parser<AST.RegExpAST> {
+  return P.lazy(() => P.Expr.makeExprParser<AST.RegExpAST>(
     regexTerm(),
     [
-      { type: 'postfix', op: P.string('*').map(_ => RE.star) },
+      { type: 'postfix', op: P.string('*').map(_ => AST.star) },
       { type: 'postfix', op: boundedQuantifier },
-      { type: 'postfix', op: P.string('+').map(_ => RE.plus) },
-      { type: 'postfix', op: P.string('?').map(_ => RE.optional) },
-      { type: 'infixRight', op: P.string('').map(_ => RE.concat) },
-      { type: 'infixRightOptional', op: lookAheadOp() },
-      { type: 'infixRightOptional', op: unionOp() },
+      { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
+      { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
+      { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
+      { type: 'infixRightOptional', op: P.string('$').map(_ => AST.endMarker) },
+      { type: 'infixRightOptional', op: P.string('^').map(_ => AST.startMarker) },
+      { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
     ]
   ))
 }
 
-// TODO: start- and end marker are not necessarily at the 
-// beginning/end of the regex:
-function regexWithBounds() {
-  return P.sequence([
-    startMarker,
-    regex(),
-    endMarker,
-  ]).map<RE.ExtRegex>(RE.seq)
-}
-
-export function parseRegexString(
+export function parseRegExpString(
   regexStr: string,
-): RE.ExtRegex {
-  const { value, restInput } = regexWithBounds().run(regexStr)
+): AST.RegExpAST {
+  const { value, restInput } = regex().run(regexStr)
   if (restInput === '') {
     return value
   } else {
@@ -274,11 +237,11 @@ export function parseRegexString(
  * 
  * @public
  */
-export function parseRegExp(regexp: RegExp): RE.ExtRegex {
+export function parseRegExp(regexp: RegExp): AST.RegExpAST {
   for (const flag of regExpFlags) {
     assert(!regexp[flag], `[regex-utils] RegExp flags not supported`)
   }
 
-  return parseRegexString(regexp.source)
+  return parseRegExpString(regexp.source)
 }
 
