@@ -23,7 +23,7 @@
     "dist"
   ],
   "devDependencies": {
-    "0x": "^5.8.0",
+    "0x": "^4.1.4",
     "fast-check": "^3.23.2",
     "http-server": "^14.1.1",
     "semantic-release": "^24.2.3",
