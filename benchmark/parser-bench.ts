@@ -27,7 +27,7 @@ for (const { regex, flags } of dataset) {
     console.log('====', regexp, '====')
 
     performance.mark('parse-start')
-    const parsed = parseRegExp(regexp)
+    parseRegExp(regexp)
     performance.mark('parse-end')
     performance.measure('parse-duration', 'parse-start', 'parse-end')
 
@@ -45,8 +45,13 @@ const maxParseTime = performance.getEntriesByName('parse-duration')
   .map(entry => entry.duration)
   .reduce((acc,d) => Math.max(acc, d), -Infinity)
 
-console.log('error ratio:', parseErrorCount, '/', dataset.length)
-console.log('total parse time:', Math.round(totalParseTime), 'ms')
-console.log('avg parse time:', Math.round(totalParseTime / (dataset.length - parseErrorCount)), 'ms')
-console.log('max parse time:', Math.round(maxParseTime), 'ms')
+const summary = `
+  error ratio      : ${parseErrorCount} / ${dataset.length}
+  total parse time : ${Math.round(totalParseTime)}ms
+  avg parse time   : ${Math.round(totalParseTime) / (dataset.length - parseErrorCount)}ms
+  max parse time   : ${Math.round(maxParseTime)}ms
+`
+
+console.log(summary)
+fs.writeFileSync('benchmark/parser-bench-result.txt', summary)
 

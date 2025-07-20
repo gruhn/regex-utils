@@ -1,6 +1,8 @@
-.PHONY: all
+.PHONY: all bench
 
-all: Makefile node_modules/.stamp docs/.stamp dist/.stamp
+build: Makefile node_modules/.stamp docs/.stamp dist/.stamp
+
+bench: benchmark/aoc2023-day12-result.txt benchmark/parser-bench-result.txt benchmark/toStdRegex_output_length-result.txt
 
 ####################################################
 
@@ -18,3 +20,15 @@ dist/.stamp: tsconfig.build.json src/*.ts
 node_modules/.stamp: package-lock.json
 	npm ci
 	touch $@
+
+
+####################################################
+
+benchmark/aoc2023-day12-result.txt: src/ benchmark/aoc2023-day12.ts
+	npx tsx benchmark/aoc2023-day12.ts
+
+benchmark/parser-bench-result.txt: src/ benchmark/parser-bench.ts
+	npx tsx benchmark/parser-bench.ts
+
+benchmark/toStdRegex_output_length-result.txt: src/ benchmark/toStdRegex_output_length.ts
+	npx tsx benchmark/toStdRegex_output_length.ts

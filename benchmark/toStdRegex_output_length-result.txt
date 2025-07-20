@@ -1,0 +1,12 @@
+
+failed instances:
+- parseError         : 17
+- cacheOverflow      : 94
+- veryLargeSyntaTree : 29
+- stackOverflow      : 11
+- regexSyntaxError   : 0
+
+size multipliers:
+- mean   : 324.6198162588445
+- median : 1.5333333333333334
+- max    : 178441.7894736842

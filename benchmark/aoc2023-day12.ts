@@ -5,12 +5,12 @@ import { assert } from '../dist/utils.js'
 const input = fs.readFileSync('./benchmark/aoc2023-day12_input.txt', 'utf-8')
   .trim()
   .split('\n')
-  .map(line => line.split(' '))
+  .map(line => line.split(' ')) as [string, string][]
 
 /**
  * Maps pattern like "#?...##?#" to regex like /^#(o|#)ooo##(o|#)#$/
  */
-function leftToRegex(pattern) {
+function leftToRegex(pattern: string) {
   const inner = [...pattern].map(char => {
     switch (char) {
       case '.': return RB('o')
@@ -25,7 +25,7 @@ function leftToRegex(pattern) {
 /**
  * Maps pattern like "2,4,3" to regex like /^o*##o+####o+###o*$/
  */
-function rightToRegex(pattern) { 
+function rightToRegex(pattern: string) { 
   const [first, ...rest] = pattern.split(',')
     .map(digit => parseInt(digit))
     .map(count => RB('#').repeat(count))
@@ -43,7 +43,7 @@ function rightToRegex(pattern) {
   return result
 }
 
-function solve(patternPairs) {
+function solve(patternPairs: [string, string][]) {
   const startTime = performance.now()
   let totalCount = 0n
 
@@ -54,6 +54,7 @@ function solve(patternPairs) {
     // Compute intersection of the two regex and
     // count the number of matching strings using `size`:
     const count = RB(leftRegex).and(rightRegex).size()
+    assert(count !== undefined, 'regex has infinite matches')
 
     console.log(i, ':', count)
     totalCount += count
@@ -69,11 +70,14 @@ const part2 = solve(input.map(([left, right]) => [
   Array(5).fill(right).join(',')
 ]))
 
-// best time: 992ms
-console.log('Part 1:', part1.totalCount, `(time: ${Math.ceil(part1.time)}ms)`)
+// best time part 1: 992ms
+// best time part 2: 11950ms
+const summary = `
+  Part 1: ${part1.totalCount} (time: ${Math.ceil(part1.time)}ms)
+  Part 2: ${part2.totalCount} (time: ${Math.ceil(part2.time)}ms) 
+`
 
-// best time: 11950ms
-console.log('Part 2:', part2.totalCount, `(time: ${Math.ceil(part2.time)}ms)`)
-
+console.log(summary)
 assert(part1.totalCount === 7191n)
 assert(part2.totalCount === 6512849198636n)
+fs.writeFileSync('benchmark/aoc2023-day12-result.txt', summary)

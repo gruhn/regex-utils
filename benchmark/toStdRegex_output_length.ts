@@ -1,4 +1,4 @@
-import fc from 'fast-check'
+import fs from 'fs'
 import * as RE from '../src/regex'
 import { UnsupportedSyntaxError, ParseError } from '../src/index'
 import { parseRegExp } from '../src/regex-parser'
@@ -15,7 +15,6 @@ const mults: number[] = []
 
 function run(inputRegExp: RegExp, index: number) {
   console.log('#' + index, inputRegExp)
-  const startTime = performance.now()
 
   const inputRegex = RE.fromRegExpAST(parseRegExp(inputRegExp))
   const outputRegex = toStdRegex(inputRegex)
@@ -59,22 +58,24 @@ fullRegexDataset.forEach((regex, i) => {
   }
 })
 
-console.debug('failed instances: ', {
-  parseError,
-  cacheOverflow,
-  veryLargeSyntaTree,
-  stackOverflow,
-  regexSyntaxError
-})
 
 const mean = mults.reduce((a,b) => a+b, 0) / mults.length
 const median = mults[Math.ceil(mults.length / 2)]
 const worst = mults.reduce((a,b) => Math.max(a,b), -Infinity)
 
-console.log(`
-multipliers:
-  mean   : ${mean}
-  median : ${median}
-  max    : ${worst}
-`) 
+const summary = `
+failed instances:
+- parseError         : ${parseError}
+- cacheOverflow      : ${cacheOverflow}
+- veryLargeSyntaTree : ${veryLargeSyntaTree}
+- stackOverflow      : ${stackOverflow}
+- regexSyntaxError   : ${regexSyntaxError}
 
+size multipliers:
+- mean   : ${mean}
+- median : ${median}
+- max    : ${worst}
+`
+
+console.log(summary)
+fs.writeFileSync('benchmark/toStdRegex_output_length-result.txt', summary)
