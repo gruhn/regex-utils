@@ -182,7 +182,7 @@ oo#oo#oooo###o
 o#ooo#oooo###o
 ```
 
-For a full solution checkout: [./benchmark/aoc2023-day12.js](./benchmark/aoc2023-day12.js).
+For a full solution checkout: [./benchmark/aoc2023-day12.ts](./benchmark/aoc2023-day12.ts).
 
 ## References
 
