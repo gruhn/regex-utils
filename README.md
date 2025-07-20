@@ -1,28 +1,28 @@
-# Regex Utils
+# Regex Utils 🔤
 
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
-These are surprisingly hard to come by for any programming language.
+These are surprisingly hard to come by for any programming language. ✨
 
-- [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
-- [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
+- 📚 [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
+- 🔍 [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
 
-## API Overview
+## API Overview 🚀
 
-- Set-like operations:
+- 🔗 Set-like operations:
   - [.and(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#and) - Compute intersection of two regex.
   - [.not()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#not) - Compute the complement of a regex.
   - [.without(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#without) - Compute the difference of two regex.
-- Set-like predicates:
+- ✅ Set-like predicates:
   - [.isEquivalent(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
   - [.isSubsetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSubsetOf)
   - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSupersetOf)
   - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isDisjointFrom)
-- Miscellaneous:
+- 🔧 Miscellaneous:
   - [.size()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#size) - Count the number of strings that a regex matches.
   - [.enumerate()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#enumerate) - Generate strings matching a regex.
   - [.derivative(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
-## Installation
+## Installation 📦
 
 ```bash
 npm install @gruhn/regex-utils
@@ -31,9 +31,9 @@ npm install @gruhn/regex-utils
 import { RB } from '@gruhn/regex-utils'
 ```
 
-## Example Use Cases
+## Example Use Cases 💡
 
-### Refactor Regex and Check Equivalence
+### Refactor Regex and Check Equivalence 🔄
 
 Say we identified a regex in the code base that is prone to
 [catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression).
@@ -57,7 +57,7 @@ Checking regex equivalence is also possible with this simple web interface:
   <img alt="Screenshot RegExp equivalence checker" src="./equiv-checker-screenshot.jpg" />
 </a>
 
-### Comment Regex using Complement
+### Comment Regex using Complement 💬
 
 How do you write a regex that matches HTML comments like:
 ```
@@ -93,7 +93,7 @@ commentRegex.toRegExp()
 /^(<!-{2}(-{2}-*[^->]|-?[^-])*-{2}-*>)$/
 ```
 
-### Password Regex using Intersections
+### Password Regex using Intersections 🔐
 
 It's difficult to write a single regex for multiple independent constraints.
 For example, to specify a valid password.
@@ -145,7 +145,7 @@ aaaaaaaaaa0B
 
 
 
-### Solve _Advent Of Code 2023 - Day 12_
+### Solve _Advent Of Code 2023 - Day 12_ 🎄
 
 In the coding puzzle [Advent Of Code 2023 - Day 12](https://adventofcode.com/2023/day/12)
 you are given pairs of string patterns.
@@ -208,7 +208,7 @@ o#ooo#oooo###o
 
 For a full solution checkout: [./benchmark/aoc2023-day12.ts](./benchmark/aoc2023-day12.ts).
 
-## References
+## References 📖
 
 Heavily informed by these papers:
 - https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
