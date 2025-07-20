@@ -34,15 +34,17 @@ function star(innerArb: () => fc.Arbitrary<RE.StdRegex>): fc.Arbitrary<RE.StdReg
 }
 
 export function stdRegex(size = 100): fc.Arbitrary<RE.StdRegex> {
-  if (size <= 0)
+  if (size <= 1) {
     return literal()
-  else
+  } else {
+    const childSize = Math.floor(size / 2)
     return fc.oneof(
       { arbitrary: literal(), weight: 5 },
-      { arbitrary: concat(() => stdRegex(Math.floor(size/2))), weight: 3 },
-      { arbitrary: union(() => stdRegex(Math.floor(size/2))), weight: 3 },
-      { arbitrary: star(() => stdRegex(Math.floor(size/2))), weight: 1 },
+      { arbitrary: concat(() => stdRegex(childSize)), weight: 3 },
+      { arbitrary: union(() => stdRegex(childSize)), weight: 3 },
+      { arbitrary: star(() => stdRegex(childSize)), weight: 1 },
     )
+  }
 }
 
 export function stdRegexString(): fc.Arbitrary<string> {

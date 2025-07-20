@@ -99,10 +99,15 @@ describe('parseRegExp', () => {
     'a+*',
     // invalid capture group names:
     '(?<1abc>.)',
-    // FIXME:
+
+    // TODO: duplicate capture group name:
+    // '(?<abc>.)(?<abc>.)',
+
+    // TODO:
     // 'a?{2}',
     // 'a+{2}',
-    // FIXME: invalid ranges:
+
+    // TODO: invalid ranges:
     // '[a-#]',
     // '[%-#]',
   ]

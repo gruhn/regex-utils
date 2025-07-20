@@ -149,33 +149,36 @@ function captureGroupToString(name: string | undefined, inner: RegExpAST, option
 }
 
 export function debugShow(ast: RegExpAST): unknown {
+  return JSON.stringify(debugShow_(ast), null, 2)
+}
+function debugShow_(ast: RegExpAST): unknown {
   switch (ast.type) {
     case 'epsilon':
       return '';
     case 'start-marker':
-      return { type: 'start-marker', left: debugShow(ast.left), right: debugShow(ast.right) }
+      return { type: 'start-marker', left: debugShow_(ast.left), right: debugShow_(ast.right) }
     case 'end-marker':
-      return { type: 'end-marker', left: debugShow(ast.left), right: debugShow(ast.right) }
+      return { type: 'end-marker', left: debugShow_(ast.left), right: debugShow_(ast.right) }
     case 'literal':
       return CharSet.toString(ast.charset)
     case 'concat':
-      return { type: 'concat', left: debugShow(ast.left), right: debugShow(ast.right) }
+      return { type: 'concat', left: debugShow_(ast.left), right: debugShow_(ast.right) }
     case 'union':
-      return { type: 'union', left: debugShow(ast.left), right: debugShow(ast.right) }
+      return { type: 'union', left: debugShow_(ast.left), right: debugShow_(ast.right) }
     case 'star':
-      return { type: 'star', inner: debugShow(ast.inner) }
+      return { type: 'star', inner: debugShow_(ast.inner) }
     case 'plus':
-      return { type: 'plus', inner: debugShow(ast.inner) }
+      return { type: 'plus', inner: debugShow_(ast.inner) }
     case 'optional':
-      return { type: 'optional', inner: debugShow(ast.inner) }
+      return { type: 'optional', inner: debugShow_(ast.inner) }
     case 'repeat':
-      return { type: 'repeat', inner: debugShow(ast.inner), bounds: ast.bounds }
+      return { type: 'repeat', inner: debugShow_(ast.inner), bounds: ast.bounds }
     case 'capture-group':
-      return { type: 'capture-group', name: ast.name, inner: debugShow(ast.inner) }
+      return { type: 'capture-group', name: ast.name, inner: debugShow_(ast.inner) }
     case 'positive-lookahead':
-      return { type: 'positive-lookahead', inner: debugShow(ast.inner) }
+      return { type: 'positive-lookahead', inner: debugShow_(ast.inner) }
     case 'negative-lookahead':
-      return { type: 'negative-lookahead', inner: debugShow(ast.inner) }
+      return { type: 'negative-lookahead', inner: debugShow_(ast.inner) }
   }
   checkedAllCases(ast)
 }
