@@ -16,6 +16,7 @@
           buildInputs = with pkgs; [
             nodejs_23
             nodePackages.typescript-language-server
+            ripgrep
           ];
         };
       }

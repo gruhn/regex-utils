@@ -295,13 +295,14 @@
     <div class="info">
       <h4>How to use:</h4>
       Enter two JavaScript regular expressions (without the surrounding slashes) and click "Check Equivalence".
-      The tool will determine the relationship between the two expressions: equivalent, subset, superset, or neither.
+      The tool determines whether the two expression match exactly the same strings.
+      Otherwise, example strings are shown that match either expression but not both.
 
       <h4>Examples:</h4>
       <ul>
-        <li><code>a*</code> and <code>a+</code> are not equivalent</li>
-        <li><code>a|b</code> and <code>b|a</code> are equivalent</li>
-        <li><code>(ab)+</code> and <code>ab(ab)*</code> are equivalent</li>
+        <li><code>a|aa</code> and <code>a{1,2}</code> are equivalent</li>
+        <li><code>a+</code> matches a subset of <code>a*</code></li>
+        <li><code>^a{0,4}$</code> and <code>^a{2,6}$</code> match some common strings</li>
       </ul>
 
       <h4>Supported syntax:</h4>

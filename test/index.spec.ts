@@ -6,6 +6,7 @@ import * as RE from "../src/regex"
 import { RB, RegexBuilder } from "../src/index"
 import * as Arb from './arbitrary-regex'
 import { toStdRegex } from "src/dfa"
+import { parseRegExp } from "src/regex-parser"
 
 /**
  * Stochastically verifies that `regex1` is a subset of `regex2`.
@@ -56,7 +57,7 @@ describe('toStdRegex', () => {
       ),
       { numRuns: 100, maxSkipsPerRun: 100 }
     )
-  }, 10_000)
+  })
 
 })
 
@@ -66,7 +67,6 @@ describe('isEquivalent', () => {
     [/a+/, /a{1,}/],
     [/(a|b|c)*/, /(((ab)*)*c*)*/],
   ]
-  
   for (const [re1, re2] of equivalentCases) {
     test(`${re1} is equivalent to ${re2}`, () => {
       assert.equal(RB(re1).isEquivalent(re2), true)
@@ -76,7 +76,6 @@ describe('isEquivalent', () => {
   const nonEquivalentCases = [
     [/a{2}|a*/, /a(a|a*)/],
   ]
-  
   for (const [re1, re2] of nonEquivalentCases) {
     test(`${re1} is not equivalent to ${re2}`, () => {
       assert.equal(RB(re1).isEquivalent(re2), false)
@@ -86,11 +85,9 @@ describe('isEquivalent', () => {
 })
 
 describe('without', () => {
-
   const withoutCases = [
     [/^a*$/, /^a{3,10}$/, /^(a{,2}|a{11,})$/],
   ]
-  
   for (const [re1, re2, expected] of withoutCases) {
     test(`${re1} without ${re2} is ${expected}`, () => {
       const actual = RB(re1).without(re2)
@@ -98,7 +95,6 @@ describe('without', () => {
       expectSubsetOf(actual, RB(expected))
     })
   }
-
 })
 
 test('A ∩ ¬A = ∅', () => {

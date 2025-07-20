@@ -213,12 +213,12 @@ export function isEquivalent(regexA: RE.ExtRegex, regexB: RE.ExtRegex): boolean 
     // Otherwise: A = B iff (A \ B) ∪ (B \ A) = ∅
     
     // A \ B = A ∩ ¬B 
-    const diffAB = RE.and([regexA, RE.complement(regexB)])
+    const diffAB = RE.intersection(regexA, RE.complement(regexB))
 
     // B \ A = B ∩ ¬A
-    const diffBA = RE.and([regexB, RE.complement(regexA)])
+    const diffBA = RE.intersection(regexB, RE.complement(regexA))
     
-    const result = toStdRegex(RE.or([ diffAB, diffBA ]))
+    const result = toStdRegex(RE.union(diffAB, diffBA))
 
     // QUESTION: This seems too simple. Does this really always work?
     // If yes, there is probably a cheaper way to do this.
