@@ -194,14 +194,39 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
       return maybeWithParens(ast.left, ast, options) + maybeWithParens(ast.right, ast, options)
     case 'union': 
       return maybeWithParens(ast.left, ast, options) + '|' + maybeWithParens(ast.right, ast, options)   
-    case 'star':
-      return maybeWithParens(ast.inner, ast, options) + '*'
-    case 'plus':
-      return maybeWithParens(ast.inner, ast, options) + '+'
-    case 'optional':
-      return maybeWithParens(ast.inner, ast, options) + '?'
-    case 'repeat':
-      return maybeWithParens(ast.inner, ast, options) + repeatBoundsToString(ast.bounds)
+
+    // For postfix operators if we have to check whether `ast.inner` is not effectively epsilon.
+    // In that case we shouldn't append the operator, otherwise can generate invalid expressions.
+    // For example, `aε*` would become `a*`.
+    case 'star': {
+      const innerStr = maybeWithParens(ast.inner, ast, options)
+      if (innerStr === '') 
+        return ''
+      else
+        return innerStr + '*'
+    }
+    case 'plus': {
+      const innerStr = maybeWithParens(ast.inner, ast, options)
+      if (innerStr === '') 
+        return ''
+      else
+        return innerStr + '+'
+    }
+    case 'optional': {
+      const innerStr = maybeWithParens(ast.inner, ast, options)
+      if (innerStr === '') 
+        return ''
+      else
+        return innerStr + '?'
+    }
+    case 'repeat': {
+      const innerStr = maybeWithParens(ast.inner, ast, options)
+      if (innerStr === '') 
+        return ''
+      else
+        return innerStr + repeatBoundsToString(ast.bounds)
+    }
+
     case 'capture-group':
       return captureGroupToString(ast.name, ast.inner, options)
     case 'positive-lookahead':
