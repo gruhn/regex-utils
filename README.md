@@ -3,24 +3,24 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language.
 
-- [Documentation](https://gruhn.github.io/regex-utils/)
-- [Web demo: RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
+- [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
+- [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
 
 ## API Overview
 
 - Set-like operations:
-  - [.and(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#and) - Compute intersection of two regex.
-  - [.not()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#not) - Compute the complement of a regex.
-  - [.without(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#without) - Compute the difference of two regex.
+  - [.and(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#and) - Compute intersection of two regex.
+  - [.not()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#not) - Compute the complement of a regex.
+  - [.without(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#without) - Compute the difference of two regex.
 - Set-like predicates:
-  - [.isEquivalent(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
-  - [.isSubsetOf(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isSubsetOf)
-  - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isSupersetOf)
-  - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#isDisjointFrom)
+  - [.isEquivalent(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
+  - [.isSubsetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSubsetOf)
+  - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSupersetOf)
+  - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isDisjointFrom)
 - Miscellaneous:
-  - [.size()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#size) - Count the number of strings that a regex matches.
-  - [.enumerate()](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#enumerate) - Generate strings matching a regex.
-  - [.derivative(...)](https://gruhn.github.io/regex-utils/classes/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
+  - [.size()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#size) - Count the number of strings that a regex matches.
+  - [.enumerate()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#enumerate) - Generate strings matching a regex.
+  - [.derivative(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
 ## Installation
 
@@ -32,6 +32,30 @@ import { RB } from '@gruhn/regex-utils'
 ```
 
 ## Example Use Cases
+
+### Refactor Regex and Check Equivalence
+
+Say we identified a regex in the code base that is prone to
+[catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression).
+and came up with a new version:
+
+```typescript
+const oldRegex = /^(?:[a-zA-Z]\:\\|\\\\)([^\\\/\:\*\?\<\>\"\|]+(\\){0,1})+$/
+const newRegex = /^(?:[a-zA-Z]:\\|\\\\)([^\\\/\:*?<>"|]+\\?)+$/
+```
+
+Using `.isEquivalent` we can verify that the refactored version matches exactly the same strings as the old version.
+That is, whether `oldRegex.test(str) === newRegex.test(str)` for every possible input string:
+
+```typescript
+RB(oldRegex).isEquivalent(newRegex) // true
+```
+
+Checking regex equivalence is also possible with this simple web interface:
+
+<a href="https://gruhn.github.io/regex-utils/equiv-checker.html">
+  <img alt="Screenshot RegExp equivalence checker" src="./equiv-checker-screenshot.jpg" />
+</a>
 
 ### Comment Regex using Complement
 
