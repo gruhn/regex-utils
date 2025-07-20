@@ -38,10 +38,11 @@ describe('parseRegExp', () => {
     // bounded quantifier:
     [/a{3}/, AST.repeat(char('a'), 3)],
     [/a{3,}/, AST.repeat(char('a'), { min: 3 })],
-    [/a{,5}/, AST.repeat(char('a'), { max: 5 })],
     [/a{3,5}/, AST.repeat(char('a'), { min: 3, max: 5 })],
     // if curly bracket is not terminated the whole thing is interpreted literally:
     [/a{3,5/, str('a{3,5')],
+    // same if max value is given but min value is missing: 
+    [/a{,5}/, str('a{,5}')],
     // char classes / escaping:
     [/\w/, AST.literal(CharSet.wordChars)],
     [/\W/, AST.literal(CharSet.nonWordChars)],

@@ -139,34 +139,30 @@ const group = P.choice([
 
 // Need to backtrack on bounded quantifier because if the curly bracket is
 // not terminated (e.g. "a{2,3") then all characters are interpreted literally.
+// The same if min value is missing but max value is given (e.g. "a{,3}").
+// 
 // FIXME: However, this breaks something else. E.g. "a*{3}" must still be rejected as
 // invalid and not interpreted as "a*" and then literal charactesr "{3}".
 const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrack(
   P.between(
     P.string('{'),
     P.string('}'),
-    P.optional(P.decimal).andThen(min => {
-      if (min === undefined)
-        // e.g. a{,5}
-        return P.string(',')
-          .andThen(_ => P.decimal)
-          .map(max => inner => AST.repeat(inner, { max }))
-      else
-        return P.optional(P.string(',')).andThen(comma => {
-          if (comma === undefined)
-            // e.g. a{3}
-            return P.pure(inner => AST.repeat(inner, min))
-          else
-            return P.optional(P.decimal).map(max => inner => {
-              if (max === undefined)
-                // e.g. a{3,}
-                return AST.repeat(inner, { min })
-              else
-                // e.g. a{3,5}
-                return AST.repeat(inner, { min, max })
-            })
-        })
-    })
+    P.decimal.andThen(min => 
+      P.optional(P.string(',')).andThen(comma => {
+        if (comma === undefined)
+          // e.g. a{3}
+          return P.pure(inner => AST.repeat(inner, min))
+        else
+          return P.optional(P.decimal).map(max => inner => {
+            if (max === undefined)
+              // e.g. a{3,}
+              return AST.repeat(inner, { min })
+            else
+              // e.g. a{3,5}
+              return AST.repeat(inner, { min, max })
+          })
+      })
+    )
   )
 )
 

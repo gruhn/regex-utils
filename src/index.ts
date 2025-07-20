@@ -174,7 +174,7 @@ class RegexBuilder {
    * ```typescript
    * RB('a').repeat(4) // a{4}
    * RB('a').repeat({ min: 3, max: 5 }) // a{3,5}
-   * RB('a').repeat({ max: 5 }) // a{,5}
+   * RB('a').repeat({ max: 5 }) // a{0,5}
    * RB('a').repeat({ min: 3 }) // a{3,}
    * RB('a').repeat({ min: 0, max: 1 }) // a?
    * RB('a').repeat({ min: 0 }) // a*
