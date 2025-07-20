@@ -6,7 +6,7 @@ import * as DFA from '../src/dfa'
 import * as Arb from './arbitrary-regex'
 import * as Stream from '../src/stream'
 import * as CharSet from '../src/char-set'
-import { parseRegExp } from "../src/regex-parser"
+import { parseRegExp, parseRegExpString } from "../src/regex-parser"
 
 function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
   try {
@@ -33,6 +33,20 @@ describe('toString', () => {
       )
     )
   })
+
+  it('is inverted by parser', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        (inputRegex) => {
+          // Add anchors to ensure the parser produces the exact same AST
+          const regexStr = `^(${RE.toString(inputRegex)})$`
+          const outputRegex = RE.fromRegExpAST(parseRegExpString(regexStr))
+          assert.equal(inputRegex.hash, outputRegex.hash)
+        }
+      ),
+    )   
+  }) 
 
 })
 
@@ -166,21 +180,23 @@ describe('rewrite rules', () => {
     [/^a?a?$/, /^((a?){2})$/],
     // union rules:
     [/^(a|a)$/, /^(a)$/],
-    [/^a|(a|b)$/, /^([ab])$/],
-    [/^a|(b|a)$/, /^([ab])$/],
-    [/^(b|a)|a$/, /^([ab])$/],
-    [/^(a|b)|a$/, /^([ab])$/],
+    // TODO: could avoid extra parenthesis when rendering
+    // expected expression:
+    [/^(a|(a|b))$/, /^([ab])$/],
+    [/^(a|(b|a))$/, /^([ab])$/],
+    [/^((b|a)|a)$/, /^([ab])$/],
+    [/^((a|b)|a)$/, /^([ab])$/],
     [/^(a?)?$/, /^(a?)$/],
     [/^(a*)?$/, /^(a*)$/],
     // TODO:
     // [/^(a|a*)$/, /^(aa*)$/],
     // union-of-concat rules:
-    [/^ab|ac$/, /^(a[bc])$/],
-    [/^ba|ca$/, /^([bc]a)$/],
-    [/^ab|a$/, /^(ab?)$/],
-    [/^ba|a$/, /^(b?a)$/],
-    [/^a|ab$/, /^(ab?)$/],
-    [/^a|ba$/, /^(b?a)$/],
+    [/^(ab|ac)$/, /^(a[bc])$/],
+    [/^(ba|ca)$/, /^([bc]a)$/],
+    [/^(ab|a)$/, /^(ab?)$/],
+    [/^(ba|a)$/, /^(b?a)$/],
+    [/^(a|ab)$/, /^(ab?)$/],
+    [/^(a|ba)$/, /^(b?a)$/],
     // TODO:
     // [/^(a|a{2}|a{3}|a{4}|a{5})$/, /^(a{1,5})$/],
     // [/^(a|a{2}|a{3}|a{4}|a{5}|b)$/, /^(a{1,5}|b)$/],
@@ -191,7 +207,7 @@ describe('rewrite rules', () => {
   
   for (const [source, target] of rewriteCases) {
     it(`rewrites ${source} to ${target}`, () => {
-      const parsed = parseRegExp(source)
+      const parsed = RE.fromRegExpAST(parseRegExp(source))
       assert(RE.isStdRegex(parsed))
       assert.deepEqual(RE.toRegExp(parsed), target)
     })
@@ -211,10 +227,88 @@ describe('derivative', () => {
   
   for (const [input, str, expected] of derivativeCases) {
     it(`of ${input} with respect to "${str}" is ${expected}`, () => {
-      const actual = RE.derivative(str, parseRegExp(input))
+    const actual = RE.derivative(str, RE.fromRegExpAST(parseRegExp(input)))
       assert(RE.isStdRegex(actual))
       assert.deepEqual(RE.toRegExp(actual), expected)
     })
   }
+  
+})
+
+describe('fromRegExpAST', () => {
+
+  const dotStar = RE.star(RE.anySingleChar)
+
+  function infix(regex: RE.ExtRegex) {
+    return RE.seq([ dotStar, regex, dotStar ])
+  }
+
+  describe('union with empty members', () => {
+    const testCases = [
+      [/^(|a)$/, RE.optional(RE.singleChar('a'))],
+      [/^(a||)$/, RE.optional(RE.singleChar('a'), )],
+      [/^(|a|)$/, RE.optional(RE.singleChar('a'))],
+      [/^(|)$/, RE.epsilon],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = RE.fromRegExpAST(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash)
+      })
+    }
+  })
+
+  describe('start anchor elimination', () => {
+    const testCases = [
+      [/^abc/, RE.seq([RE.string('abc'), dotStar])],
+      // start marker contradictions can only match empty set:
+      [/a^b/, RE.empty],
+      [/^a^b/, RE.empty],
+      // but two ^^ directly in a row are not a contradiction:
+      [/(^^a|b)/, RE.union(RE.seq([RE.singleChar('a'), dotStar]), infix(RE.singleChar('b')))],
+      // in fact, as long as anything between two ^ can match epsilon, 
+      // there is no contradiction:
+      [/(^(c|)^a|b)/, RE.union(RE.seq([RE.singleChar('a'), dotStar]), infix(RE.singleChar('b')))],
+      [/(^c*^a|b)/, RE.union(RE.seq([RE.singleChar('a'), dotStar]), infix(RE.singleChar('b')))],
+      // Also, contradiction inside a union does NOT collapse
+      // the whole expression to empty set:
+      [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
+      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
+
+      [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
+      [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = RE.fromRegExpAST(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash)
+      })
+    }
+  })
+
+  describe('lookahead elimination', () => {
+    const testCases = [
+      // positive lookahead:
+      [/^(?=a)a$/, RE.string('a')],
+      [/^a(?=b)b$/, RE.string('ab')],
+      [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
+      [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
+      // negative lookahead:
+      [/^a(?!b)c$/, RE.concat(RE.string('a'), RE.intersection(RE.complement(RE.string('b')), RE.string('c')))],
+      // TODO: lookahead + lookbehind
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')], 
+      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
+      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = RE.fromRegExpAST(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
+      })
+    }
+  })
   
 })

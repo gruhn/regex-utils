@@ -1,7 +1,8 @@
 import { hashStr, checkedAllCases, assert, uniqWith, hashNums } from './utils'
 import * as CharSet from './char-set'
-import * as Stream from './stream';
-import * as Table from './table';
+import * as Stream from './stream'
+import * as Table from './table'
+import * as AST from './ast'
 
 /**
  * TODO
@@ -370,15 +371,6 @@ export function optional(regex: ExtRegex): ExtRegex {
 }
 
 /**
- * @internal
- */
-export function plus(regex: StdRegex): StdRegex
-export function plus(regex: ExtRegex): ExtRegex 
-export function plus(regex: ExtRegex): ExtRegex {
-  return concat(regex, star(regex))
-}
-
-/**
  * This is like regex concatenation (aka. juxtaposition).
  *
  * @example
@@ -396,52 +388,12 @@ export function seq(res: ExtRegex[]): ExtRegex {
 }
 
 /**
- * This is like the regex pipe operator `|` (aka. alternation, aka. union, aka. or).
- * This is a standard regex operator so if all inputs are `StdRegex` the output,
- * is also a `StdRegex`.
- *
- * @example
- * ```typescript
- * or([ singleChar('a'), singleChar('b') ]) // like /a|b/
- * ```
- */
-export function or(res: StdRegex[]): StdRegex
-export function or(res: ExtRegex[]): ExtRegex
-export function or(res: ExtRegex[]): ExtRegex {
-  // Reducing right-to-left should trigger fewer normalization steps in `concat`:
-  return res.reduceRight((right, left) => union(left, right), empty)
-}
-
-/**
- * Constructs a regex that matches the intersection of all input regex.
- * This operator has no analog in standard regular expressions, so the
- * return type is always an `ExtRegex`.
- */
-export function and(res: ExtRegex[]): ExtRegex {
-  if (res.length === 0)
-    // TODO: is that correct?
-    return star(literal(CharSet.alphabet))
-  else
-    return res.reduceRight(intersection)
-}
-
-/**
- * TODO: docs
- * 
- * @public
- */
-export type RepeatBounds = 
-  | number
-  | { min: number, max?: number }
-  | { min?: number, max: number }
-
-/**
  * Constructs quantified regular expressions, subsuming all these
  * regex operators: `*`, `+`, `{n,m}`, `?`.
  */
-export function repeat(regex: StdRegex, bounds?: RepeatBounds): StdRegex
-export function repeat(regex: ExtRegex, bounds?: RepeatBounds): ExtRegex
-export function repeat(regex: ExtRegex, bounds?: RepeatBounds): ExtRegex {
+export function repeat(regex: StdRegex, bounds?: AST.RepeatBounds): StdRegex
+export function repeat(regex: ExtRegex, bounds?: AST.RepeatBounds): ExtRegex
+export function repeat(regex: ExtRegex, bounds?: AST.RepeatBounds): ExtRegex {
   if (bounds === undefined) {
     return repeatAux(regex, 0, Infinity)
   } else if (typeof bounds === 'number') {
@@ -726,7 +678,7 @@ export function toRegExp(regex: StdRegex): RegExp {
   return new RegExp(toString(regex))
 }
 
-export function toString(regex: ExtRegex): string {
+export function toString(regex: StdRegex): string {
   const size = nodeCount(regex)
   if (size > 1_000_000) {
     throw new VeryLargeSyntaxTreeError(
@@ -737,46 +689,17 @@ export function toString(regex: ExtRegex): string {
   // Render parenthesis as non-capturing groups if there is a large number of them,
   // i.e. `/(?:abc)` instead of `/(abc)/`. `new RegExp(...)` throws an error if there
   // is a large number of capturing groups. Non-capturing groups are a bit more verbose
-  // but at large sizes like this it hardly still hurts readability:
+  // but at large sizes like this it hardly hurts readability anymore:
   const useNonCapturingGroups = size > 10_000
 
-  return '^(' + astToString(toRegExpAST(regex), { useNonCapturingGroups }) + ')$'
+  return '^(' + AST.toString(toRegExpAST(regex), { useNonCapturingGroups }) + ')$'
 }
-
-// TODO: information is duplicated in parser:
-function precLevel(nodeType: RegExpAST['type']) {
-  switch (nodeType) {
-    case 'epsilon': return 10
-    case 'literal': return 10
-    case 'star': return 5
-    case 'plus': return 5
-    case 'optional': return 5
-    case 'boundedQuantifier': return 5
-    case 'complement': return 5
-    case 'concat': return 3
-    case 'union': return 2
-    case 'intersection': return 2
-  }
-  checkedAllCases(nodeType)
-}
-
-type RegExpAST = 
-  | { type: "epsilon" }
-  | { type: "literal", charset: CharSet.CharSet }
-  | { type: "concat", left: RegExpAST, right: RegExpAST }
-  | { type: "union", left: RegExpAST, right: RegExpAST }
-  | { type: "star", inner: RegExpAST }
-  | { type: "plus", inner: RegExpAST }
-  | { type: "optional", inner: RegExpAST }
-  | { type: "complement", inner: RegExpAST }
-  | { type: "boundedQuantifier", inner: RegExpAST, count: number }
-  | { type: "intersection", left: RegExpAST, right: RegExpAST }
 
 // TODO:
 // - "a+" instead of "aa*".
 // - "a{3,}" instead of "a{3}a*".
 // - "a{,3}" instead of "a?a?a?".
-function toRegExpAST(regex: ExtRegex): RegExpAST {
+function toRegExpAST(regex: StdRegex): AST.RegExpAST {
   switch (regex.type) {
     case 'epsilon':
       return regex
@@ -785,95 +708,110 @@ function toRegExpAST(regex: ExtRegex): RegExpAST {
     case 'concat': {
       const [len, rest] = extractConcatChain(regex.left, regex.right)
       if (len === 0) {
-        return {
-          type: 'concat',
-          left: toRegExpAST(regex.left),
-          right: toRegExpAST(regex.right),
-        }
+        return AST.concat(
+          toRegExpAST(regex.left),
+          toRegExpAST(regex.right),
+        )
       } else {
-        const left: RegExpAST = {
-          type: 'boundedQuantifier',
-          inner: toRegExpAST(regex.left),
-          count: len+1,
-        }
+        const left = AST.repeat(toRegExpAST(regex.left), len+1)
 
         if (rest === undefined)
           return left
         else 
-          return { type: 'concat', left, right: toRegExpAST(rest) }
+          return AST.concat(left, toRegExpAST(rest))
       }
     }
     case 'union': {
       // The `union` smart constructor should guarantee that there is only 
       // ever a right epsilon (never only on the left or on both sides):
       if (regex.right.type === 'epsilon')
-        return { type: 'optional', inner: toRegExpAST(regex.left) }
+        return AST.optional(toRegExpAST(regex.left))
       else
-        return {
-          type: 'union',
-          left: toRegExpAST(regex.left),
-          right: toRegExpAST(regex.right),
-        }
+        return AST.union(
+          toRegExpAST(regex.left),
+          toRegExpAST(regex.right),
+        )
     }
     case 'star':
-      return { type: 'star', inner: toRegExpAST(regex.inner) }
-    case 'complement':
-      return { type: 'complement', inner: toRegExpAST(regex.inner) }
-    case 'intersection':
-      return {
-        type: 'intersection',
-        left: toRegExpAST(regex.left),
-        right: toRegExpAST(regex.right),
-      }
+      return AST.star(toRegExpAST(regex.inner))
   }
   checkedAllCases(regex)
 }
 
-type RenderOptions = {
-  useNonCapturingGroups: boolean
+export function fromRegExpAST(ast: AST.RegExpAST): ExtRegex {
+  ast = AST.addImplicitEndMarker(ast)
+  ast = AST.addImplicitStartMarker(ast)
+  return fromRegExpAST_(ast)
 }
 
-function astToString(ast: RegExpAST, options: RenderOptions): string {
+function fromRegExpAST_(ast: AST.RegExpAST): ExtRegex {
   switch (ast.type) {
     case 'epsilon':
-      return ''
+      return epsilon
     case 'literal':
-      return CharSet.toString(ast.charset)
+      return literal(ast.charset)
     case 'concat':
-      return maybeWithParens(ast.left, ast, options) + maybeWithParens(ast.right, ast, options)
-    case 'union': 
-      return maybeWithParens(ast.left, ast, options) + '|' + maybeWithParens(ast.right, ast, options)   
+      return concat(fromRegExpAST_(ast.left), fromRegExpAST_(ast.right))
+    case 'union':
+      return union(fromRegExpAST_(ast.left), fromRegExpAST_(ast.right))
     case 'star':
-      return maybeWithParens(ast.inner, ast, options) + '*'
-    case 'plus':
-      return maybeWithParens(ast.inner, ast, options) + '+'
+      return star(fromRegExpAST_(ast.inner))
+    case 'plus': 
+      return repeat(fromRegExpAST_(ast.inner), { min: 1 })   
     case 'optional':
-      return maybeWithParens(ast.inner, ast, options) + '?'
-    case 'boundedQuantifier':
-      return maybeWithParens(ast.inner, ast, options) + '{' + ast.count + '}'
-    case 'complement':
-      return '¬' + maybeWithParens(ast.inner, ast, options)
-    case 'intersection':
-      return maybeWithParens(ast.left, ast, options) + '∩' + maybeWithParens(ast.right, ast, options)
+      return optional(fromRegExpAST_(ast.inner))
+    case 'repeat':
+      return repeat(fromRegExpAST_(ast.inner), ast.bounds)
+    case 'capture-group':
+      return fromRegExpAST_(ast.inner)
+    case 'start-marker': {
+      const left = fromRegExpAST_(ast.left)
+      const right = fromRegExpAST_(ast.right)
+
+      if (isNullable(left)) 
+        // If the sub-expression left of a start marker matches the empty string, 
+        // then it can ONLY match the empty string. E.g. /a*^b/ becomes /^b/.
+        return right
+      else
+        // If it doesn't match the empty string, then both the left and right
+        // sub-expression can only match the empty set. E.g. /(a^b|c)/ becomes /c/.
+        return empty
+    }
+    case 'end-marker': {
+      const left = fromRegExpAST_(ast.left)
+      const right = fromRegExpAST_(ast.right)
+
+      if (isNullable(right)) 
+        // If the sub-expression right of a end marker matches the empty string, 
+        // then it can ONLY match the empty string. E.g. /a$b*/ becomes /a$/.
+        return left
+      else
+        // If it doesn't match the empty string, then both the left and right
+        // sub-expression can only match the empty set. E.g. /(a|b$c)/ becomes /a/.
+        return empty
+    }
+    case 'positive-lookahead': {
+      const inner = fromRegExpAST_(ast.inner)
+      const right = fromRegExpAST_(ast.right)
+      return intersection(inner, right)
+    }
+    case 'negative-lookahead': {
+      const inner = fromRegExpAST_(ast.inner)
+      const right = fromRegExpAST_(ast.right)
+      return intersection(complement(inner), right)
+    }
   }
   checkedAllCases(ast)
 }
 
-function maybeWithParens(ast: RegExpAST, parent: RegExpAST, options: RenderOptions): string {
-  if (ast.type === parent.type || precLevel(ast.type) > precLevel(parent.type)) 
-    return astToString(ast, options)
-  else if (options.useNonCapturingGroups)
-    return '(?:' + astToString(ast, options) + ')'
-  else
-    return '(' + astToString(ast, options) + ')'
-}
+
 
 /**
  * Rather ad-hoc way to find chains of same regexes, e.g. `[a-z][a-z][a-z]`,
  * to produce more compact representation when converting to string,
  * e.g. `[a-z]{3}`
  */
-function extractConcatChain(left: ExtRegex, right: ExtRegex): [number, ExtRegex | undefined] {
+function extractConcatChain(left: StdRegex, right: StdRegex): [number, StdRegex | undefined] {
   if (right.type === 'concat' && equal(left, right.left)) {
     const [len, rest] = extractConcatChain(left, right.right)
     return [len+1, rest]
@@ -1023,21 +961,25 @@ function nodeCountAux(
 }
 
 export function debugShow(regex: ExtRegex): any {
+  return JSON.stringify(debugShowAux(regex), null, 2)
+}
+
+function debugShowAux(regex: ExtRegex): any {
   switch (regex.type) {
     case 'epsilon':
       return 'ε'
     case 'literal':
       return CharSet.toString(regex.charset)
     case 'concat':
-      return { type: 'concat', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return { type: 'concat', left: debugShowAux(regex.left), right: debugShowAux(regex.right) }
     case 'union':
-      return { type: 'union', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return { type: 'union', left: debugShowAux(regex.left), right: debugShowAux(regex.right) }
     case 'star':
-      return { type: 'star', inner: debugShow(regex.inner) }
+      return { type: 'star', inner: debugShowAux(regex.inner) }
     case 'intersection':
-      return { type: 'intersection', left: debugShow(regex.left), right: debugShow(regex.right) }
+      return { type: 'intersection', left: debugShowAux(regex.left), right: debugShowAux(regex.right) }
     case 'complement':
-      return { type: 'complement', inner: debugShow(regex.inner) }
+      return { type: 'complement', inner: debugShowAux(regex.inner) }
   }
   checkedAllCases(regex)
 }

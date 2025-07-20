@@ -1,72 +1,92 @@
 import { describe, it } from "node:test"
 import assert from "node:assert"
-import { parseRegExp, parseRegexString } from "../src/regex-parser"
+import { parseRegExp, parseRegExpString } from "../src/regex-parser"
 import { ParseError } from "../src/parser"
-import * as RE from "../src/regex"
+import * as AST from "../src/ast"
 import * as CharSet from "../src/char-set"
-import fc from "fast-check"
-import * as Arb from './arbitrary-regex'
 
-describe('parseRegexString', () => { 
+// Helper functions for cleaner test construction
+function char(c: string) {
+  return AST.literal(CharSet.singleton(c))
+}
+function str(s: string) { 
+  const chars = [...s].map(char)
+  // Use right-associative concatenation: a(bc) not (ab)c
+  return chars.reduceRight((acc, curr) => AST.concat(curr, acc))
+}
+function group(inner: AST.RegExpAST, name?: string) {
+  return AST.captureGroup(inner, name)
+}
+
+describe('parseRegExp', () => {
 
   const testCases = [
-    [/^a$/, RE.singleChar('a')],
-    [/^(a)$/, RE.singleChar('a')],
-    [/^.$/, RE.literal(CharSet.wildcard({ dotAll: false }))],
-    // [/^.$/s, RE.literal(CharSet.wildcard({ dotAll: true }))],
-    [/^a*$/, RE.star(RE.singleChar('a'))],
-    [/^a+$/, RE.plus(RE.singleChar('a'))],
-    [/^a?$/, RE.optional(RE.singleChar('a'))],
-    [/^abc$/, RE.string('abc')],
-    [/^ab*$/, RE.concat(RE.singleChar('a'), RE.star(RE.singleChar('b')))],
+    [/a/, char('a')],
+    [/(a)/, group(char('a'))],
+    [/./, AST.literal(CharSet.wildcard({ dotAll: false }))],
+    // [/./s, AST.literal(CharSet.wildcard({ dotAll: true }))],
+    [/a*/, AST.star(char('a'))],
+    [/a+/, AST.plus(char('a'))],
+    [/a?/, AST.optional(char('a'))],
+    [/abc/, str('abc')],
+    [/ab*/, AST.concat(char('a'), AST.star(char('b')))],
     // union:
-    [/^a|b$/, RE.union(RE.singleChar('a'), RE.singleChar('b'))],
-    [/^aa|bb$/, RE.union(RE.string('aa'), RE.string('bb'))],
-    [/^(a|b)*$/, RE.star(RE.union(RE.singleChar('a'), RE.singleChar('b')))],
-    [/^(|a)$/, RE.optional(RE.singleChar('a'))],
-    [/^(a||)$/, RE.optional(RE.singleChar('a'))],
-    [/^(|a|)$/, RE.optional(RE.singleChar('a'))],
-    [/^(|)$/, RE.epsilon],
+    [/a|b/, AST.union(char('a'), char('b'))],
+    [/aa|bb/, AST.union(str('aa'), str('bb'))],
+    [/(a|b)*/, AST.star(group(AST.union(char('a'), char('b'))))],
+    [/ab*/, AST.concat(char('a'), AST.star(char('b')))],
     // bounded quantifier:
-    [/^a{3}$/, RE.repeat(RE.singleChar('a'), 3)],
-    [/^a{3,}$/, RE.repeat(RE.singleChar('a'), { min: 3 })],
-    [/^a{,5}$/, RE.repeat(RE.singleChar('a'), { max: 5 })],
-    [/^a{3,5}$/, RE.repeat(RE.singleChar('a'), { min: 3, max: 5 })],
+    [/a{3}/, AST.repeat(char('a'), 3)],
+    [/a{3,}/, AST.repeat(char('a'), { min: 3 })],
+    [/a{,5}/, AST.repeat(char('a'), { max: 5 })],
+    [/a{3,5}/, AST.repeat(char('a'), { min: 3, max: 5 })],
     // if curly bracket is not terminated the whole thing is interpreted literally:
-    [/^a{3,5$/, RE.string('a{3,5')],
+    [/a{3,5/, str('a{3,5')],
     // char classes / escaping:
-    [/^\w$/, RE.literal(CharSet.wordChars)],
-    [/^\W$/, RE.literal(CharSet.nonWordChars)],
-    [/^\n$/, RE.literal(CharSet.singleton('\n'))],
-    [/^\.$/, RE.literal(CharSet.singleton('.'))],
+    [/\w/, AST.literal(CharSet.wordChars)],
+    [/\W/, AST.literal(CharSet.nonWordChars)],
+    [/\n/, AST.literal(CharSet.singleton('\n'))],
+    [/\./, AST.literal(CharSet.singleton('.'))],
     // char class from range:
-    [/^[a-z]$/, RE.literal(CharSet.charRange('a', 'z'))],
-    [/^[a-]$/, RE.literal(CharSet.fromArray(['a', '-']))],
+    [/[a-z]/, AST.literal(CharSet.charRange('a', 'z'))],
+    [/[a-]/, AST.literal(CharSet.fromArray(['a', '-']))],
     // negative char class:
-    [/^[^abc]$/, RE.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
+    [/[^abc]/, AST.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
     // non-capturing groups
-    [/^(?:ab)$/, RE.string('ab')],
+    [/(?:ab)/, str('ab')],
     // named capturing groups
-    [/^(?<abc_012>abc)$/, RE.string('abc')],
-    // positive lookahead
-    [/^(?=^a$)b$/, RE.intersection(RE.string('a'), RE.string('b'))], 
-    [/^(?=^a$)(?:b)$/, RE.intersection(RE.string('a'), RE.string('b'))], 
-    [/^(?=^a$)(?=^b$)c$/, RE.intersection(RE.string('a'), RE.intersection(RE.string('b'), RE.string('b')))], 
-    [/^a(?=^b$)c$/, RE.concat(RE.singleChar('a'), RE.intersection(RE.string('b'), RE.string('c')))], 
-    [/^a(?=^b$)$/, RE.concat(RE.string('a'), RE.intersection(RE.string('b'), RE.string('')))], 
-    [/^a(?=^b$)c(?=^d$)e$/, RE.concat(RE.string('a'), RE.intersection(RE.string('b'), RE.concat(RE.string('c'), RE.intersection(RE.string('d'), RE.string('e')))))], 
+    [/(?<abc_012>abc)/, group(str('abc'), 'abc_012')],
+    // start/end marker
+    [/^abc/, AST.startMarker(undefined, str('abc'))],
+    [/a^b/, AST.startMarker(char('a'), str('b'))],
+    [/^a|^b/, AST.union(AST.startMarker(undefined, str('a')), AST.startMarker(undefined, char('b')))],
+    [/^abc$/, AST.startMarker(undefined, AST.endMarker(str('abc'), undefined))],
+    // positive lookahead - now parsed as lookahead AST nodes, not intersections
+    [/(?=a)b/, AST.positiveLookahead(char('a'), char('b'))], 
+    [/(?=a)(?:b)/, AST.positiveLookahead(char('a'), char('b'))], 
+    [/(?=a)(?=b)c/, AST.positiveLookahead(char('a'), AST.positiveLookahead(char('b'), char('c')))], 
+    [/a(?=b)c/, AST.concat(char('a'), AST.positiveLookahead(char('b'), char('c')))], 
+    [/a(?=b)/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.epsilon))], 
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.concat(char('c'), AST.positiveLookahead(char('d'), char('e')))))], 
     // negative lookahead
-    [/^(?!^a$)b$/, RE.intersection(RE.complement(RE.string('a')), RE.string('b'))], 
-    [/^(?!^a$)b|c$/, RE.union(RE.intersection(RE.complement(RE.string('a')), RE.string('b')), RE.string('c'))],
+    [/(?!a)b/, AST.negativeLookahead(char('a'), char('b'))], 
+    [/(?!a)b|c/, AST.union(AST.negativeLookahead(char('a'), char('b')), char('c'))],
+    // TODO: positive lookbehind
+    // [/(?<=a)/, AST.positiveLookbehind(char('a'))], 
+    // TODO: negative lookbehind
+    // [/(?<!a)/, AST.negativeLookbehind(char('a'))], 
     // some special chars don't need escape when inside brackets:
-    [/^[.^$*+?()[{-|]$/, RE.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
+    [/[.^$*+?()[{-|]/, AST.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
     // other special chars need escape even inside brackets:
-    [/^[\\\]\/]$/, RE.literal(CharSet.fromArray([...'\\]/']))],
+    [/[\\\]\/]/, AST.literal(CharSet.fromArray([...'\\]/']))],
   ] as const
 
   for (const [regexp, expected] of testCases) {
     it(`can parse ${regexp}`, () => {
-      assert.strictEqual(parseRegExp(regexp).hash, expected.hash)
+      assert.deepStrictEqual(
+        AST.debugShow(parseRegExp(regexp)),
+        AST.debugShow(expected)
+      )
     })
   }
 
@@ -85,7 +105,7 @@ describe('parseRegexString', () => {
 
   for (const regexStr of invalidTestCases) {
     it(`rejects invalid regex /${regexStr}/`, () => {
-      assert.throws(() => parseRegexString(regexStr), ParseError)
+      assert.throws(() => parseRegExpString(regexStr), ParseError)
     })
   }
 
@@ -93,17 +113,4 @@ describe('parseRegexString', () => {
     parseRegExp(/^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/)
   })
 
-  it('inverts RE.toString', () => {
-    fc.assert(
-      fc.property(
-        Arb.stdRegex(),
-        (stdRegex) => {
-        const regexStr = RE.toString(stdRegex)
-        const result = parseRegexString(regexStr)
-        assert.strictEqual(result.hash, stdRegex.hash)
-      }),
-    )   
-  })
-
 })
-

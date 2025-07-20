@@ -35,10 +35,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-      - name: Install dependencies
-        run: npm clean-install
-      - name: Generate Docs
-        run: make docs
+      - name: Install & Build
+        run: make
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
