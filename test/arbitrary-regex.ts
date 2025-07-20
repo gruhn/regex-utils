@@ -1,5 +1,4 @@
 import fc from 'fast-check'
-import * as AST from '../src/ast'
 import * as CharSet from '../src/char-set'
 import * as RE from '../src/regex'
 

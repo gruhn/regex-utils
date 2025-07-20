@@ -275,6 +275,8 @@ describe('fromRegExpAST', () => {
       // the whole expression to empty set:
       [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
       [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
+      // Contradictory regex describes empty set:
+      [/$.^/, RE.empty],
 
       [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
       [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],

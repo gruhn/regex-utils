@@ -52,8 +52,11 @@ describe('parseRegExp', () => {
     [/[a-]/, AST.literal(CharSet.fromArray(['a', '-']))],
     // negative char class:
     [/[^abc]/, AST.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
+    // regular capturing groups:
+    [/()/, group(AST.epsilon)],
     // non-capturing groups
     [/(?:ab)/, str('ab')],
+    [/(?:)/, AST.epsilon],
     // named capturing groups
     [/(?<abc_012_ABC>abc)/, group(str('abc'), 'abc_012_ABC')],
     [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
@@ -63,6 +66,7 @@ describe('parseRegExp', () => {
     [/a^b/, AST.startMarker(char('a'), str('b'))],
     [/^a|^b/, AST.union(AST.startMarker(undefined, str('a')), AST.startMarker(undefined, char('b')))],
     [/^abc$/, AST.startMarker(undefined, AST.endMarker(str('abc'), undefined))],
+    [/$a^/, AST.startMarker(AST.endMarker(undefined, char('a')), undefined)],
     // positive lookahead - now parsed as lookahead AST nodes, not intersections
     [/(?=a)b/, AST.positiveLookahead(char('a'), char('b'))], 
     [/(?=a)(?:b)/, AST.positiveLookahead(char('a'), char('b'))], 
@@ -70,9 +74,11 @@ describe('parseRegExp', () => {
     [/a(?=b)c/, AST.concat(char('a'), AST.positiveLookahead(char('b'), char('c')))], 
     [/a(?=b)/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.epsilon))], 
     [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.concat(char('c'), AST.positiveLookahead(char('d'), char('e')))))], 
+    [/(?=)/, AST.positiveLookahead(AST.epsilon, AST.epsilon)], 
     // negative lookahead
     [/(?!a)b/, AST.negativeLookahead(char('a'), char('b'))], 
     [/(?!a)b|c/, AST.union(AST.negativeLookahead(char('a'), char('b')), char('c'))],
+    [/(?!)/, AST.negativeLookahead(AST.epsilon, AST.epsilon)],
     // TODO: positive lookbehind
     // [/(?<=a)/, AST.positiveLookbehind(char('a'))], 
     // TODO: negative lookbehind

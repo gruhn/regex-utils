@@ -241,7 +241,7 @@ function lookAheadOp(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.Reg
 }
 
 function regex(): P.Parser<AST.RegExpAST> {
-  return P.lazy(() => P.Expr.makeExprParser<AST.RegExpAST>(
+  const nonEmptyRegex = P.lazy(() => P.Expr.makeExprParser<AST.RegExpAST>(
     regexTerm(),
     [
       { type: 'postfix', op: P.string('*').map(_ => AST.star) },
@@ -255,6 +255,13 @@ function regex(): P.Parser<AST.RegExpAST> {
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
     ]
   ))
+
+  return P.optional(nonEmptyRegex).map(ast => {
+    if (ast === undefined)
+      return AST.epsilon
+    else
+      return ast
+  })
 }
 
 export function parseRegExpString(
