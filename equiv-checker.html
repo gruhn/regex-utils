@@ -234,6 +234,24 @@
       font-size: 0.9rem;
       color: #666;
     }
+
+    .mismatch-warning {
+      background: #fff3cd;
+      border: 2px solid #ffeaa7;
+      color: #856404;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mismatch-warning::before {
+      content: "⚠️";
+      font-size: 1.2rem;
+    }
   </style>
 </head>
 
@@ -362,9 +380,10 @@
       function assertMatchRegex(regex, strings) {
         for (const str of strings) {
           if (!regex.test(str)) {
-            throw new Error('logic error: generated example strings did not match input regex');
+            return false;
           }
         }
+        return true;
       }
 
       // clear results on new input:
@@ -406,26 +425,27 @@
           } else if (diffABEmpty && !diffBAEmpty) {
             // A is subset of B: no strings in A that aren't in B
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            assertMatchRegex(regexB, stringsMatchingBButNotA)
+            const hasValidationIssue = !assertMatchRegex(regexB, stringsMatchingBButNotA);
             const examples = stringsMatchingBButNotA.length > 0 ? {regex2Only: stringsMatchingBButNotA} : null;
-            showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples);
+            showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples, hasValidationIssue);
           } else if (!diffABEmpty && diffBAEmpty) {
             // B is subset of A: no strings in B that aren't in A
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            assertMatchRegex(regexA, stringsMatchingAButNotB)
+            const hasValidationIssue = !assertMatchRegex(regexA, stringsMatchingAButNotB);
             const examples = stringsMatchingAButNotB.length > 0 ? {regex1Only: stringsMatchingAButNotB} : null;
-            showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples);
+            showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples, hasValidationIssue);
           } else {
             // Neither subset nor equivalent: both differences are non-empty
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            assertMatchRegex(regexA, stringsMatchingAButNotB)
+            const hasValidationIssue1 = !assertMatchRegex(regexA, stringsMatchingAButNotB);
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            assertMatchRegex(regexB, stringsMatchingBButNotA)
+            const hasValidationIssue2 = !assertMatchRegex(regexB, stringsMatchingBButNotA);
+            const hasValidationIssue = hasValidationIssue1 || hasValidationIssue2;
             const examples = {
               regex1Only: stringsMatchingAButNotB.length > 0 ? stringsMatchingAButNotB : null,
               regex2Only: stringsMatchingBButNotA.length > 0 ? stringsMatchingBButNotA : null
             };
-            showResultWithDiagram('❌ The two RegExp are not equivalent. Neither matches a subset of the other.', 'not-equivalent', examples);
+            showResultWithDiagram('❌ The two RegExp are not equivalent. Neither matches a subset of the other.', 'not-equivalent', examples, hasValidationIssue);
           }
         } catch (error) {
           if (error instanceof SyntaxError) {
@@ -461,11 +481,18 @@
         resultDiv.style.display = 'block';
       }
 
-      function showResultWithDiagram(message, type, examples = null) {
+      function showResultWithDiagram(message, type, examples = null, hasValidationIssue = false) {
         const resultDiv = document.getElementById('result');
 
         // Build the complete HTML structure
-        let html = message;
+        let html = '';
+        
+        // Add warning banner if there's a validation issue
+        if (hasValidationIssue) {
+          html += '<div class="mismatch-warning">Something went wrong. The presented example strings don\'t match the regex as claimed. Please create bug ticket on GitHub.</div>';
+        }
+        
+        html += message;
 
         // Add Venn diagram (only for subset/superset/not-equivalent cases)
         if (type !== 'equivalent') {
