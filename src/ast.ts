@@ -266,13 +266,29 @@ function precLevel(nodeType: RegExpAST['type']) {
 }
 
 /**
+ * AST nodes where no parenthesis have to be added when the parent has the same type.
+ * E.g. in /a|(b|c)/ we can leave out the parenthesis /a|b|c/ but in /(a+)+/ the parenthesis
+ * are needed, otherwise the expression is invalid.
+ */
+const needsNoParensOnSamePrecLevel = new Set([
+  'concat',
+  'positive-lookahead', 
+  'negative-lookahead', 
+  'start-marker',
+  'end-marker',
+  'union',
+])
+
+/**
  * Surrounds expression with parenthesis if necessary. For example, in `/(a)+|b/` the parenthesis
  * around `a` are not necessary because `+` has higher precedence than `|`. On the other hand,
  * in `/(a|b)+/` the parenthesis around `a|b` are necessary. Otherwise the expression has different
  * semantics.
  */
 function maybeWithParens(ast: RegExpAST, parent: RegExpAST, options: RenderOptions): string {
-  if (ast.type === parent.type || precLevel(ast.type) > precLevel(parent.type)) 
+  if (precLevel(ast.type) > precLevel(parent.type)) 
+    return toString(ast, options)
+  else if (ast.type === parent.type && needsNoParensOnSamePrecLevel.has(ast.type))
     return toString(ast, options)
   else if (options.useNonCapturingGroups)
     return '(?:' + toString(ast, options) + ')'
