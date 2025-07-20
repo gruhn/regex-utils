@@ -36,7 +36,7 @@ import { RB } from '@gruhn/regex-utils'
 ### Refactor Regex and Check Equivalence 🔄
 
 Say we identified a regex in the code base that is prone to
-[catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression).
+[catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression)
 and came up with a new version:
 
 ```typescript
@@ -51,10 +51,12 @@ That is, whether `oldRegex.test(str) === newRegex.test(str)` for every possible 
 RB(oldRegex).isEquivalent(newRegex) // true
 ```
 
-Checking regex equivalence is also possible with this simple web interface:
+There is also a [web interface](https://gruhn.github.io/regex-utils/equiv-checker.html) for checking regex equivalence
+which also shows counterexample strings if the two regular expressions are not equivalent.
+The source code is a single HTML file: [./equiv-checker.html](./equiv-checker.html).
 
 <a href="https://gruhn.github.io/regex-utils/equiv-checker.html">
-  <img alt="Screenshot RegExp equivalence checker" src="./equiv-checker-screenshot.jpg" />
+  <img alt="Screenshot RegExp equivalence checker" src="./equiv-checker-screenshot.png" />
 </a>
 
 ### Comment Regex using Complement 💬
