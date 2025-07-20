@@ -55,7 +55,9 @@ describe('parseRegExp', () => {
     // non-capturing groups
     [/(?:ab)/, str('ab')],
     // named capturing groups
-    [/(?<abc_012>abc)/, group(str('abc'), 'abc_012')],
+    [/(?<abc_012_ABC>abc)/, group(str('abc'), 'abc_012_ABC')],
+    [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
+    [/(?<___>abc)/, group(str('abc'), '___')],
     // start/end marker
     [/^abc/, AST.startMarker(undefined, str('abc'))],
     [/a^b/, AST.startMarker(char('a'), str('b'))],
@@ -95,6 +97,8 @@ describe('parseRegExp', () => {
     '(a',
     // combined quantifiers:
     'a+*',
+    // invalid capture group names:
+    '(?<1abc>.)',
     // FIXME:
     // 'a?{2}',
     // 'a+{2}',

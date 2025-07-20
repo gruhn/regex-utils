@@ -102,6 +102,16 @@ const charSet = P.choice([
   unescapedCharOutsideBrackets,
 ])
 
+const captureGroupName = 
+  P.sequence([
+    // must start with non-number word char:
+    P.satisfy(char => /^[a-zA-Z_]$/.test(char)),
+    // followed by arbitrary word chars:
+    P.many(P.satisfy(char => /^\w$/.test(char))),
+  ]).map(([firstChar, restChars]) => {
+    return firstChar + restChars.join('')
+  })
+
 const group = P.choice([
   // non-capture group:
   P.between(
@@ -112,12 +122,12 @@ const group = P.choice([
   // named capture group:
   P.sequence([
     P.string('(?<'),
-    P.some(P.satisfy(char => /^\w$/.test(char))),
+    captureGroupName,
     P.string('>'),
     regex(),
     P.string(')')
-  ]).map(([_, nameChars, __, inner, ___]) => 
-    AST.captureGroup(inner, nameChars.join(''))
+  ]).map(([_, name, __, inner, ___]) => 
+    AST.captureGroup(inner, name)
   ),
   // regular capture group:
   P.between(
