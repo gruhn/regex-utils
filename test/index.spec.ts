@@ -86,7 +86,7 @@ describe('isEquivalent', () => {
 
 describe('without', () => {
   const withoutCases = [
-    [/^a*$/, /^a{3,10}$/, /^(a{,2}|a{11,})$/],
+    [/^a*$/, /^a{3,10}$/, /^(a{0,2}|a{11,})$/],
   ]
   for (const [re1, re2, expected] of withoutCases) {
     test(`${re1} without ${re2} is ${expected}`, () => {

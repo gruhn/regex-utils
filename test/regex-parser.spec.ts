@@ -1,9 +1,12 @@
-import { describe, it } from "node:test"
+import { describe, it, test } from "node:test"
 import assert from "node:assert"
 import { parseRegExp, parseRegExpString } from "../src/regex-parser"
+import { RB } from "../src/index"
 import { ParseError } from "../src/parser"
 import * as AST from "../src/ast"
 import * as CharSet from "../src/char-set"
+import fc from "fast-check"
+import * as Arbitrary from './arbitrary-ast'
 
 // Helper functions for cleaner test construction
 function char(c: string) {
@@ -130,3 +133,25 @@ describe('parseRegExp', () => {
   })
 
 })
+
+test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
+  fc.assert(
+    fc.property(
+      Arbitrary.regexp(),
+      (inputRegExp) => {
+        const builder = RB(inputRegExp)
+        const outputRegExp = builder.toRegExp()
+
+        // console.debug(inputRegExp)
+        // console.debug(outputRegExp)
+
+        for (const str of builder.enumerate().take(10)) {
+          assert.match(str, outputRegExp)
+          assert.match(str, inputRegExp)
+        }
+      }
+    ),
+    { seed: -1651123632, path: "89:0", endOnFailure: true }
+  )
+})
+

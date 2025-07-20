@@ -311,6 +311,13 @@ describe('fromRegExpAST', () => {
         assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
       })
     }
+
+    it('fixme', { todo: true }, () => {
+      const actual = RE.fromRegExpAST(parseRegExp(/^(a(?!b))*$/))
+      const expected = RE.star(RE.string('a'))
+      assert.equal(actual.hash, expected.hash) 
+    })
+
   })
   
 })
