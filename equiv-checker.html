@@ -252,6 +252,28 @@
       content: "⚠️";
       font-size: 1.2rem;
     }
+
+    .anchor-info {
+      background: #d1ecf1;
+      border: 2px solid #bee5eb;
+      color: #0c5460;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .anchor-info::before {
+      content: "ℹ️";
+      font-size: 1.2rem;
+    }
+
+    .anchor-info code {
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -283,6 +305,13 @@
 
     <div class="button-container">
       <button id="check-equiv-button">Check Equivalence</button>
+    </div>
+
+    <div class="anchor-info" id="anchor-info-banner" style="display: none;">
+      <b>Note, without <code>^</code> (start) and <code>$</code> (end) anchors RegExp match substrings.</b>
+      That can lead to surprising results.
+      For example, <code>/a+/</code> is technically equivalent to <code>/a/</code> because <code>/a+/</code>
+      is the same as <code>/^.*a+.*$/</code> which matches exactly the same strings as <code>/^.*a.*$/</code> (i.e. <code>/a/</code>).
     </div>
 
     <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-superset" style="display: none;">
@@ -367,6 +396,7 @@
       const resultDiv = document.getElementById('result');
       const counterexamples1 = document.getElementById('counterexamples1');
       const counterexamples2 = document.getElementById('counterexamples2');
+      const anchorInfoBanner = document.getElementById('anchor-info-banner');
 
       function clearResults() {
         resultDiv.style.display = 'none';
@@ -375,6 +405,7 @@
         counterexamples1.innerHTML = '';
         counterexamples2.style.display = 'none';
         counterexamples2.innerHTML = '';
+        anchorInfoBanner.style.display = 'none';
       }
 
       function assertMatchRegex(regex, strings) {
@@ -405,6 +436,19 @@
         if (!pattern1 || !pattern2) {
           showResult('Please enter both regular expressions.', 'error');
           return;
+        }
+
+        // Check for missing anchors and show info banner
+        const hasStartAnchor1 = pattern1.includes('^');
+        const hasEndAnchor1 = pattern1.includes('$');
+        const hasStartAnchor2 = pattern2.includes('^');
+        const hasEndAnchor2 = pattern2.includes('$');
+        
+        const shouldShowAnchorInfo = !hasStartAnchor1 || !hasEndAnchor1 || !hasStartAnchor2 || !hasEndAnchor2;
+        
+        // Show/hide anchor info banner
+        if (shouldShowAnchorInfo) {
+          anchorInfoBanner.style.display = 'block';
         }
 
         try {
