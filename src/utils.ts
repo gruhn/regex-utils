@@ -78,6 +78,10 @@ export function checkedAllCases(_witness: never): never {
   throw new Error('not all cases checked')
 }
 
+/**
+ * Returns its argument unchanged. Useful for generic contexts where a transformation
+ * function is expected but no transformation is needed.
+ */
 export function identity<T>(x: T): T {
   return x
 }
@@ -111,7 +115,8 @@ export function uniqWith<T>(array: T[], compare: (l: T, r: T) => number): T[] {
 }
 
 /**
- * https://stackoverflow.com/a/52171480
+ * Computes a hash value for an array of numbers using a fast non-cryptographic hash algorithm.
+ * Based on implementation from https://stackoverflow.com/a/52171480
  */
 export function hashNums(nums: number[], seed = 0): number {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed
@@ -128,6 +133,10 @@ export function hashNums(nums: number[], seed = 0): number {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0)
 }
 
+/**
+ * Computes a hash value for a string using a fast non-cryptographic hash algorithm.
+ * Uses the same algorithm as hashNums but operates on character codes.
+ */
 export function hashStr(str: string, seed = 0): number {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed
   for (let i=0; i < str.length; i++) {
@@ -143,10 +152,17 @@ export function hashStr(str: string, seed = 0): number {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0)
 }
 
+/**
+ * Performs bitwise XOR operation on two numbers.
+ */
 export function xor(a: number, b: number): number {
   return a^b
 }
 
+/**
+ * Finds the element with the minimum score according to the provided scoring function.
+ * Returns undefined if the iterable is empty.
+ */
 export function minBy<T>(iterable: Iterable<T>, scoreOf: (item: T) => number): T | undefined {
   let minItem = undefined
   let minScore = Infinity
@@ -160,6 +176,17 @@ export function minBy<T>(iterable: Iterable<T>, scoreOf: (item: T) => number): T
   return minItem
 }
 
+/**
+ * Calculates the sum of all numbers in the array.
+ */
 export function sum(items: number[]) {
   return items.reduce((a,b) => a+b, 0)
+}
+
+/**
+ * Type guard that checks if an unknown value is one of the elements in the provided array.
+ * Returns true if the item is found in the array, with proper TypeScript type narrowing.
+ */
+export function isOneOf<T>(item: unknown, array: T[]): item is T {
+  return (array as unknown[]).includes(item)
 }
