@@ -525,6 +525,18 @@
         resultDiv.style.display = 'block';
       }
 
+      const renderExample = (str) => {
+        if (str === '') {
+          return '<i>the empty string</i>';
+        } else {
+          return `<code>${encode(str)}</code>`;
+        }
+      };
+
+      const renderExampleList = array => {
+        return `<ul>${array.map(renderExample).map(str => `<li>${str}</li>`).join('')}</ul>`;
+      }
+
       function showResultWithDiagram(message, type, examples = null, hasValidationIssue = false) {
         const resultDiv = document.getElementById('result');
 
@@ -545,21 +557,30 @@
 
         // Add examples if provided
         if (examples) {
-          html += '<p>For example, '
-
+          html += '<p>Example strings matched by one RegExp but not the other:</p>'
+          html += '<div style="display: flex; gap: 20px; margin-top: 15px;">';
+          
+          // Left column for RegExp 1 examples
+          html += '<div style="flex: 1;">';
           if (examples.regex1Only && examples.regex1Only.length > 0) {
-            html += `RegExp 1 matches `;
-            html += examples.regex1Only.map(str => `<code>${encode(str)}</code>`).join(', ');
-            html += ' but RegExp 2 does not. ';
+            html += `<p>
+              <h4>RegExp 1 only</h4>
+              ${renderExampleList(examples.regex1Only)}
+            </p>`;
           }
-
+          html += '</div>';
+          
+          // Right column for RegExp 2 examples
+          html += '<div style="flex: 1;">';
           if (examples.regex2Only && examples.regex2Only.length > 0) {
-            html += `RegExp 2 matches `;
-            html += examples.regex2Only.map(str => `<code>${encode(str)}</code>`).join(', ');
-            html += 'but RegExp 1 does not. ';
+            html += `<p>
+              <h4>RegExp 2 only</h4>
+              ${renderExampleList(examples.regex2Only)}
+            </p>`;
           }
-
-          html += '</p>'
+          html += '</div>';
+          
+          html += '</div>';
         }
 
         resultDiv.innerHTML = html;
