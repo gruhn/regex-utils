@@ -355,6 +355,41 @@ export function size(set: CharSet): number {
   } 
 }
 
+/**
+ * Efficiently samples a random character from the CharSet using the provided random number generator.
+ * Returns null if the set is empty.
+ */
+export function sampleChar(set: CharSet, randomInt: (max: number) => number): string | null {
+  const totalSize = size(set)
+  if (totalSize === 0) return null
+  
+  let targetIndex = randomInt(totalSize)
+  return sampleCharAux(set, targetIndex)
+}
+
+function sampleCharAux(set: CharSet, targetIndex: number): string | null {
+  if (set.type === 'empty') {
+    return null
+  }
+  
+  const rangeSize = Range.size(set.range)
+  if (targetIndex < rangeSize) {
+    // Target is in this range
+    const codePoint = set.range.start + targetIndex
+    return String.fromCodePoint(codePoint)
+  }
+  
+  // Target is in left or right subtree
+  targetIndex -= rangeSize
+  const leftSize = size(set.left)
+  
+  if (targetIndex < leftSize) {
+    return sampleCharAux(set.left, targetIndex)
+  } else {
+    return sampleCharAux(set.right, targetIndex - leftSize)
+  }
+}
+
 ////////////////////////////////////////////////////////////
 //////////////// Specific Character Classes //////////////// 
 ////////////////////////////////////////////////////////////

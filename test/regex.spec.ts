@@ -101,6 +101,144 @@ describe('enumerate', () => {
 
 })
 
+describe('sample', () => {
+
+  it('output strings match the input regex', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        fc.integer({ min: 0, max: 1000 }),
+        (inputRegex, seed) => {
+          const regexp = RE.toRegExp(inputRegex)
+          const samples = RE.sample(inputRegex, seed)
+
+          // Test first 50 samples
+          let count = 0
+          for (const sample of samples) {
+            if (count >= 50) break
+            assert.match(sample, regexp)
+            count++
+          }
+        }
+      ),
+    )
+  })
+
+  it('is deterministic with same seed', () => {
+    const regex = RE.string('test')
+    const samples1 = []
+    const samples2 = []
+    
+    const generator1 = RE.sample(regex, 42)
+    const generator2 = RE.sample(regex, 42)
+    
+    for (let i = 0; i < 10; i++) {
+      samples1.push(generator1.next().value)
+      samples2.push(generator2.next().value)
+    }
+    
+    assert.deepEqual(samples1, samples2)
+  })
+
+  it('produces different results with different seeds', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        (inputRegex) => {
+          // Only test regexes that have multiple possible matches
+          fc.pre(!RE.isEmpty(inputRegex))
+          
+          const samples1: string[] = []
+          const samples2: string[] = []
+          
+          const generator1 = RE.sample(inputRegex, 42)
+          const generator2 = RE.sample(inputRegex, 123)
+          
+          for (let i = 0; i < 20; i++) {
+            samples1.push(generator1.next().value)
+            samples2.push(generator2.next().value)
+          }
+          
+          // With different seeds, we should get some different samples
+          // (this might occasionally fail for very simple regexes, but should be rare)
+          const identical = samples1.every((sample, i) => sample === samples2[i])
+          
+          // Only assert if the regex has enough variation to produce different samples
+          if (RE.size(inputRegex) === undefined || (RE.size(inputRegex) && RE.size(inputRegex)! > 1n)) {
+            // For regexes with multiple matches, we expect some variation
+            // We allow some identical samples but not all
+            const identicalCount = samples1.filter((sample, i) => sample === samples2[i]).length
+            assert(identicalCount < samples1.length, 'All samples are identical despite different seeds')
+          }
+        }
+      ),
+    )
+  })
+
+  it('handles simple literal regex', () => {
+    const regex = RE.singleChar('a')
+    const samples = RE.sample(regex, 42)
+    
+    for (let i = 0; i < 10; i++) {
+      assert.equal(samples.next().value, 'a')
+    }
+  })
+
+  it('handles epsilon regex', () => {
+    const regex = RE.epsilon
+    const samples = RE.sample(regex, 42)
+    
+    for (let i = 0; i < 10; i++) {
+      assert.equal(samples.next().value, '')
+    }
+  })
+
+  it('handles concat regex', () => {
+    const regex = RE.concat(RE.singleChar('a'), RE.singleChar('b'))
+    const samples = RE.sample(regex, 42)
+    
+    for (let i = 0; i < 10; i++) {
+      assert.equal(samples.next().value, 'ab')
+    }
+  })
+
+  it('handles union regex', () => {
+    const regex = RE.union(RE.singleChar('a'), RE.singleChar('b'))
+    const samples = RE.sample(regex, 42)
+    const results = new Set()
+    
+    for (let i = 0; i < 50; i++) {
+      const sample = samples.next().value
+      results.add(sample)
+      assert(sample === 'a' || sample === 'b')
+    }
+    
+    // With 50 samples, we should see both 'a' and 'b'
+    assert(results.has('a') && results.has('b'))
+  })
+
+  it('handles star regex with reasonable length distribution', () => {
+    const regex = RE.star(RE.singleChar('a'))
+    const samples = RE.sample(regex, 42)
+    const lengths = []
+    
+    for (let i = 0; i < 100; i++) {
+      const sample = samples.next().value
+      assert.match(sample, /^a*$/)
+      lengths.push(sample.length)
+    }
+    
+    // Should include empty string and various lengths, but biased towards shorter strings
+    assert(lengths.includes(0), 'Should include empty string')
+    assert(lengths.some(len => len > 0), 'Should include non-empty strings')
+    
+    // Average length should be reasonable (not too long)
+    const avgLength = lengths.reduce((sum, len) => sum + len, 0) / lengths.length
+    assert(avgLength < 5, `Average length should be reasonable, got ${avgLength}`)
+  })
+
+})
+
 describe('size', () => {
 
   it('returns 1 for ∅ *', () => {

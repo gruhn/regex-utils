@@ -3,6 +3,7 @@ import * as CharSet from './char-set'
 import * as Stream from './stream'
 import * as Table from './table'
 import * as AST from './ast'
+import { PRNG } from './prng'
 
 /**
  * TODO
@@ -801,6 +802,95 @@ function enumerateMemoizedAux(
         )
       )
   }
+}
+
+/**
+ * Generates random strings that match the given regex using a deterministic seed.
+ * Unlike enumerate(), this produces a stream of random samples rather than
+ * a fair enumeration of all possible matches.
+ * 
+ * @param re - The regex to sample from
+ * @param seed - Deterministic seed for random generation (default: 42)
+ * @param maxDepth - Maximum recursion depth to prevent infinite loops (default: 100)
+ * @returns Generator yielding random matching strings
+ * 
+ * @public
+ */
+export function* sample(re: StdRegex, seed: number = 42, maxDepth: number = 100): Generator<string> {
+  const rng = new PRNG(seed)
+  
+  while (true) {
+    try {
+      const result = sampleAux(re, rng, maxDepth)
+      if (result !== null) {
+        yield result
+      }
+    } catch {
+      // If we hit max depth or other issues, skip this sample
+      continue
+    }
+  }
+}
+
+function sampleAux(regex: StdRegex, rng: PRNG, maxDepth: number): string | null {
+  if (maxDepth <= 0) {
+    throw new Error('Max depth exceeded')
+  }
+
+  switch (regex.type) {
+    case 'epsilon':
+      return ''
+    
+    case 'literal': {
+      return CharSet.sampleChar(regex.charset, (max) => rng.nextInt(max))
+    }
+    
+    case 'concat': {
+      const leftSample = sampleAux(regex.left, rng, maxDepth - 1)
+      const rightSample = sampleAux(regex.right, rng, maxDepth - 1)
+      if (leftSample === null || rightSample === null) return null
+      return leftSample + rightSample
+    }
+    
+    case 'union': {
+      // Randomly choose left or right branch
+      const chooseLeft = rng.next() < 0.5
+      if (chooseLeft) {
+        return sampleAux(regex.left, rng, maxDepth - 1)
+      } else {
+        return sampleAux(regex.right, rng, maxDepth - 1)
+      }
+    }
+    
+    case 'star': {
+      // For star, randomly decide how many repetitions (bias towards shorter strings)
+      // Start with empty string (star always matches empty string)
+      let result = ''
+      let iterations = 0
+      const maxIterations = Math.min(10, maxDepth) // Limit iterations
+      
+      while (iterations < maxIterations) {
+        // Exponentially decreasing probability of continuing
+        // Start with higher probability for first iteration, then decrease
+        const continueProbability = iterations === 0 ? 0.6 : Math.pow(0.5, iterations)
+        if (rng.next() > continueProbability) {
+          break
+        } else {
+          const innerSample = sampleAux(regex.inner, rng, maxDepth - 1)
+          if (innerSample === null) {
+            break
+          } else {
+            result += innerSample
+            iterations++
+          }
+        }
+      }
+      
+      return result
+    }
+  }
+  
+  checkedAllCases(regex)
 }
 
 /**

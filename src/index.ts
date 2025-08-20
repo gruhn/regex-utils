@@ -305,6 +305,32 @@ class RegexBuilder {
   }
 
   /**
+   * Generates random strings that match the regex using a deterministic seed.
+   * Unlike enumerate(), this produces a stream of random samples rather than
+   * a fair enumeration of all possible matches. This is more useful for generating
+   * representative examples without unusual characters like "\u0000".
+   * 
+   * @example
+   * ```typescript
+   * const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
+   * 
+   * // Generate 10 random email examples with seed 42
+   * for (const sample of RB(emailRegex).sample(42).take(10)) {
+   *   console.log(sample)
+   * }
+   * ```
+   * 
+   * @param seed - Deterministic seed for random generation (default: 42)
+   * @param maxDepth - Maximum recursion depth to prevent infinite loops (default: 100)
+   * @returns Generator yielding random matching strings
+   * 
+   * @public
+   */
+  sample(seed: number = 42, maxDepth: number = 100) {
+    return RE.sample(this.getStdRegex(), seed, maxDepth)
+  }
+
+  /**
    * Converts back to a native JavaScript `RegExp`. 
    * 
    * @warning
