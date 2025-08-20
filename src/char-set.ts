@@ -317,8 +317,28 @@ export function toString(set: CharSet): string {
 }
 
 export function enumerate(set: CharSet): Stream.Stream<string> {
+  // If we enumerate the set in "unicode order" then we only get
+  // chars like "\u0000", "\u0001" for a while. We prefer to enumerate
+  // more common characters first, since users will usually only 
+  // look at the first few items in the enumeration.
+  const lowerChars = charRange('a', 'z')
+  const upperChars = charRange('A', 'Z')
+  const numChars = charRange('0', '9')
+
+  // The input set minus the "common characters ranges":
+  const restChars = [lowerChars, upperChars, numChars].reduce(
+    (acc, item) => difference(acc, item), set
+  )
+
+  const rangesWithBiasedOrder = [
+    ...getRanges(intersection(lowerChars, set)),
+    ...getRanges(intersection(upperChars, set)),
+    ...getRanges(intersection(numChars, set)),
+    ...getRanges(restChars),
+  ]
+
   return Stream.concat(Stream.fromArray(
-    [...getRanges(set)].map(
+    rangesWithBiasedOrder.map(
       range => Stream.map(
         codePoint => String.fromCodePoint(codePoint),
         Stream.range(range.start, range.end)
