@@ -398,6 +398,40 @@
       const counterexamples2 = document.getElementById('counterexamples2');
       const anchorInfoBanner = document.getElementById('anchor-info-banner');
 
+      // Load initial values from URL parameters
+      function loadFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const regex1 = urlParams.get('regexp1');
+        const regex2 = urlParams.get('regexp2');
+        
+        if (regex1) regex1Input.value = regex1;
+        if (regex2) regex2Input.value = regex2;
+        
+        // Auto-check equivalence if both parameters are present
+        if (regex1 && regex2) {
+          setTimeout(checkEquivalence, 100);
+        }
+      }
+
+      // Update URL parameters when inputs change
+      function updateURL() {
+        const urlParams = new URLSearchParams();
+        const regex1 = regex1Input.value.trim();
+        const regex2 = regex2Input.value.trim();
+        
+        if (regex1) urlParams.set('regexp1', regex1);
+        if (regex2) urlParams.set('regexp2', regex2);
+        
+        const newURL = urlParams.toString() ? 
+          `${window.location.pathname}?${urlParams.toString()}` : 
+          window.location.pathname;
+        
+        window.history.replaceState(null, '', newURL);
+      }
+
+      // Load initial values
+      loadFromURL();
+
       function clearResults() {
         resultDiv.style.display = 'none';
         resultDiv.className = 'result';
@@ -417,12 +451,14 @@
         return true;
       }
 
-      // clear results on new input:
+      // clear results on new input and update URL:
       regex1Input.addEventListener('input', () => {
         clearResults()
+        updateURL()
       })
       regex2Input.addEventListener('input', () => {
         clearResults()
+        updateURL()
       })
 
       function checkEquivalence() {
@@ -493,13 +529,13 @@
           }
         } catch (error) {
           if (error instanceof SyntaxError) {
-            showResult(`❌ Invalid regex syntax: ${error.message}<br>Please check that your regular expressions use valid JavaScript regex syntax.`, 'error');
+            showResult(`❌ Invalid regex syntax: ${encode(error.message)}<br>Please check that your regular expressions use valid JavaScript regex syntax.`, 'error');
           } else if (error instanceof ParseError) {
-            showResult(`🚧 Unsupported regex syntax: The syntax is valid but not yet supported by the tool.<br/><br/>${error.message}`, 'error');
+            showResult(`🚧 Unsupported regex syntax: The syntax is valid but not yet supported by the tool.<br/><br/>${encode(error.message)}`, 'error');
           } else if (error instanceof VeryLargeSyntaxTreeError || error instanceof CacheOverflowError) {
             showResult(`☠️ Excessive resource use detected: This example might be computationally hard.`, 'error');
           } else {
-            showResult(`❌ Unexpected error: ${error.message}`, 'error');
+            showResult(`❌ Unexpected error: ${encode(error.message)}`, 'error');
           }
         }
       };
