@@ -43,7 +43,6 @@
       margin: 10px 0px 5px 0px;
     }
 
-
     .input-container {
       display: flex;
       gap: 20px;
@@ -96,7 +95,8 @@
     }
 
     ul {
-      list-style-position: inside;
+      list-style-position: outside;
+      padding-left: 20px;
     }
 
     @media (max-width: 768px) {
@@ -177,11 +177,15 @@
 
     .result code {
       background: #e9ecef;
-      padding: 2px 6px;
+      padding: 4px 6px;
       border-radius: 3px;
       font-family: 'Courier New', monospace;
-      margin: 2px;
-      display: inline-block;
+      display: inline;
+      word-break: break-all;
+    }
+
+    .result li {
+      margin: 10px 0px;
     }
 
     .result.error {
