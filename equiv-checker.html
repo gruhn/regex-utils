@@ -446,15 +446,6 @@
         anchorInfoBanner.style.display = 'none';
       }
 
-      function assertMatchRegex(regex, strings) {
-        for (const str of strings) {
-          if (!regex.test(str)) {
-            return false;
-          }
-        }
-        return true;
-      }
-
       // clear results on new input and update URL:
       regex1Input.addEventListener('input', () => {
         clearResults()
@@ -509,22 +500,23 @@
           } else if (diffABEmpty && !diffBAEmpty) {
             // A is subset of B: no strings in A that aren't in B
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            const hasValidationIssue = !assertMatchRegex(regexB, stringsMatchingBButNotA);
+            const hasValidationIssue = !stringsMatchingBButNotA.every(str => regexB.test(str) && !regexA.test(str));
             const examples = stringsMatchingBButNotA.length > 0 ? {regex2Only: stringsMatchingBButNotA} : null;
             showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples, hasValidationIssue);
           } else if (!diffABEmpty && diffBAEmpty) {
             // B is subset of A: no strings in B that aren't in A
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            const hasValidationIssue = !assertMatchRegex(regexA, stringsMatchingAButNotB);
+            const hasValidationIssue = !stringsMatchingAButNotB.every(str => regexA.test(str) && !regexB.test(str));
             const examples = stringsMatchingAButNotB.length > 0 ? {regex1Only: stringsMatchingAButNotB} : null;
             showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples, hasValidationIssue);
           } else {
             // Neither subset nor equivalent: both differences are non-empty
             const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            const hasValidationIssue1 = !assertMatchRegex(regexA, stringsMatchingAButNotB);
             const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            const hasValidationIssue2 = !assertMatchRegex(regexB, stringsMatchingBButNotA);
-            const hasValidationIssue = hasValidationIssue1 || hasValidationIssue2;
+            const hasValidationIssue = !(
+              stringsMatchingAButNotB.every(str => regexA.test(str) && !regexB.test(str)) &&
+              stringsMatchingBButNotA.every(str => regexB.test(str) && !regexA.test(str))
+            );           
             const examples = {
               regex1Only: stringsMatchingAButNotB.length > 0 ? stringsMatchingAButNotB : null,
               regex2Only: stringsMatchingBButNotA.length > 0 ? stringsMatchingBButNotA : null
@@ -585,7 +577,7 @@
         
         // Add warning banner if there's a validation issue
         if (hasValidationIssue) {
-          html += '<div class="mismatch-warning">Something went wrong. The presented example strings don\'t match the regex as claimed. Please create bug ticket on GitHub.</div>';
+          html += '<div class="mismatch-warning">Something went wrong. The presented example strings don\'t match the regex as claimed. Please file an issue on GitHub with your input regex.</div>';
         }
         
         html += message;
