@@ -1,0 +1,118 @@
+import { describe, it } from "node:test"
+import { strict as assert } from "node:assert"
+import * as RE from "../src/regex"
+import * as AST from "../src/ast"
+import { parseRegExp } from "../src/regex-parser"
+
+describe('toExtRegex', () => {
+
+  const dotStar = RE.star(RE.anySingleChar)
+
+  function infix(regex: RE.ExtRegex) {
+    return RE.seq([ dotStar, regex, dotStar ])
+  }
+
+  function prefix(regex: RE.ExtRegex) {
+    return RE.concat(regex, dotStar)
+  }
+
+  function suffix(regex: RE.ExtRegex) {
+    return RE.concat(dotStar, regex)
+  }
+
+  describe('union with empty members', () => {
+    const testCases = [
+      [/^(|a)$/, RE.optional(RE.singleChar('a'))],
+      [/^(a||)$/, RE.optional(RE.singleChar('a'), )],
+      [/^(|a|)$/, RE.optional(RE.singleChar('a'))],
+      [/^(|)$/, RE.epsilon],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = AST.toExtRegex(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash)
+      })
+    }
+  })
+
+  describe('start anchor elimination', () => {
+    const testCases = [
+      [/^abc/, RE.seq([RE.string('abc'), dotStar])],
+      // start marker contradictions can only match empty set:
+      [/a^b/, RE.empty],
+      [/^a^b/, RE.empty],
+      // but two ^^ directly in a row are not a contradiction:
+      [/(^^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
+      // in fact, as long as anything between two ^ can match epsilon, 
+      // there is no contradiction:
+      [/(^(c|)^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
+      [/(^c*^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
+      // Also, contradiction inside a union does NOT collapse
+      // the whole expression to empty set:
+      [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
+      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
+      // Contradictory regex describes empty set:
+      [/$.^/, RE.empty],
+
+      [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
+      [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
+
+      [/(^)+a$/, RE.singleChar('a') ],
+      [/(^)*a$/, RE.concat(dotStar, RE.singleChar('a')) ],
+      [/(b|^)a$/, RE.union(RE.concat(dotStar, RE.string('ba')), RE.singleChar('a'))],
+      [/a(^)/, RE.empty],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = AST.toExtRegex(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual))
+      })
+    }
+
+    it('fixme 2', { todo: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/(^|a)b/))
+      const expected = RE.concat(RE.optional(RE.concat(dotStar, RE.singleChar('a'))), RE.singleChar('b'))
+      console.debug(RE.debugShow(actual))
+      assert.equal(actual.hash, expected.hash) 
+    })
+
+    it('fixme 3', { only: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/(^)+a$/))
+      console.debug(RE.debugShow(actual))
+    })
+
+  })
+
+  describe('lookahead elimination', () => {
+    const testCases = [
+      // positive lookahead:
+      [/^(?=a)a$/, RE.string('a')],
+      [/^a(?=b)b$/, RE.string('ab')],
+      [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
+      [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
+      // negative lookahead:
+      [/^a(?!b)c$/, RE.concat(RE.string('a'), RE.intersection(RE.complement(RE.string('b')), RE.string('c')))],
+      // TODO: lookahead + lookbehind
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')], 
+      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
+      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+    ] as const
+
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = AST.toExtRegex(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
+      })
+    }
+
+    it('fixme', { todo: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/^(a(?!b))*$/))
+      const expected = RE.star(RE.string('a'))
+      assert.equal(actual.hash, expected.hash) 
+    })
+
+  })
+  
+})

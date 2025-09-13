@@ -66,11 +66,11 @@ describe('parseRegExp', () => {
     [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
     [/(?<___>abc)/, group(str('abc'), '___')],
     // start/end marker
-    [/^abc/, AST.startMarker(undefined, str('abc'))],
-    [/a^b/, AST.startMarker(char('a'), str('b'))],
-    [/^a|^b/, AST.union(AST.startMarker(undefined, str('a')), AST.startMarker(undefined, char('b')))],
-    [/^abc$/, AST.startMarker(undefined, AST.endMarker(str('abc'), undefined))],
-    [/$a^/, AST.startMarker(AST.endMarker(undefined, char('a')), undefined)],
+    [/^abc/, AST.startAnchor(undefined, str('abc'))],
+    [/a^b/, AST.startAnchor(char('a'), str('b'))],
+    [/^a|^b/, AST.union(AST.startAnchor(undefined, str('a')), AST.startAnchor(undefined, char('b')))],
+    [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
+    [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
     // positive lookahead - now parsed as lookahead AST nodes, not intersections
     [/(?=a)b/, AST.positiveLookahead(char('a'), char('b'))], 
     [/(?=a)(?:b)/, AST.positiveLookahead(char('a'), char('b'))], 
@@ -134,6 +134,26 @@ describe('parseRegExp', () => {
 
 })
 
+// test('...', () => {
+//   // const re = /(?:(?<null>a)|a$a)(?:^|a)a/
+//   // const re = /(?:(?<null>)(?:a|a)|^)(?:a|a+)/
+//   // const re = /(b|^)(a+)/
+//   // const re = /(?:a|||)(?:a|a)?(?:a)+(?:^)(?<null>)/
+//   const re = /a(^)/
+//   const ast = parseRegExp(re)
+//   const ast2 = addImplicitStartMarker(ast)
+//   console.debug(AST.toString(ast, { useNonCapturingGroups: false }))
+//   console.debug(AST.toString(ast2, { useNonCapturingGroups: false }))
+
+//   const builder = RB(re)
+//   const outputRegExp = builder.toRegExp()
+
+//   for (const str of builder.enumerate().take(10)) {
+//     assert.match(str, outputRegExp)
+//     assert.match(str, re)
+//   }
+// })
+
 test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
   fc.assert(
     fc.property(
@@ -149,9 +169,12 @@ test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
-      }
+      },
     ),
-    { seed: -1651123632, path: "89:0", endOnFailure: true }
+    // FIXME:
+    // { seed: 611050519, path: "2:0:0:0:0:0", endOnFailure: true }
+    // FIXME:
+    // { seed: -1651123632, path: "89:0", endOnFailure: true }
   )
 })
 
