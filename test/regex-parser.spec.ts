@@ -134,36 +134,15 @@ describe('parseRegExp', () => {
 
 })
 
-// test('...', () => {
-//   // const re = /(?:(?<null>a)|a$a)(?:^|a)a/
-//   // const re = /(?:(?<null>)(?:a|a)|^)(?:a|a+)/
-//   // const re = /(b|^)(a+)/
-//   // const re = /(?:a|||)(?:a|a)?(?:a)+(?:^)(?<null>)/
-//   const re = /a(^)/
-//   const ast = parseRegExp(re)
-//   const ast2 = addImplicitStartMarker(ast)
-//   console.debug(AST.toString(ast, { useNonCapturingGroups: false }))
-//   console.debug(AST.toString(ast2, { useNonCapturingGroups: false }))
-
-//   const builder = RB(re)
-//   const outputRegExp = builder.toRegExp()
-
-//   for (const str of builder.enumerate().take(10)) {
-//     assert.match(str, outputRegExp)
-//     assert.match(str, re)
-//   }
-// })
-
-test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
+test('parse/stringify roundtrip preserves equivalence', () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),
-      (inputRegExp) => {
+      (inputRegExp: RegExp) => {
         const builder = RB(inputRegExp)
         const outputRegExp = builder.toRegExp()
 
-        // console.debug(inputRegExp)
-        // console.debug(outputRegExp)
+        console.debug(outputRegExp)
 
         for (const str of builder.enumerate().take(10)) {
           assert.match(str, outputRegExp)
@@ -171,10 +150,5 @@ test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
         }
       },
     ),
-    // FIXME:
-    // { seed: 611050519, path: "2:0:0:0:0:0", endOnFailure: true }
-    // FIXME:
-    // { seed: -1651123632, path: "89:0", endOnFailure: true }
   )
 })
-

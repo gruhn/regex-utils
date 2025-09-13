@@ -71,14 +71,14 @@ function negativeLookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbi
     .map(([inner, right]) => AST.negativeLookahead(inner, right))
 }
 
-function startMarker(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
+function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
   return fc.tuple(childArb(), childArb())
-    .map(([left, right]) => AST.startMarker(left, right))
+    .map(([left, right]) => AST.startAnchor(left, right))
 }
 
-function endMarker(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
+function endAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
   return fc.tuple(childArb(), childArb())
-    .map(([left, right]) => AST.endMarker(left, right))
+    .map(([left, right]) => AST.endAnchor(left, right))
 }
 
 /**
@@ -132,10 +132,10 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         return AST.positiveLookahead(traverse(node.inner), traverse(node.right))
       case 'negative-lookahead':
         return AST.negativeLookahead(traverse(node.inner), traverse(node.right))
-      case 'start-marker':
-        return AST.startMarker(traverse(node.left), traverse(node.right))
-      case 'end-marker':
-        return AST.endMarker(traverse(node.left), traverse(node.right))
+      case 'start-anchor':
+        return AST.startAnchor(traverse(node.left), traverse(node.right))
+      case 'end-anchor':
+        return AST.endAnchor(traverse(node.left), traverse(node.right))
       default:
         checkedAllCases(node)
     }
@@ -167,8 +167,8 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
       // { arbitrary: positiveLookahead(() => regexpAST_(childSize)), weight: 1 },
       // { arbitrary: negativeLookahead(() => regexpAST_(childSize)), weight: 1 },
-      { arbitrary: startMarker(() => regexpAST_(childSize)), weight: 1 },
-      // { arbitrary: endMarker(() => regexpAST_(childSize)), weight: 1 }
+      { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )
   }
 }

@@ -8,9 +8,9 @@ describe('toExtRegex', () => {
 
   const dotStar = RE.star(RE.anySingleChar)
 
-  function infix(regex: RE.ExtRegex) {
-    return RE.seq([ dotStar, regex, dotStar ])
-  }
+  // function infix(regex: RE.ExtRegex) {
+  //   return RE.seq([ dotStar, regex, dotStar ])
+  // }
 
   function prefix(regex: RE.ExtRegex) {
     return RE.concat(regex, dotStar)
@@ -57,32 +57,20 @@ describe('toExtRegex', () => {
 
       [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
       [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
+      [/(^|a)b/, prefix(RE.concat(RE.optional(suffix(RE.singleChar('a'))), RE.singleChar('b')))],
 
       [/(^)+a$/, RE.singleChar('a') ],
       [/(^)*a$/, RE.concat(dotStar, RE.singleChar('a')) ],
-      [/(b|^)a$/, RE.union(RE.concat(dotStar, RE.string('ba')), RE.singleChar('a'))],
+      [/(b|^)a$/, RE.concat(RE.optional(suffix(RE.singleChar('b'))), RE.singleChar('a'))],
       [/a(^)/, RE.empty],
     ] as const
 
     for (const [regexp, expected] of testCases) {
       it(`${regexp}`, () => {
         const actual = AST.toExtRegex(parseRegExp(regexp))
-        assert.equal(actual.hash, expected.hash, RE.debugShow(actual))
+        assert.equal(actual.hash, expected.hash)
       })
     }
-
-    it('fixme 2', { todo: true }, () => {
-      const actual = AST.toExtRegex(parseRegExp(/(^|a)b/))
-      const expected = RE.concat(RE.optional(RE.concat(dotStar, RE.singleChar('a'))), RE.singleChar('b'))
-      console.debug(RE.debugShow(actual))
-      assert.equal(actual.hash, expected.hash) 
-    })
-
-    it('fixme 3', { only: true }, () => {
-      const actual = AST.toExtRegex(parseRegExp(/(^)+a$/))
-      console.debug(RE.debugShow(actual))
-    })
-
   })
 
   describe('lookahead elimination', () => {

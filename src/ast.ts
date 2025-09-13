@@ -70,7 +70,7 @@ export const sugarNodeTypes = [
   'capture-group',
 ] as const
 
-export function desugar(ast: RegExpAST): RegExpAST {
+function desugar(ast: RegExpAST): RegExpAST {
   switch (ast.type) {
     case 'epsilon': return epsilon
     case 'literal': return literal(ast.charset)
@@ -161,7 +161,7 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
         return startAnchor(undefined, union(left.right, concat(dotStar, right))) // i.e. `^(l|.*r)`
       else if (right.type === 'start-anchor')
         // Expression has the form `(l|^r)`:
-        return startAnchor(undefined, union(concat(dotStar, left), right)) // i.e. `^(.*l|r)`
+        return startAnchor(undefined, union(concat(dotStar, left), right.right)) // i.e. `^(.*l|r)`
       else
         // Expression has the form `(l|r)`:
         return union(left, right)
@@ -220,7 +220,7 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
         const left = pullUpStartAnchor(ast.left)
         if (left.type === 'start-anchor') 
           // Expression has the form `(^r)$`. We can just pull the start anchor to the top:
-          return startAnchor(undefined, endAnchor(left, undefined)) // i.e. `^(r$)`
+          return startAnchor(undefined, endAnchor(left.right, undefined)) // i.e. `^(r$)`
         else 
           // Expression has the form `r$` where `r` contain no start anchor:
           return endAnchor(left, undefined)
@@ -249,7 +249,7 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
 function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
   assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
   assert(ast.type !== 'start-anchor',  `Unexpected start anchor. Should already be eliminated.`)
-
+  
   switch (ast.type) {
     case "epsilon": return ast
     case "literal": return ast
@@ -286,17 +286,17 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
         return endAnchor(union(left.right, right.right), undefined) // i.e. `(l$|r$)`
       else if (left.type === 'end-anchor')
         // Expression has the form `(l$|r)`:
-        return endAnchor(undefined, union(left.right, concat(right, dotStar))) // i.e. `(l|r.*)$`
+        return endAnchor(union(left.right, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
       else if (right.type === 'end-anchor')
         // Expression has the form `(l|r$)`:
-        return endAnchor(undefined, union(concat(left, dotStar), right)) // i.e. `(l.*|r)$`
+        return endAnchor(union(concat(left, dotStar), right.left), undefined) // i.e. `(l.*|r)$`
       else
         // Expression has the form `(l|r)`:
         return union(left, right)
     }
     case "star": {
       const inner = pullUpEndAnchor(ast.inner)
-      if (inner.type === 'start-anchor') 
+      if (inner.type === 'end-anchor') 
         // Expression has the form `(r$)*`. We can expand the star to:
         //
         //     (r$)* == ε | (r$) | (r$)*(r$)
@@ -363,11 +363,8 @@ export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
   // First eliminate nodes like `plus`, `optional`, etc.
   ast = desugar(ast)
 
-  console.debug(debugShow(ast))
-
   // Then eliminate start anchors by first pulling them to the top:
   ast = pullUpStartAnchor(ast)
-  console.debug(debugShow(ast))
   if (ast.type === 'start-anchor') {
     // If the root node is indeed a start anchor now, then start anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
@@ -390,12 +387,13 @@ export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
     ast = concat(ast, dotStar)
   }
   
+  console.debug(debugShow(ast))
   return toExtRegexAux(ast)
 }
 function toExtRegexAux(ast: RegExpAST): RE.ExtRegex {
   assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
   assert(ast.type !== 'start-anchor',  `Unexpected start anchor. Should already be eliminated.`)
-  assert(ast.type !== 'end-anchor',  `Unexpected start anchor. Should already be eliminated.`)
+  assert(ast.type !== 'end-anchor',  `Unexpected end anchor. Should already be eliminated.`)
   switch (ast.type) {
     case 'epsilon': return RE.epsilon
     case 'literal': return RE.literal(ast.charset)
