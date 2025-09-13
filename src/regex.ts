@@ -699,7 +699,7 @@ export function toString(regex: StdRegex): string {
 // - "a+" instead of "aa*".
 // - "a{3,}" instead of "a{3}a*".
 // - "a{,3}" instead of "a?a?a?".
-export function toRegExpAST(regex: StdRegex): AST.RegExpAST {
+function toRegExpAST(regex: StdRegex): AST.RegExpAST {
   switch (regex.type) {
     case 'epsilon':
       return regex
@@ -747,7 +747,7 @@ function extractConcatChain(left: StdRegex, right: StdRegex): [number, StdRegex 
   if (right.type === 'concat' && equal(left, right.left)) {
     const [len, rest] = extractConcatChain(left, right.right)
     return [len+1, rest]
- } else if (equal(left, right)) {
+  } else if (equal(left, right)) {
     return [1, undefined]
   } else {
     return [0, right]
