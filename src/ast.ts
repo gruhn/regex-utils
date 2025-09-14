@@ -408,11 +408,9 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
 export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
   // First eliminate nodes like `plus`, `optional`, etc.
   ast = desugar(ast)
-  debugPrint(ast)
 
   // Then eliminate start anchors by first pulling them to the top:
   ast = pullUpStartAnchor(ast)
-  debugPrint(ast)
   if (ast.type === 'start-anchor') {
     // If the root node is indeed a start anchor now, then start anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:

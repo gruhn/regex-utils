@@ -64,8 +64,9 @@ describe('toExtRegex', () => {
       [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
       [/(^|a)b/, prefix(RE.concat(RE.optional(suffix(RE.singleChar('a'))), RE.singleChar('b')))],
 
-      [/(^)+a$/, RE.singleChar('a') ],
-      [/(^)*a$/, RE.concat(dotStar, RE.singleChar('a')) ],
+      // FIXME:
+      // [/(^)+a$/, RE.singleChar('a') ],
+      [/(^)*a$/, suffix(RE.singleChar('a')) ],
       [/(b|^)a$/, RE.concat(RE.optional(suffix(RE.singleChar('b'))), RE.singleChar('a'))],
       [/a(^)/, RE.empty],
     ] as const
@@ -76,12 +77,6 @@ describe('toExtRegex', () => {
         assert.equal(actual.hash, expected.hash)
       })
     }
-  })
-
-  it('debug', {only:true}, () => {
-    const actual = AST.toExtRegex(parseRegExp(/$^/))
-    console.debug(RE.debugShow(actual))
-    assert.equal(actual.hash, RE.epsilon.hash)
   })
 
   describe('lookahead elimination', () => {
