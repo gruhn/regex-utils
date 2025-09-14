@@ -142,13 +142,27 @@ test('parse/stringify roundtrip preserves equivalence', () => {
         const builder = RB(inputRegExp)
         const outputRegExp = builder.toRegExp()
 
-        console.debug(outputRegExp)
-
-        for (const str of builder.enumerate().take(10)) {
+        for (const str of builder.enumerate().take(100)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
       },
     ),
+    // { numRuns: 1000 }
+    { seed: -23004762, path: "185:1:1:1:1:1", endOnFailure: true }
   )
+})
+
+test('debug 1', { only: true }, () => {
+  // const inputRegExp = /(($){1,2}^)(a$(a^a)*)/
+  const inputRegExp = /$^/
+  const builder = RB(inputRegExp)
+  const outputRegExp = builder.toRegExp()
+
+  console.debug(outputRegExp)
+
+  for (const str of builder.enumerate().take(10)) {
+    assert.match(str, outputRegExp)
+    assert.match(str, inputRegExp)
+  }
 })

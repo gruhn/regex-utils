@@ -196,34 +196,50 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
         return star(inner)
     }
     case "start-anchor": {
-      if (!isNullable(ast.left)) {
+      const left = pullUpEndAnchor(ast.left)
+      const right = pullUpStartAnchor(ast.right)
+
+      if (!isNullable(left)) {
         // Expression has the form `l^r` where `l` is not nullable. Thus, the whole
         // expression collapses to the empty set:
         return empty
+      } else if (left.type === 'end-anchor') {
+        // Expression has the form `(l$)^r`. This can (at most) match epsilon,
+        // if `r` is also nullable. Otherwise, this can't match anything:
+        if (isNullable(right))
+          return startAnchor(undefined, endAnchor(epsilon, undefined)) // i.e. `^$`
+        else
+          return empty
+      } else if (right.type === 'start-anchor') {
+        // Expression has the form `^(^r)`. Multiple start anchor don't introduce
+        // a contradiction as long as there is nothing between them:
+        return right // i.e. `^r`
       } else {
-        const right = pullUpStartAnchor(ast.right)
-        if (right.type === 'start-anchor') 
-          // Expression has the form `^(^r)`. Multiple start anchor don't introduce
-          // a contradiction as long as there is nothing between them:
-          return right // i.e. `^r`
-        else 
-          // Expression has the form `^r` where `r` contain no start anchor:
-          return startAnchor(undefined, right) // i.e. `^r`
+        // Expression has the form `^r` where `r` contain no start anchor:
+        return startAnchor(undefined, right) // i.e. `^r`
       }
     }
     case "end-anchor": {
+      const left = pullUpStartAnchor(ast.left)
+      const right = pullUpStartAnchor(ast.right)
+
       if (!isNullable(ast.right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
         // expression collapses to the empty set:
         return empty
+      } else if (right.type === 'start-anchor') {
+        // Expression has the form `l$(^r)`. This can (at most) match epsilon,
+        // if both `l` is also nullable:
+        if (isNullable(left))
+          return startAnchor(undefined, endAnchor(epsilon, undefined)) // i.e `^$`
+        else
+          return empty
+      } else if (left.type === 'start-anchor') {
+        // Expression has the form `(^r)$`. We can just pull the start anchor to the top:
+        return startAnchor(undefined, endAnchor(left.right, undefined)) // i.e. `^(r$)`
       } else {
-        const left = pullUpStartAnchor(ast.left)
-        if (left.type === 'start-anchor') 
-          // Expression has the form `(^r)$`. We can just pull the start anchor to the top:
-          return startAnchor(undefined, endAnchor(left.right, undefined)) // i.e. `^(r$)`
-        else 
-          // Expression has the form `r$` where `r` contain no start anchor:
-          return endAnchor(left, undefined)
+        // Expression has the form `r$` where `r` contain no start anchor:
+        return endAnchor(left, undefined)
       }
     }
     case "positive-lookahead": {
@@ -248,7 +264,6 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
 
 function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
   assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
-  assert(ast.type !== 'start-anchor',  `Unexpected start anchor. Should already be eliminated.`)
   
   switch (ast.type) {
     case "epsilon": return ast
@@ -283,10 +298,10 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
       const right = pullUpEndAnchor(ast.right)
       if (left.type === 'end-anchor' && right.type === 'end-anchor') 
         // Expression has the form `(l$|r$)`:
-        return endAnchor(union(left.right, right.right), undefined) // i.e. `(l$|r$)`
+        return endAnchor(union(left.left, right.left), undefined) // i.e. `(l$|r$)`
       else if (left.type === 'end-anchor')
         // Expression has the form `(l$|r)`:
-        return endAnchor(union(left.right, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
+        return endAnchor(union(left.left, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
       else if (right.type === 'end-anchor')
         // Expression has the form `(l|r$)`:
         return endAnchor(union(concat(left, dotStar), right.left), undefined) // i.e. `(l.*|r)$`
@@ -297,46 +312,77 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
     case "star": {
       const inner = pullUpEndAnchor(ast.inner)
       if (inner.type === 'end-anchor') 
-        // Expression has the form `(r$)*`. We can expand the star to:
+        // Expression has the form `(l$)*`. We can expand the star to:
         //
-        //     (r$)* == ε | (r$) | (r$)*(r$)
+        //     (l$)* == ε | (l$) | (l$)*(l$)
         // 
-        // It turns out that the case `(r$)*(r$)` can be eliminated.
-        // If `r` is nullable then the `(r$)` on the right can only match epsilon, so:
+        // It turns out that the case `(l$)*(l$)` can be eliminated.
+        // If `l` is nullable then the `(l$)` on the right can only match epsilon, so:
         //
-        //        (r$)*(r$) == (r$)*
+        //        (l$)*(l$) == (l$)*
         // 
-        //    ==> (r$)* == ε | (r$) | (r$)* == ε | (r$)
+        //    ==> (l$)* == ε | (l$) | (l$)* == ε | (l$)
         //
-        // Otherwise, `r` is not nullable and the expression collapses to the empty set:
+        // Otherwise, `l` is not nullable and the expression collapses to the empty set:
         // 
-        //        (r$)*(r$) == ∅
+        //        (l$)*(l$) == ∅
         // 
-        //    ==> (r$)* == ε | (r$) | ∅  == ε | (r$)
+        //    ==> (l$)* == ε | (l$) | ∅  == ε | (l$)
         // 
         // Either way, we have:
         // 
-        //     (r$)* == ε | (r$) == (.*|r)$ == .*$
+        //     (l$)* == ε | (l$) == (.*|l)$ == .*$
         // 
         return endAnchor(dotStar, undefined)
       else
-        // Expression has the form `r*` so no end anchor to deal with:
+        // Expression has the form `l*` so no end anchor to deal with:
         return star(inner)
     }
+    case "start-anchor": {
+      const left = pullUpEndAnchor(ast.left)
+      const right = pullUpEndAnchor(ast.right)
+
+      if (!isNullable(left)) {
+        // Expression has the form `l^r` where `r` is not nullable. Thus, the whole
+        // expression collapses to the empty set:
+        return empty
+      } else if (left.type === 'end-anchor') {
+        // Expression has the form `(l$)^r`. This can (at most) match epsilon,
+        // if `r` is also nullable:
+        if (isNullable(right))
+          return endAnchor(startAnchor(undefined, epsilon), undefined) // i.e `^$`
+        else
+          return empty
+      } else if (right.type === 'end-anchor') {
+        // Expression has the form `^(r$)`. We can just pull the end anchor to the top:
+        return endAnchor(startAnchor(undefined, right.left), undefined) // i.e. `(^r)$`
+      } else {
+        // Expression has the form `^r` where `r` contain no end anchor:
+        return startAnchor(undefined, right)
+      }
+    }
     case "end-anchor": {
-      if (!isNullable(ast.right)) {
+      const left = pullUpEndAnchor(ast.left)
+      const right = pullUpStartAnchor(ast.right)
+
+      if (!isNullable(right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
         // expression collapses to the empty set:
         return empty
+      } else if (right.type === 'start-anchor') {
+        // Expression has the form `l$(^r)`. This can (at most) match epsilon,
+        // if `l` is also nullable. Otherwise, this can't match anything:
+        if (isNullable(left))
+          return endAnchor(startAnchor(undefined, epsilon), undefined) // i.e. `^$`
+        else
+          return empty
+      } else if (left.type === 'end-anchor') {
+        // Expression has the form `(l$)$`. Multiple end anchor don't introduce
+        // a contradiction as long as there is nothing between them:
+        return left // i.e. `l$`
       } else {
-        const left = pullUpEndAnchor(ast.left)
-        if (left.type === 'end-anchor') 
-          // Expression has the form `(r$)$`. Multiple end anchor don't introduce
-          // a contradiction as long as there is nothing between them:
-          return left // i.e. `r$`
-        else 
-          // Expression has the form `r$` where `r` contain no end anchor:
-          return endAnchor(left, undefined) // i.e. `r$`
+        // Expression has the form `l$` where `l` contain no end anchor:
+        return endAnchor(left, undefined) // i.e. `l$`
       }
     }
     case "positive-lookahead": {
@@ -362,9 +408,11 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
 export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
   // First eliminate nodes like `plus`, `optional`, etc.
   ast = desugar(ast)
+  debugPrint(ast)
 
   // Then eliminate start anchors by first pulling them to the top:
   ast = pullUpStartAnchor(ast)
+  debugPrint(ast)
   if (ast.type === 'start-anchor') {
     // If the root node is indeed a start anchor now, then start anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
@@ -387,7 +435,6 @@ export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
     ast = concat(ast, dotStar)
   }
   
-  console.debug(debugShow(ast))
   return toExtRegexAux(ast)
 }
 function toExtRegexAux(ast: RegExpAST): RE.ExtRegex {
@@ -499,6 +546,9 @@ function captureGroupToString(name: string | undefined, inner: RegExpAST, option
     return `(?<${name}>${toString(inner, options)})`
 }
 
+export function debugPrint(ast: RegExpAST): unknown {
+  return console.debug(debugShow(ast))
+}
 export function debugShow(ast: RegExpAST): unknown {
   return JSON.stringify(debugShow_(ast), null, 2)
 }

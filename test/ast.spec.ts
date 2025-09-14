@@ -36,7 +36,7 @@ describe('toExtRegex', () => {
     }
   })
 
-  describe('start anchor elimination', () => {
+  describe('start/end anchor elimination', () => {
     const testCases = [
       [/^abc/, RE.seq([RE.string('abc'), dotStar])],
       // start marker contradictions can only match empty set:
@@ -52,8 +52,13 @@ describe('toExtRegex', () => {
       // the whole expression to empty set:
       [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
       [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
-      // Contradictory regex describes empty set:
+
+      // End anchor before start anchor is contradictory and describes empty set:
       [/$.^/, RE.empty],
+      // Can still match epsilon as long as there's nothing between end- and start anchor:
+      [/$^/, RE.epsilon],
+      // Nullable expressions on the left and right can be ignored:
+      [/(a?)$^(b*)/, RE.epsilon],
 
       [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
       [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
@@ -71,6 +76,12 @@ describe('toExtRegex', () => {
         assert.equal(actual.hash, expected.hash)
       })
     }
+  })
+
+  it('debug', {only:true}, () => {
+    const actual = AST.toExtRegex(parseRegExp(/$^/))
+    console.debug(RE.debugShow(actual))
+    assert.equal(actual.hash, RE.epsilon.hash)
   })
 
   describe('lookahead elimination', () => {
