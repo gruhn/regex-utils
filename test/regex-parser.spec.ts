@@ -66,11 +66,11 @@ describe('parseRegExp', () => {
     [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
     [/(?<___>abc)/, group(str('abc'), '___')],
     // start/end marker
-    [/^abc/, AST.startMarker(undefined, str('abc'))],
-    [/a^b/, AST.startMarker(char('a'), str('b'))],
-    [/^a|^b/, AST.union(AST.startMarker(undefined, str('a')), AST.startMarker(undefined, char('b')))],
-    [/^abc$/, AST.startMarker(undefined, AST.endMarker(str('abc'), undefined))],
-    [/$a^/, AST.startMarker(AST.endMarker(undefined, char('a')), undefined)],
+    [/^abc/, AST.startAnchor(undefined, str('abc'))],
+    [/a^b/, AST.startAnchor(char('a'), str('b'))],
+    [/^a|^b/, AST.union(AST.startAnchor(undefined, str('a')), AST.startAnchor(undefined, char('b')))],
+    [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
+    [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
     // positive lookahead - now parsed as lookahead AST nodes, not intersections
     [/(?=a)b/, AST.positiveLookahead(char('a'), char('b'))], 
     [/(?=a)(?:b)/, AST.positiveLookahead(char('a'), char('b'))], 
@@ -134,24 +134,33 @@ describe('parseRegExp', () => {
 
 })
 
-test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
+test('parse/stringify roundtrip preserves equivalence', {todo:true}, () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),
-      (inputRegExp) => {
+      (inputRegExp: RegExp) => {
         const builder = RB(inputRegExp)
         const outputRegExp = builder.toRegExp()
-
-        // console.debug(inputRegExp)
-        // console.debug(outputRegExp)
 
         for (const str of builder.enumerate().take(10)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
-      }
+      },
     ),
-    { seed: -1651123632, path: "89:0", endOnFailure: true }
+    // { numRuns: 1000 },
   )
 })
 
+test('fixme 1', { todo: true }, () => {
+  const inputRegExp = /(^)+a/
+  const builder = RB(inputRegExp)
+  const outputRegExp = builder.toRegExp()
+
+  // console.debug(outputRegExp)
+
+  for (const str of builder.enumerate().take(10)) {
+    assert.match(str, outputRegExp)
+    assert.match(str, inputRegExp)
+  }
+})

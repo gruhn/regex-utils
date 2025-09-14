@@ -187,6 +187,6 @@ export function sum(items: number[]) {
  * Type guard that checks if an unknown value is one of the elements in the provided array.
  * Returns true if the item is found in the array, with proper TypeScript type narrowing.
  */
-export function isOneOf<T>(item: unknown, array: T[]): item is T {
+export function isOneOf<T>(item: unknown, array: readonly T[]): item is T {
   return (array as unknown[]).includes(item)
 }

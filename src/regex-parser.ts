@@ -246,8 +246,8 @@ function regex(): P.Parser<AST.RegExpAST> {
       { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
       { type: 'infixRightOptional', op: lookAheadOp() },
-      { type: 'infixRightOptional', op: P.string('$').map(_ => AST.endMarker) },
-      { type: 'infixRightOptional', op: P.string('^').map(_ => AST.startMarker) },
+      { type: 'infixRightOptional', op: P.string('$').map(_ => AST.endAnchor) },
+      { type: 'infixRightOptional', op: P.string('^').map(_ => AST.startAnchor) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
     ]
   ))
