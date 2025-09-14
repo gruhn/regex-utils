@@ -1,5 +1,6 @@
 import fs from 'fs'
 import * as RE from '../src/regex'
+import * as AST from '../src/ast'
 import { UnsupportedSyntaxError, ParseError } from '../src/index'
 import { parseRegExp } from '../src/regex-parser'
 import { toStdRegex } from '../src/dfa.js'
@@ -16,7 +17,7 @@ const mults: number[] = []
 function run(inputRegExp: RegExp, index: number) {
   console.log('#' + index, inputRegExp)
 
-  const inputRegex = RE.fromRegExpAST(parseRegExp(inputRegExp))
+  const inputRegex = AST.toExtRegex(parseRegExp(inputRegExp))
   const outputRegex = toStdRegex(inputRegex)
   const outputRegExp = RE.toRegExp(outputRegex)
 

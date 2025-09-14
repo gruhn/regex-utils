@@ -77,6 +77,11 @@ describe('toExtRegex', () => {
         assert.equal(actual.hash, expected.hash)
       })
     }
+
+    it('fixme', {todo:true}, () => {
+      const re = /^(?!a)(?!.*a$)(?!.*a{2})a+$/
+      AST.toExtRegex(parseRegExp(re))     
+    })
   })
 
   describe('lookahead elimination', () => {

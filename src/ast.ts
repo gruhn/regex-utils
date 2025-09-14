@@ -1,5 +1,6 @@
 import * as CharSet from './char-set'
 import * as RE from './regex'
+import { UnsupportedSyntaxError } from './regex-parser'
 import { assert, checkedAllCases, isOneOf } from './utils'
 
 /**
@@ -243,16 +244,22 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "positive-lookahead": {
+      const inner = pullUpStartAnchor(ast.inner)
       const right = pullUpStartAnchor(ast.right)
-      if (right.type === 'start-anchor') {
+      if (inner.type === 'start-anchor') {
+        throw new UnsupportedSyntaxError('start anchors (^) inside lookaheads are not supported')
+      } else if (right.type === 'start-anchor') {
         return startAnchor(undefined, positiveLookahead(ast.inner, right.right))
       } else {
         return positiveLookahead(ast.inner, right)
       }
     }
     case "negative-lookahead": {
+      const inner = pullUpStartAnchor(ast.inner)
       const right = pullUpStartAnchor(ast.right)
-      if (right.type === 'start-anchor') {
+      if (inner.type === 'start-anchor') {
+        throw new UnsupportedSyntaxError('start anchors (^) inside lookaheads are not supported')
+      } else if (right.type === 'start-anchor') {
         return startAnchor(undefined, negativeLookahead(ast.inner, right.right))
       } else {
         return negativeLookahead(ast.inner, right)
@@ -386,16 +393,22 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "positive-lookahead": {
+      const inner = pullUpEndAnchor(ast.inner)
       const right = pullUpEndAnchor(ast.right)
-      if (right.type === 'end-anchor') {
+      if (inner.type === 'end-anchor') {
+        throw new UnsupportedSyntaxError('end anchors ($) inside lookaheads are not supported')
+      } else if (right.type === 'end-anchor') {
         return endAnchor(positiveLookahead(ast.inner, right.left), undefined)
       } else {
         return positiveLookahead(ast.inner, right)
       }
     }
     case "negative-lookahead": {
+      const inner = pullUpEndAnchor(ast.inner)
       const right = pullUpEndAnchor(ast.right)
-      if (right.type === 'end-anchor') {
+      if (inner.type === 'end-anchor') {
+        throw new UnsupportedSyntaxError('end anchors ($) inside lookaheads are not supported')
+      } else if (right.type === 'end-anchor') {
         return endAnchor(negativeLookahead(ast.inner, right.right), undefined)
       } else {
         return negativeLookahead(ast.inner, right)
