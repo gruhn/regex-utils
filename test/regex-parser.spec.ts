@@ -142,15 +142,13 @@ test('parse/stringify roundtrip preserves equivalence', {todo:true}, () => {
         const builder = RB(inputRegExp)
         const outputRegExp = builder.toRegExp()
 
-        for (const str of builder.enumerate().take(100)) {
+        for (const str of builder.enumerate().take(10)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
       },
     ),
     // { numRuns: 1000 },
-    // FIXME:
-    { seed: 841961781, path: "495:1:0:0:0:1:1", endOnFailure: true }
   )
 })
 

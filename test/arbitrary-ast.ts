@@ -165,8 +165,8 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: optional(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
-      // { arbitrary: positiveLookahead(() => regexpAST_(childSize)), weight: 1 },
-      // { arbitrary: negativeLookahead(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: positiveLookahead(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: negativeLookahead(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )
