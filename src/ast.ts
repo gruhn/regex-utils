@@ -23,8 +23,7 @@ export type RegExpAST =
   | { type: "optional", inner: RegExpAST }
   | { type: "repeat", inner: RegExpAST, bounds: RepeatBounds }
   | { type: "capture-group", name?: string, inner: RegExpAST }
-  | { type: "positive-lookahead", inner: RegExpAST, right: RegExpAST }
-  | { type: "negative-lookahead", inner: RegExpAST, right: RegExpAST }
+  | { type: "lookahead", isPositive: boolean, inner: RegExpAST, right: RegExpAST }
   | { type: "start-anchor", left: RegExpAST, right: RegExpAST }
   | { type: "end-anchor", left: RegExpAST, right: RegExpAST  }
 
@@ -56,8 +55,7 @@ function isNullable(ast: RegExpAST): boolean {
       }
     }
     case "capture-group": return isNullable(ast.inner)
-    case "positive-lookahead": return isNullable(ast.inner) && isNullable(ast.right)
-    case "negative-lookahead": return !isNullable(ast.inner) && isNullable(ast.right)
+    case "lookahead": return isNullable(ast.inner) && isNullable(ast.right)
     case "start-anchor": return isNullable(ast.left) && isNullable(ast.right)
     case "end-anchor": return isNullable(ast.left) && isNullable(ast.right)
   }
@@ -80,8 +78,7 @@ function desugar(ast: RegExpAST): RegExpAST {
     case 'star': return star(desugar(ast.inner))
     case 'start-anchor': return startAnchor(desugar(ast.left), desugar(ast.right))
     case 'end-anchor': return endAnchor(desugar(ast.left), desugar(ast.right))
-    case 'positive-lookahead': return positiveLookahead(desugar(ast.inner), desugar(ast.right))   
-    case 'negative-lookahead': return negativeLookahead(desugar(ast.inner), desugar(ast.right))   
+    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner), desugar(ast.right))   
     // sugar nodes:
     case 'capture-group': return desugar(ast.inner)
     case 'plus': {
@@ -243,26 +240,15 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
         return endAnchor(left, undefined)
       }
     }
-    case "positive-lookahead": {
+    case "lookahead": {
       const inner = pullUpStartAnchor(ast.inner)
       const right = pullUpStartAnchor(ast.right)
       if (inner.type === 'start-anchor') {
-        throw new UnsupportedSyntaxError('start anchors (^) inside lookaheads are not supported')
+        throw new UnsupportedSyntaxError('start anchors inside lookaheads like (?=^a) are not supported')
       } else if (right.type === 'start-anchor') {
-        return startAnchor(undefined, positiveLookahead(ast.inner, right.right))
+        return startAnchor(undefined, lookahead(ast.isPositive, ast.inner, right.right))
       } else {
-        return positiveLookahead(ast.inner, right)
-      }
-    }
-    case "negative-lookahead": {
-      const inner = pullUpStartAnchor(ast.inner)
-      const right = pullUpStartAnchor(ast.right)
-      if (inner.type === 'start-anchor') {
-        throw new UnsupportedSyntaxError('start anchors (^) inside lookaheads are not supported')
-      } else if (right.type === 'start-anchor') {
-        return startAnchor(undefined, negativeLookahead(ast.inner, right.right))
-      } else {
-        return negativeLookahead(ast.inner, right)
+        return lookahead(ast.isPositive, ast.inner, right)
       }
     }
   }
@@ -392,26 +378,15 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
         return endAnchor(left, undefined) // i.e. `l$`
       }
     }
-    case "positive-lookahead": {
+    case "lookahead": {
       const inner = pullUpEndAnchor(ast.inner)
       const right = pullUpEndAnchor(ast.right)
       if (inner.type === 'end-anchor') {
-        throw new UnsupportedSyntaxError('end anchors ($) inside lookaheads are not supported')
+        throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$) are not supported')
       } else if (right.type === 'end-anchor') {
-        return endAnchor(positiveLookahead(ast.inner, right.left), undefined)
+        return endAnchor(lookahead(ast.isPositive, ast.inner, right.left), undefined)
       } else {
-        return positiveLookahead(ast.inner, right)
-      }
-    }
-    case "negative-lookahead": {
-      const inner = pullUpEndAnchor(ast.inner)
-      const right = pullUpEndAnchor(ast.right)
-      if (inner.type === 'end-anchor') {
-        throw new UnsupportedSyntaxError('end anchors ($) inside lookaheads are not supported')
-      } else if (right.type === 'end-anchor') {
-        return endAnchor(negativeLookahead(ast.inner, right.right), undefined)
-      } else {
-        return negativeLookahead(ast.inner, right)
+        return lookahead(ast.isPositive, ast.inner, right)
       }
     }
   }
@@ -458,15 +433,13 @@ function toExtRegexAux(ast: RegExpAST): RE.ExtRegex {
     case 'concat': return RE.concat(toExtRegexAux(ast.left), toExtRegexAux(ast.right))
     case 'union': return RE.union(toExtRegexAux(ast.left), toExtRegexAux(ast.right))
     case 'star': return RE.star(toExtRegexAux(ast.inner))
-    case 'positive-lookahead': {
+    case 'lookahead': {
       const inner = toExtRegexAux(ast.inner)
       const right = toExtRegexAux(ast.right)
-      return RE.intersection(inner, right)
-    }
-    case 'negative-lookahead': {
-      const inner = toExtRegexAux(ast.inner)
-      const right = toExtRegexAux(ast.right)
-      return RE.intersection(RE.complement(inner), right)
+      if (ast.isPositive) 
+        return RE.intersection(inner, right)
+      else
+        return RE.intersection(RE.complement(inner), right)
     }
   }
   checkedAllCases(ast.type)
@@ -525,18 +498,12 @@ export function captureGroup(inner: RegExpAST, name?: string): RegExpAST {
   return { type: 'capture-group', inner, name }
 }
 
-export function positiveLookahead(
+export function lookahead(
+  isPositive: boolean,
   inner: RegExpAST,
   right: RegExpAST,
 ): RegExpAST {
-  return { type: 'positive-lookahead', inner, right }
-}
-
-export function negativeLookahead(
-  inner: RegExpAST,
-  right: RegExpAST,
-): RegExpAST {
-  return { type: 'negative-lookahead', inner, right }
+  return { type: 'lookahead', isPositive, inner, right }
 }
 
 //////////////////////////////////////////////
@@ -587,10 +554,8 @@ function debugShow_(ast: RegExpAST): unknown {
       return { type: 'repeat', inner: debugShow_(ast.inner), bounds: ast.bounds }
     case 'capture-group':
       return { type: 'capture-group', name: ast.name, inner: debugShow_(ast.inner) }
-    case 'positive-lookahead':
-      return { type: 'positive-lookahead', inner: debugShow_(ast.inner) }
-    case 'negative-lookahead':
-      return { type: 'negative-lookahead', inner: debugShow_(ast.inner) }
+    case 'lookahead':
+      return { type: 'lookahead', isPositive: ast.isPositive, inner: debugShow_(ast.inner) }
   }
   checkedAllCases(ast)
 }
@@ -644,10 +609,14 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
 
     case 'capture-group':
       return captureGroupToString(ast.name, ast.inner, options)
-    case 'positive-lookahead':
-      return '(?=' + toString(ast.inner, options) + ')' + maybeWithParens(ast.right, ast, options)
-    case 'negative-lookahead':
-      return '(?!' + toString(ast.inner, options) + ')' + maybeWithParens(ast.right, ast, options)
+    case 'lookahead': {
+      const inner = toString(ast.inner, options)
+      const right = maybeWithParens(ast.right, ast, options)
+      if (ast.isPositive)
+        return '(?=' + inner + ')' + right
+      else
+        return '(?!' + inner + ')' + right
+    }
   }
   checkedAllCases(ast)
 }
@@ -666,8 +635,7 @@ function precLevel(nodeType: RegExpAST['type']) {
 
     case 'concat': return 4
 
-    case 'positive-lookahead': return 3
-    case 'negative-lookahead': return 3
+    case 'lookahead': return 3
 
     case 'start-anchor': return 2
     case 'end-anchor': return 2

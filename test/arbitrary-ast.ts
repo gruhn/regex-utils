@@ -61,14 +61,9 @@ function captureGroup(innerArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary
     .map(([inner, name]) => AST.captureGroup(inner, name))
 }
 
-function positiveLookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(childArb(), childArb())
-    .map(([inner, right]) => AST.positiveLookahead(inner, right))
-}
-
-function negativeLookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(childArb(), childArb())
-    .map(([inner, right]) => AST.negativeLookahead(inner, right))
+function lookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
+  return fc.tuple(fc.boolean(), childArb(), childArb())
+    .map(([isPositive, inner, right]) => AST.lookahead(isPositive, inner, right))
 }
 
 function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
@@ -128,10 +123,8 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
           return AST.captureGroup(innerProcessed, nameProcessed)
         }
       }
-      case 'positive-lookahead':
-        return AST.positiveLookahead(traverse(node.inner), traverse(node.right))
-      case 'negative-lookahead':
-        return AST.negativeLookahead(traverse(node.inner), traverse(node.right))
+      case 'lookahead':
+        return AST.lookahead(node.isPositive, traverse(node.inner), traverse(node.right))
       case 'start-anchor':
         return AST.startAnchor(traverse(node.left), traverse(node.right))
       case 'end-anchor':
@@ -165,8 +158,7 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: optional(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
-      { arbitrary: positiveLookahead(() => regexpAST_(childSize)), weight: 1 },
-      { arbitrary: negativeLookahead(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: lookahead(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )

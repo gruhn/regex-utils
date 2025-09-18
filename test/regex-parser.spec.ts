@@ -72,17 +72,17 @@ describe('parseRegExp', () => {
     [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
     [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
     // positive lookahead - now parsed as lookahead AST nodes, not intersections
-    [/(?=a)b/, AST.positiveLookahead(char('a'), char('b'))], 
-    [/(?=a)(?:b)/, AST.positiveLookahead(char('a'), char('b'))], 
-    [/(?=a)(?=b)c/, AST.positiveLookahead(char('a'), AST.positiveLookahead(char('b'), char('c')))], 
-    [/a(?=b)c/, AST.concat(char('a'), AST.positiveLookahead(char('b'), char('c')))], 
-    [/a(?=b)/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.epsilon))], 
-    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.positiveLookahead(char('b'), AST.concat(char('c'), AST.positiveLookahead(char('d'), char('e')))))], 
-    [/(?=)/, AST.positiveLookahead(AST.epsilon, AST.epsilon)], 
+    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))], 
+    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))], 
+    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))], 
+    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))], 
+    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))], 
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))], 
+    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)], 
     // negative lookahead
-    [/(?!a)b/, AST.negativeLookahead(char('a'), char('b'))], 
-    [/(?!a)b|c/, AST.union(AST.negativeLookahead(char('a'), char('b')), char('c'))],
-    [/(?!)/, AST.negativeLookahead(AST.epsilon, AST.epsilon)],
+    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))], 
+    [/(?!a)b|c/, AST.union(AST.lookahead(false, char('a'), char('b')), char('c'))],
+    [/(?!)/, AST.lookahead(false, AST.epsilon, AST.epsilon)],
     // TODO: positive lookbehind
     // [/(?<=a)/, AST.positiveLookbehind(char('a'))], 
     // TODO: negative lookbehind

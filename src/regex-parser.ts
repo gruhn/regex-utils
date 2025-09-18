@@ -195,7 +195,7 @@ function positiveLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
     // FIXME: that allows ^/$ inside lookaheads but that isn't
     // handled correctly right now.
     regex(),
-  ).map(inner => right => AST.positiveLookahead(inner, right))
+  ).map(inner => right => AST.lookahead(true, inner, right))
 }
 
 function negativeLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
@@ -205,7 +205,7 @@ function negativeLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
     // FIXME: that allows ^/$ inside lookaheads but that isn't
     // handled correctly right now.
     regex(),    
-  ).map(inner => right => AST.negativeLookahead(inner, right))
+  ).map(inner => right => AST.lookahead(false, inner, right))
 }
 
 /**
