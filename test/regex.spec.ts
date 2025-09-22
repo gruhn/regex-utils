@@ -60,7 +60,7 @@ describe('enumerate', () => {
         Arb.stdRegex(),
         inputRegex => {
           const regexp = RE.toRegExp(inputRegex)
-          const allWords = RE.enumerateAux(inputRegex)
+          const allWords = RE.enumerate(inputRegex)
 
           // long words are likely result of repitiion and are less interesting to test
           // and also blow up memory use:
@@ -84,7 +84,7 @@ describe('enumerate', () => {
 
           // get words NOT in the output by enumerating words of the complement:
           const inputRegexComplement = toStdRegex_ignoreBlowUp(RE.complement(inputRegex))
-          const allComplementWords = RE.enumerateAux(inputRegexComplement)
+          const allComplementWords = RE.enumerate(inputRegexComplement)
 
           // long words are likely result of repetition and are less interesting to test
           // and also blow up memory:
@@ -152,7 +152,7 @@ describe('size', () => {
           const predicatedSize = RE.size(stdRegex)
           fc.pre(predicatedSize !== undefined && predicatedSize <= 100n)
 
-          const allWords = [...RE.enumerateAux(stdRegex)]
+          const allWords = [...RE.enumerate(stdRegex)]
           assert.equal(predicatedSize, BigInt(allWords.length))
         }       
       )

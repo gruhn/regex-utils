@@ -300,8 +300,8 @@ class RegexBuilder {
    * "a", "b", "aa", "bb", "aaa", "bbb", "aaaa", "bbbb", ...
    * ```
    */
-  enumerate() {
-    return RE.enumerate(this.getStdRegex())
+  *enumerate() {
+    yield* RE.enumerate(this.getStdRegex())
   }
 
   /**

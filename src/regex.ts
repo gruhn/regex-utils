@@ -754,16 +754,27 @@ function extractConcatChain(left: StdRegex, right: StdRegex): [number, StdRegex 
   }
 }
 
-/**
- * TODO
- * 
- * @public
- */
-export function* enumerate(re: StdRegex): Generator<string> {
-  yield* enumerateAux(re)
+export function enumerate(regex: StdRegex): Stream.Stream<string> {
+  return enumerateMemoized(regex, new Map())
 }
 
-export function enumerateAux(regex: StdRegex): Stream.Stream<string> {
+function enumerateMemoized(
+  regex: StdRegex,
+  cache: Map<number, Stream.Stream<string> | undefined>
+): Stream.Stream<string> {
+  const cached = cache.get(regex.hash)
+  if (cached !== undefined) {
+    return cached
+  } else {
+    const result = enumerateMemoizedAux(regex, cache)
+    cache.set(regex.hash, result)
+    return result
+  }
+}
+function enumerateMemoizedAux(
+  regex: StdRegex,
+  cache: Map<number, Stream.Stream<string> | undefined>
+): Stream.Stream<string> {
   switch (regex.type) {
     case 'epsilon':
       return Stream.singleton('')
@@ -772,21 +783,21 @@ export function enumerateAux(regex: StdRegex): Stream.Stream<string> {
     case 'concat':
       return Stream.diagonalize(
         (l,r) => l+r,
-        enumerateAux(regex.left),
-        enumerateAux(regex.right),
+        enumerateMemoized(regex.left, cache),
+        enumerateMemoized(regex.right, cache),
       )
     case 'union':
       return Stream.interleave(
-        enumerateAux(regex.left),
-        enumerateAux(regex.right),
+        enumerateMemoized(regex.left, cache),
+        enumerateMemoized(regex.right, cache),
       )
     case 'star':
       return Stream.cons(
         '',
         () => Stream.diagonalize(
           (l,r) => l+r,
-          enumerateAux(regex.inner),
-          enumerateAux(regex),
+          enumerateMemoized(regex.inner, cache),
+          enumerateMemoized(regex, cache),
         )
       )
   }
