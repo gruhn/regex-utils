@@ -321,13 +321,12 @@ class RegexBuilder {
    * ```
    * 
    * @param seed - Deterministic seed for random generation (default: 42)
-   * @param maxDepth - Maximum recursion depth to prevent infinite loops (default: 100)
    * @returns Generator yielding random matching strings
    * 
    * @public
    */
-  sample(seed: number = 42, maxDepth: number = 100) {
-    return RE.sample(this.getStdRegex(), seed, maxDepth)
+  sample(seed: number = 42) {
+    return RE.sample(this.getStdRegex(), seed)
   }
 
   /**

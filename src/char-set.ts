@@ -366,28 +366,27 @@ export function sampleChar(set: CharSet, randomInt: (max: number) => number): st
   let targetIndex = randomInt(totalSize)
   return sampleCharAux(set, targetIndex)
 }
-
 function sampleCharAux(set: CharSet, targetIndex: number): string | null {
   if (set.type === 'empty') {
     return null
   }
-  
-  const rangeSize = Range.size(set.range)
-  if (targetIndex < rangeSize) {
+
+  const leftSize = size(set.left)
+  if (targetIndex < leftSize) {
+    return sampleCharAux(set.left, targetIndex)
+  }
+
+  targetIndex -= leftSize
+
+  const rootSize = Range.size(set.range)
+  if (targetIndex < rootSize) {
     // Target is in this range
     const codePoint = set.range.start + targetIndex
     return String.fromCodePoint(codePoint)
   }
-  
-  // Target is in left or right subtree
-  targetIndex -= rangeSize
-  const leftSize = size(set.left)
-  
-  if (targetIndex < leftSize) {
-    return sampleCharAux(set.left, targetIndex)
-  } else {
-    return sampleCharAux(set.right, targetIndex - leftSize)
-  }
+
+  targetIndex -= rootSize
+  return sampleCharAux(set.right, targetIndex)
 }
 
 ////////////////////////////////////////////////////////////

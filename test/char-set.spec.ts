@@ -3,6 +3,7 @@ import assert from 'node:assert'
 import * as CharSet from '../src/char-set'
 import fc from 'fast-check'
 import * as Range from '../src/code-point-range'
+import { PRNG } from 'src/prng'
 
 
 const arbitraryRange: fc.Arbitrary<Range.CodePointRange> =

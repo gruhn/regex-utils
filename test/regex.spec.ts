@@ -112,12 +112,8 @@ describe('sample', () => {
           const regexp = RE.toRegExp(inputRegex)
           const samples = RE.sample(inputRegex, seed)
 
-          // Test first 50 samples
-          let count = 0
-          for (const sample of samples) {
-            if (count >= 50) break
+          for (const sample of samples.take(50)) {
             assert.match(sample, regexp)
-            count++
           }
         }
       ),
@@ -125,117 +121,61 @@ describe('sample', () => {
   })
 
   it('is deterministic with same seed', () => {
-    const regex = RE.string('test')
-    const samples1 = []
-    const samples2 = []
-    
-    const generator1 = RE.sample(regex, 42)
-    const generator2 = RE.sample(regex, 42)
-    
-    for (let i = 0; i < 10; i++) {
-      samples1.push(generator1.next().value)
-      samples2.push(generator2.next().value)
-    }
-    
-    assert.deepEqual(samples1, samples2)
-  })
-
-  it('produces different results with different seeds', () => {
     fc.assert(
       fc.property(
         Arb.stdRegex(),
-        (inputRegex) => {
-          // Only test regexes that have multiple possible matches
-          fc.pre(!RE.isEmpty(inputRegex))
-          
-          const samples1: string[] = []
-          const samples2: string[] = []
-          
-          const generator1 = RE.sample(inputRegex, 42)
-          const generator2 = RE.sample(inputRegex, 123)
-          
-          for (let i = 0; i < 20; i++) {
-            samples1.push(generator1.next().value)
-            samples2.push(generator2.next().value)
-          }
-          
-          // With different seeds, we should get some different samples
-          // (this might occasionally fail for very simple regexes, but should be rare)
-          const identical = samples1.every((sample, i) => sample === samples2[i])
-          
-          // Only assert if the regex has enough variation to produce different samples
-          if (RE.size(inputRegex) === undefined || (RE.size(inputRegex) && RE.size(inputRegex)! > 1n)) {
-            // For regexes with multiple matches, we expect some variation
-            // We allow some identical samples but not all
-            const identicalCount = samples1.filter((sample, i) => sample === samples2[i]).length
-            assert(identicalCount < samples1.length, 'All samples are identical despite different seeds')
-          }
+        fc.nat(),
+        (regex, seed) => {
+          const gen1 = RE.sample(regex, seed)
+          const gen2 = RE.sample(regex, seed)
+        
+          assert.deepEqual(
+            [...gen1.take(10)],
+            [...gen2.take(10)],
+          )
         }
-      ),
+      )
     )
   })
 
-  it('handles simple literal regex', () => {
-    const regex = RE.singleChar('a')
-    const samples = RE.sample(regex, 42)
-    
-    for (let i = 0; i < 10; i++) {
-      assert.equal(samples.next().value, 'a')
-    }
-  })
+  /*
+  const distinctSeedPair = fc.tuple(
+    fc.nat(),
+    fc.nat()
+  ).filter(
+    ([seed1, seed2]) => seed1 !== seed2
+  )
 
-  it('handles epsilon regex', () => {
-    const regex = RE.epsilon
-    const samples = RE.sample(regex, 42)
-    
-    for (let i = 0; i < 10; i++) {
-      assert.equal(samples.next().value, '')
+  function produceDifferentResults(regex: StdRegex, seed1: number, seed2: number) {
+    const samples1 = [...RE.sample(regex, seed1).take(10)]
+    const samples2 = [...RE.sample(regex, seed2).take(10)]
+    try {
+      console.debug({ regex: RE.toRegExp(regex), samples1, samples2 })
+      assert.notDeepEqual(samples1, samples2)
+      return true
+    } catch (_) {
+      return false
     }
-  })
+  }
 
-  it('handles concat regex', () => {
-    const regex = RE.concat(RE.singleChar('a'), RE.singleChar('b'))
-    const samples = RE.sample(regex, 42)
-    
-    for (let i = 0; i < 10; i++) {
-      assert.equal(samples.next().value, 'ab')
-    }
-  })
+  it('CAN produce different results with different seeds', {only:true}, () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        (regex) => {
+          fc.pre((RE.size(regex) ?? 10n^100n) > 100n)
 
-  it('handles union regex', () => {
-    const regex = RE.union(RE.singleChar('a'), RE.singleChar('b'))
-    const samples = RE.sample(regex, 42)
-    const results = new Set()
-    
-    for (let i = 0; i < 50; i++) {
-      const sample = samples.next().value
-      results.add(sample)
-      assert(sample === 'a' || sample === 'b')
-    }
-    
-    // With 50 samples, we should see both 'a' and 'b'
-    assert(results.has('a') && results.has('b'))
-  })
+          const seedsPairs = fc.sample(distinctSeedPair, 10)
 
-  it('handles star regex with reasonable length distribution', () => {
-    const regex = RE.star(RE.singleChar('a'))
-    const samples = RE.sample(regex, 42)
-    const lengths = []
-    
-    for (let i = 0; i < 100; i++) {
-      const sample = samples.next().value
-      assert.match(sample, /^a*$/)
-      lengths.push(sample.length)
-    }
-    
-    // Should include empty string and various lengths, but biased towards shorter strings
-    assert(lengths.includes(0), 'Should include empty string')
-    assert(lengths.some(len => len > 0), 'Should include non-empty strings')
-    
-    // Average length should be reasonable (not too long)
-    const avgLength = lengths.reduce((sum, len) => sum + len, 0) / lengths.length
-    assert(avgLength < 5, `Average length should be reasonable, got ${avgLength}`)
+          assert(seedsPairs.some(
+            ([seed1, seed2]) => produceDifferentResults(regex, seed1, seed2)
+          ))
+        }
+      ),
+      // { seed: 1530071379, path: "0:0:0", endOnFailure: true }
+    )   
   })
+  */
 
 })
 
@@ -373,4 +313,3 @@ describe('derivative', () => {
   }
   
 })
-

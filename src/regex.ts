@@ -846,9 +846,10 @@ function sampleAux(regex: StdRegex, rng: PRNG, maxDepth: number): string | null 
     }
     
     case 'concat': {
-      const leftSample = sampleAux(regex.left, rng, maxDepth - 1)
-      const rightSample = sampleAux(regex.right, rng, maxDepth - 1)
-      if (leftSample === null || rightSample === null) return null
+      const leftSample = sampleAux(regex.left, rng, maxDepth / 2)
+      if (leftSample === null) return null
+      const rightSample = sampleAux(regex.right, rng, maxDepth / 2)
+      if (rightSample === null) return null
       return leftSample + rightSample
     }
     
@@ -863,30 +864,18 @@ function sampleAux(regex: StdRegex, rng: PRNG, maxDepth: number): string | null 
     }
     
     case 'star': {
-      // For star, randomly decide how many repetitions (bias towards shorter strings)
-      // Start with empty string (star always matches empty string)
-      let result = ''
-      let iterations = 0
-      const maxIterations = Math.min(10, maxDepth) // Limit iterations
-      
-      while (iterations < maxIterations) {
-        // Exponentially decreasing probability of continuing
-        // Start with higher probability for first iteration, then decrease
-        const continueProbability = iterations === 0 ? 0.6 : Math.pow(0.5, iterations)
-        if (rng.next() > continueProbability) {
-          break
-        } else {
-          const innerSample = sampleAux(regex.inner, rng, maxDepth - 1)
-          if (innerSample === null) {
-            break
-          } else {
-            result += innerSample
-            iterations++
-          }
-        }
+      // Randomly choose whether to stop repetition or to continue:
+      const chooseStop = rng.next() < 0.5
+      if (chooseStop) {
+        return ""
+      } else {
+        const innerSample = sampleAux(regex.inner, rng, maxDepth / 2)
+        if (innerSample === null) return null
+        const restSample = sampleAux(regex, rng, maxDepth / 2)
+        if (restSample === null) return null
+        return innerSample + restSample
       }
-      
-      return result
+
     }
   }
   
