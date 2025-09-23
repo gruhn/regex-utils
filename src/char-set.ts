@@ -356,7 +356,7 @@ export function size(set: CharSet): number {
 }
 
 /**
- * Efficiently samples a random character from the CharSet using the provided random number generator.
+ * Samples a random character from the CharSet using the provided random number generator.
  * Returns null if the set is empty.
  */
 export function sampleChar(set: CharSet, randomInt: (max: number) => number): string | null {
