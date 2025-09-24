@@ -18,8 +18,9 @@ These are surprisingly hard to come by for any programming language. ✨
   - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSupersetOf)
   - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isDisjointFrom)
 - 🔧 Miscellaneous:
+  - [.sample(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#sample) - Generate random strings matching a regex.
+  - [.enumerate()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#enumerate) - Exhaustively enumerate strings matching a regex.
   - [.size()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#size) - Count the number of strings that a regex matches.
-  - [.enumerate()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#enumerate) - Generate strings matching a regex.
   - [.derivative(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
 
 ## Installation 📦
