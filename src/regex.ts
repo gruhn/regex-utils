@@ -811,12 +811,11 @@ function enumerateMemoizedAux(
  * 
  * @param re - The regex to sample from
  * @param seed - Deterministic seed for random generation (default: 42)
- * @param maxDepth - Maximum recursion depth to prevent infinite loops (default: 100)
  * @returns Generator yielding random matching strings
  * 
  * @public
  */
-export function* sample(re: StdRegex, seed: number = 42, maxDepth: number = 10**9): Generator<string> {
+export function* sample(re: StdRegex, seed: number): Generator<string> {
   if (isEmpty(re)) {
     // otherwise generator does not terminate:
     return
@@ -837,7 +836,7 @@ export function* sample(re: StdRegex, seed: number = 42, maxDepth: number = 10**
   
   while (true) {
     try {
-      const result = sampleAux(re, rng, maxDepth, lookupNodeCount)
+      const result = sampleAux(re, rng, 1000, lookupNodeCount)
       if (result !== null) {
         yield result
       }
