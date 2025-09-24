@@ -35,7 +35,34 @@ import { RB } from '@gruhn/regex-utils'
 
 ## Example Use Cases 💡
 
-### Refactor Regex and Check Equivalence 🔄
+### Generate random strings from Regex 📜
+
+```typescript
+// Generate 5 random email addresses:
+const email = RB(/^[a-z]+@[a-z]+\.[a-z]{2,3}$/)
+for (const str of email.sample().take(5)) {
+  console.log(str)
+}
+// ky@e.no
+// cc@gg.gaj
+// z@if.ojk
+// vr@y.ehl
+// e@zx.hzq
+
+
+// Generate email addresses, which have exactly 20 characters:
+const emailLength20 = email.and(/^.{20}$/)
+for (const str of emailLength20.sample().take(5)) {
+  console.log(str)
+}
+// kahragjijttzyze@i.mv
+// gnpbjzll@cwoktvw.hhd
+// knqmyotxxblh@yip.ccc
+// kopfpstjlnbq@lal.nmi
+// vrskllsvblqb@gemi.wc
+```
+
+### Refactor Regex then Check Equivalence 🔄
 
 Say we identified a regex in the code base that is prone to
 [catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression)
