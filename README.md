@@ -37,29 +37,34 @@ import { RB } from '@gruhn/regex-utils'
 
 ### Generate random strings from Regex 📜
 
+Generate 5 random email addresses:
 ```typescript
-// Generate 5 random email addresses:
 const email = RB(/^[a-z]+@[a-z]+\.[a-z]{2,3}$/)
 for (const str of email.sample().take(5)) {
   console.log(str)
 }
-// ky@e.no
-// cc@gg.gaj
-// z@if.ojk
-// vr@y.ehl
-// e@zx.hzq
+```
+```
+ky@e.no
+cc@gg.gaj
+z@if.ojk
+vr@y.ehl
+e@zx.hzq
+```
 
-
-// Generate email addresses, which have exactly 20 characters:
+Generate 5 random email addresses, which have exactly 20 characters:
+```typescript
 const emailLength20 = email.and(/^.{20}$/)
 for (const str of emailLength20.sample().take(5)) {
   console.log(str)
 }
-// kahragjijttzyze@i.mv
-// gnpbjzll@cwoktvw.hhd
-// knqmyotxxblh@yip.ccc
-// kopfpstjlnbq@lal.nmi
-// vrskllsvblqb@gemi.wc
+```
+```
+kahragjijttzyze@i.mv
+gnpbjzll@cwoktvw.hhd
+knqmyotxxblh@yip.ccc
+kopfpstjlnbq@lal.nmi
+vrskllsvblqb@gemi.wc
 ```
 
 ### Refactor Regex then Check Equivalence 🔄
