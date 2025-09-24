@@ -3,6 +3,7 @@ import * as CharSet from './char-set'
 import * as Stream from './stream'
 import * as Table from './table'
 import * as AST from './ast'
+import { PRNG } from './prng'
 
 /**
  * TODO
@@ -804,6 +805,112 @@ function enumerateMemoizedAux(
 }
 
 /**
+ * Generates random strings that match the given regex using a deterministic seed.
+ * Unlike enumerate(), this produces a stream of random samples rather than
+ * a fair enumeration of all possible matches.
+ * 
+ * @param re - The regex to sample from
+ * @param seed - Deterministic seed for random generation (default: 42)
+ * @returns Generator yielding random matching strings
+ * 
+ * @public
+ */
+export function* sample(re: StdRegex, seed: number): Generator<string> {
+  if (isEmpty(re)) {
+    // otherwise generator does not terminate:
+    return
+  }
+
+  const rng = new PRNG(seed)
+
+  // To reduce sampling bias, we weight probabilities by number of nodes in a sub-expression.
+  // To not re-compute these counts, we traverse the tree once and populate a cache of node
+  // counts at every node:
+  const cachedNodeCount = new Map<number, number>()
+  nodeCountAux(re, cachedNodeCount)
+  const lookupNodeCount = (subExpr: StdRegex): number => {
+    const count = cachedNodeCount.get(subExpr.hash)
+    assert(count !== undefined, 'logic error: node count cache should be populated for all subexpressions')
+    return count
+  }
+  
+  while (true) {
+    try {
+      const result = sampleAux(re, rng, 1000, lookupNodeCount)
+      if (result !== null) {
+        yield result
+      }
+    } catch {
+      // If we hit max depth or other issues, skip this sample
+      continue
+    }
+  }
+}
+function sampleAux(
+  regex: StdRegex,
+  rng: PRNG,
+  maxDepth: number,
+  lookupNodeCount: (subExpr: StdRegex) => number
+): string | null {
+  if (maxDepth <= 0) {
+    throw new Error('Max depth exceeded')
+  }
+
+  switch (regex.type) {
+    case 'epsilon':
+      return ''
+    
+    case 'literal': {
+      return CharSet.sampleChar(regex.charset, (max) => rng.nextInt(max))
+    }
+    
+    case 'concat': {
+      const leftSample = sampleAux(regex.left, rng, maxDepth / 2, lookupNodeCount)
+      if (leftSample === null) return null
+      const rightSample = sampleAux(regex.right, rng, maxDepth / 2, lookupNodeCount)
+      if (rightSample === null) return null
+      return leftSample + rightSample
+    }
+    
+    case 'union': {
+      // For unions we randomly sample from the left- or right subtree.
+      // The probability is weighted by the number of nodes in the subtree.
+      // Consider the expression /^(aa|(bb|cc))$/ which matches the three strings: "aa", "bb", "cc".
+      // If we give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
+      // Weighting by node count does not eliminate this problem completely. 
+      // We could also weight by the number of strings matched by the subtrees (computed using `size`).
+      // But what to we do if one of the subtrees matches infinitely many strings (e.g. /^(a|b*)$/)?
+      const leftCount = lookupNodeCount(regex.left)
+      const rightCount = lookupNodeCount(regex.right)
+      const chooseLeft = rng.next() < leftCount / (leftCount + rightCount)
+
+      if (chooseLeft) {
+        return sampleAux(regex.left, rng, maxDepth - 1, lookupNodeCount)
+      } else {
+        return sampleAux(regex.right, rng, maxDepth - 1, lookupNodeCount)
+      }
+    }
+    
+    case 'star': {
+      // Randomly choose whether to stop repetition or to continue:
+      const chooseStop = rng.next() < 0.5
+      if (chooseStop) {
+        return ""
+      } else {
+        const innerSample = sampleAux(regex.inner, rng, maxDepth / 2, lookupNodeCount)
+        if (innerSample === null) return null
+        const restSample = sampleAux(regex, rng, maxDepth / 2, lookupNodeCount)
+        if (restSample === null) return null
+        return innerSample + restSample
+      }
+
+    }
+  }
+  
+  checkedAllCases(regex)
+}
+
+/**
  * TODO
  */
 export function size(regex: StdRegex): bigint | undefined {
@@ -905,6 +1012,9 @@ function nodeCountAux(
 
 export function debugShow(regex: ExtRegex): any {
   return JSON.stringify(debugShowAux(regex), null, 2)
+}
+export function debugPrint(regex: ExtRegex): any {
+  return console.debug(JSON.stringify(debugShowAux(regex), null, 2))
 }
 
 function debugShowAux(regex: ExtRegex): any {

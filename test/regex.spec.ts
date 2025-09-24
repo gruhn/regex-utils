@@ -101,6 +101,50 @@ describe('enumerate', () => {
 
 })
 
+describe('sample', () => {
+
+  it('output strings match the input regex', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        fc.integer({ min: 0, max: 1000 }),
+        (inputRegex, seed) => {
+          const regexp = RE.toRegExp(inputRegex)
+          const samples = RE.sample(inputRegex, seed)
+
+          for (const sample of samples.take(50)) {
+            assert.match(sample, regexp)
+          }
+        }
+      ),
+    )
+  })
+
+  it('is deterministic with same seed', () => {
+    fc.assert(
+      fc.property(
+        Arb.stdRegex(),
+        fc.nat(),
+        (regex, seed) => {
+          const gen1 = RE.sample(regex, seed)
+          const gen2 = RE.sample(regex, seed)
+        
+          assert.deepEqual(
+            [...gen1.take(10)],
+            [...gen2.take(10)],
+          )
+        }
+      )
+    )
+  })
+
+  it('terminates for empty regex', () => {
+    const samples = [...RE.sample(RE.empty)]
+    assert.deepEqual(samples, [])
+  })
+
+})
+
 describe('size', () => {
 
   it('returns 1 for ∅ *', () => {
@@ -235,4 +279,3 @@ describe('derivative', () => {
   }
   
 })
-
