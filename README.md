@@ -154,26 +154,24 @@ console.log(passwordRegex.size())
 2301586451429392354821768871006991487961066695735482449920n
 ```
 
-With `.enumerate()` we can list some of these matches:
+With `.sample()` we can generate some of these matches:
 ```typescript
-for (const sample of passwordRegex.enumerate().take(10)) {
-  console.log(sample)
+for (const str of passwordRegex.sample().take(10)) {
+  console.log(str)
 }
 ```
 ```
-aaaaaaaaaaA0
-aaaaaaaaaa0A
-aaaaaaaaaAA0
-aaaaaaaaaA00
-aaaaaaaaaaA1
-aaaaaaaaa00A
-baaaaaaaaaA0
-AAAAAAAAAA0a
-aaaaaaaaaAA1
-aaaaaaaaaa0B
+NEWJIAXQISWT0Wwm
+lxoegadrzeynezkmtfcIBzzQ9e
+ypzvhvtwpWk4u6
+MSZXXKIKEKWKXLQ8HQ7Ds
+BCBSFBSMNOLKlgQN5L
+8950244600709IW1pg
+UOTQBLVOTZQWFSAJYBXZNQBEeom0l
+520302447164378435bv4dp4ysC
+71073970686490eY2Jt4
+afgpnxqwUK5B
 ```
-
-
 
 
 ### Solve _Advent Of Code 2023 - Day 12_ 🎄
