@@ -14,6 +14,9 @@ const fullRegexDataset = [
 
 const mults: number[] = []
 
+let maxHeapUsed = 0
+let maxRSS = 0
+
 function run(inputRegExp: RegExp, index: number) {
   console.log('#' + index, inputRegExp)
 
@@ -26,10 +29,16 @@ function run(inputRegExp: RegExp, index: number) {
   const mult = out/inp
   mults.push(mult)
 
+  const { heapUsed, rss } = process.memoryUsage()
+  maxHeapUsed = Math.max(heapUsed, maxHeapUsed)
+  maxRSS = Math.max(rss, maxRSS)
+
   console.log(`
     regex input length  : ${inp}
     regex output length : ${out}
     multiplier          : ${mult}
+    heap used           : ${heapUsed/1024**2} MB
+    rss                 : ${rss/1024**2} MB
   `) 
 }
 
@@ -76,6 +85,10 @@ size multipliers:
 - mean   : ${mean}
 - median : ${median}
 - max    : ${worst}
+
+memory:
+- max heap used : ${maxHeapUsed/1024**2} MB
+- max rss       : ${maxRSS/1024**2} MB
 `
 
 console.log(summary)
