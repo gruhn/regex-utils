@@ -320,12 +320,12 @@ class RegexBuilder {
    * }
    * ```
    * 
-   * @param seed - Deterministic seed for random generation (default: 42)
+   * @param seed - Optional seed to make sampling deterministic.
    * @returns Generator yielding random matching strings
    * 
    * @public
    */
-  sample(seed: number = 42) {
+  sample(seed: number = Date.now()) {
     return RE.sample(this.getStdRegex(), seed)
   }
 

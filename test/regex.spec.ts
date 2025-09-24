@@ -138,44 +138,10 @@ describe('sample', () => {
     )
   })
 
-  /*
-  const distinctSeedPair = fc.tuple(
-    fc.nat(),
-    fc.nat()
-  ).filter(
-    ([seed1, seed2]) => seed1 !== seed2
-  )
-
-  function produceDifferentResults(regex: StdRegex, seed1: number, seed2: number) {
-    const samples1 = [...RE.sample(regex, seed1).take(10)]
-    const samples2 = [...RE.sample(regex, seed2).take(10)]
-    try {
-      console.debug({ regex: RE.toRegExp(regex), samples1, samples2 })
-      assert.notDeepEqual(samples1, samples2)
-      return true
-    } catch (_) {
-      return false
-    }
-  }
-
-  it('CAN produce different results with different seeds', {only:true}, () => {
-    fc.assert(
-      fc.property(
-        Arb.stdRegex(),
-        (regex) => {
-          fc.pre((RE.size(regex) ?? 10n^100n) > 100n)
-
-          const seedsPairs = fc.sample(distinctSeedPair, 10)
-
-          assert(seedsPairs.some(
-            ([seed1, seed2]) => produceDifferentResults(regex, seed1, seed2)
-          ))
-        }
-      ),
-      // { seed: 1530071379, path: "0:0:0", endOnFailure: true }
-    )   
+  it('terminates for empty regex', () => {
+    const samples = [...RE.sample(RE.empty)]
+    assert.deepEqual(samples, [])
   })
-  */
 
 })
 

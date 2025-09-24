@@ -817,6 +817,11 @@ function enumerateMemoizedAux(
  * @public
  */
 export function* sample(re: StdRegex, seed: number = 42, maxDepth: number = 10**9): Generator<string> {
+  if (isEmpty(re)) {
+    // otherwise generator does not terminate:
+    return
+  }
+
   const rng = new PRNG(seed)
 
   // To reduce sampling bias, we weight probabilities by number of nodes in a sub-expression.
