@@ -207,11 +207,7 @@ describe('size', () => {
 
 describe('rewrite rules', () => {
 
-  // TODO:
-  // - test intersection/complement rules.
-  // - test rules involving epsilon / empty set
-  //   (can't be tested right now because parser does not
-  //   support empty set `$.^` and epsilon `()`.
+  // TODO: test intersection/complement rules.
 
   const rewriteCases = [
     // concat rules:
@@ -225,8 +221,6 @@ describe('rewrite rules', () => {
     [/^a?a?$/, /^(a?){2}$/],
     [/^()a$/, /^a$/],
     [/^a()$/, /^a$/],
-    // TODO:
-    // [/^a($.^)$/, /$.^/],
     // union rules:
     [/^(a|a)$/, /^a$/],
     // expected expression:
@@ -245,12 +239,15 @@ describe('rewrite rules', () => {
     [/^(ba|a)$/, /^b?a$/],
     [/^(a|ab)$/, /^ab?$/],
     [/^(a|ba)$/, /^b?a$/],
+    // union-of-star rules:
+    [/^(a*|)$/, /^a*$/],
     // TODO:
     // [/^(a|a{2}|a{3}|a{4}|a{5})$/, /^(a{1,5})$/],
     // [/^(a|a{2}|a{3}|a{4}|a{5}|b)$/, /^(a{1,5}|b)$/],
     // star rules:
     [/^(a*)*$/, /^a*$/],
     [/^(a*b*)*$/, /^[ab]*$/],
+    [/^()*$/, /^$/],
   ] as const
   
   for (const [source, target] of rewriteCases) {
@@ -275,7 +272,7 @@ describe('derivative', () => {
   
   for (const [input, str, expected] of derivativeCases) {
     it(`of ${input} with respect to "${str}" is ${expected}`, () => {
-    const actual = RE.derivative(str, AST.toExtRegex(parseRegExp(input)))
+      const actual = RE.derivative(str, AST.toExtRegex(parseRegExp(input)))
       assert(RE.isStdRegex(actual))
       assert.deepEqual(RE.toRegExp(actual), expected)
     })
