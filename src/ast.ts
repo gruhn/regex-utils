@@ -668,7 +668,7 @@ const needsNoParensOnSamePrecLevel = new Set([
 function maybeWithParens(ast: RegExpAST, parent: RegExpAST, options: RenderOptions): string {
   if (precLevel(ast.type) > precLevel(parent.type)) 
     return toString(ast, options)
-  else if (ast.type === parent.type && needsNoParensOnSamePrecLevel.has(ast.type))
+  else if (precLevel(ast.type) === precLevel(parent.type) && needsNoParensOnSamePrecLevel.has(ast.type))
     return toString(ast, options)
   else if (options.useNonCapturingGroups)
     return '(?:' + toString(ast, options) + ')'

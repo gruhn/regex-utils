@@ -139,7 +139,7 @@ describe('sample', () => {
   })
 
   it('terminates for empty regex', () => {
-    const samples = [...RE.sample(RE.empty)]
+    const samples = [...RE.sample(RE.empty, 42)]
     assert.deepEqual(samples, [])
   })
 
@@ -215,39 +215,42 @@ describe('rewrite rules', () => {
 
   const rewriteCases = [
     // concat rules:
-    [/^a*a$/, /^(aa*)$/],
-    [/^a*(ab)$/, /^(aa*b)$/],
-    [/^a*a*$/, /^(a*)$/],
-    [/^a*(a*b)$/, /^(a*b)$/],
-    [/^a?a$/, /^(aa?)$/],
-    [/^a?(ab)$/, /^(aa?b)$/],
-    [/^a{3}a?a{2}$/, /^(a{5}a?)$/],
-    [/^a?a?$/, /^((a?){2})$/],
+    [/^a*a$/, /^aa*$/],
+    [/^a*(ab)$/, /^aa*b$/],
+    [/^a*a*$/, /^a*$/],
+    [/^a*(a*b)$/, /^a*b$/],
+    [/^a?a$/, /^aa?$/],
+    [/^a?(ab)$/, /^aa?b$/],
+    [/^a{3}a?a{2}$/, /^a{5}a?$/],
+    [/^a?a?$/, /^(a?){2}$/],
+    [/^()a$/, /^a$/],
+    [/^a()$/, /^a$/],
+    // TODO:
+    // [/^a($.^)$/, /$.^/],
     // union rules:
-    [/^(a|a)$/, /^(a)$/],
-    // TODO: could avoid extra parenthesis when rendering
+    [/^(a|a)$/, /^a$/],
     // expected expression:
-    [/^(a|(a|b))$/, /^([ab])$/],
-    [/^(a|(b|a))$/, /^([ab])$/],
-    [/^((b|a)|a)$/, /^([ab])$/],
-    [/^((a|b)|a)$/, /^([ab])$/],
-    [/^(a?)?$/, /^(a?)$/],
-    [/^(a*)?$/, /^(a*)$/],
+    [/^(a|(a|b))$/, /^[ab]$/],
+    [/^(a|(b|a))$/, /^[ab]$/],
+    [/^((b|a)|a)$/, /^[ab]$/],
+    [/^((a|b)|a)$/, /^[ab]$/],
+    [/^(a?)?$/, /^a?$/],
+    [/^(a*)?$/, /^a*$/],
     // TODO:
     // [/^(a|a*)$/, /^(aa*)$/],
     // union-of-concat rules:
-    [/^(ab|ac)$/, /^(a[bc])$/],
-    [/^(ba|ca)$/, /^([bc]a)$/],
-    [/^(ab|a)$/, /^(ab?)$/],
-    [/^(ba|a)$/, /^(b?a)$/],
-    [/^(a|ab)$/, /^(ab?)$/],
-    [/^(a|ba)$/, /^(b?a)$/],
+    [/^(ab|ac)$/, /^a[bc]$/],
+    [/^(ba|ca)$/, /^[bc]a$/],
+    [/^(ab|a)$/, /^ab?$/],
+    [/^(ba|a)$/, /^b?a$/],
+    [/^(a|ab)$/, /^ab?$/],
+    [/^(a|ba)$/, /^b?a$/],
     // TODO:
     // [/^(a|a{2}|a{3}|a{4}|a{5})$/, /^(a{1,5})$/],
     // [/^(a|a{2}|a{3}|a{4}|a{5}|b)$/, /^(a{1,5}|b)$/],
     // star rules:
-    [/^(a*)*$/, /^(a*)$/],
-    [/^(a*b*)*$/, /^([ab]*)$/],
+    [/^(a*)*$/, /^a*$/],
+    [/^(a*b*)*$/, /^[ab]*$/],
   ] as const
   
   for (const [source, target] of rewriteCases) {
@@ -263,9 +266,9 @@ describe('rewrite rules', () => {
 describe('derivative', () => {
 
   const derivativeCases = [
-    [/^((aa*)?)$/, 'a', /^(a*)$/],
-    [/^(a{2}(a{3})*)$/, 'a', /^(a(a{3})*)$/],
-    [/^(a{2}(a*)|(aa*))$/, 'a', /^(a?a*)$/],
+    [/^((aa*)?)$/, 'a', /^a*$/],
+    [/^(a{2}(a{3})*)$/, 'a', /^a(a{3})*$/],
+    [/^(a{2}(a*)|(aa*))$/, 'a', /^a?a*$/],
     [/^(a(a{3})*|(aa*)?)$/, 'a', /^((a{3})*|a*)$/],
     [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(a{3})*|a*)$/],
   ] as const

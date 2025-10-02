@@ -1,5 +1,5 @@
 import fc from 'fast-check'
-import { RB } from '../dist/index.js'
+import { RB } from '../src/index'
 
 const emailRegex = /^[\w\-\.]+@([\w-]+\.)+[\w-]{2,}$/
 

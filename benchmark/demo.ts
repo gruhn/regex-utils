@@ -1,4 +1,4 @@
-import { RB } from '../dist/index.js'
+import { RB } from '../src/index'
 
 const passwordRegex = RB(/^[a-zA-Z0-9]{12,32}$/) // 12-32 alphanumeric characters
   .and(/[0-9]/) // at least one number

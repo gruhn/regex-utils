@@ -693,7 +693,8 @@ export function toString(regex: StdRegex): string {
   // but at large sizes like this it hardly hurts readability anymore:
   const useNonCapturingGroups = size > 10_000
 
-  return '^(' + AST.toString(toRegExpAST(regex), { useNonCapturingGroups }) + ')$'
+  const ast = AST.startAnchor(undefined, AST.endAnchor(toRegExpAST(regex), undefined))
+  return AST.toString(ast, { useNonCapturingGroups })
 }
 
 // TODO:

@@ -1,6 +1,6 @@
 import fs from 'fs'
-import { RB } from '../dist/index.js'
-import { assert } from '../dist/utils.js'
+import { RB } from '../src/index'
+import { assert } from '../src/utils'
 
 const input = fs.readFileSync('./benchmark/aoc2023-day12_input.txt', 'utf-8')
   .trim()

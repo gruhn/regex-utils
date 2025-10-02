@@ -72,6 +72,7 @@ fullRegexDataset.forEach((regex, i) => {
 const mean = mults.reduce((a,b) => a+b, 0) / mults.length
 const median = mults[Math.ceil(mults.length / 2)]
 const worst = mults.reduce((a,b) => Math.max(a,b), -Infinity)
+const best = mults.reduce((a,b) => Math.min(a,b), Infinity)
 
 const summary = `
 failed instances:
@@ -85,6 +86,7 @@ size multipliers:
 - mean   : ${mean}
 - median : ${median}
 - max    : ${worst}
+- min    : ${best}
 
 memory:
 - max heap used : ${maxHeapUsed/1024**2} MB

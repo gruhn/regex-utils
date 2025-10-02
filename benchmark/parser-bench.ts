@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { parseRegExp } from '../dist/regex-parser.js'
+import { parseRegExp } from '../src/regex-parser'
 
 export function* readDataset() {
   const jsonStr = fs.readFileSync('./benchmark/regex-dataset.json', 'utf-8')
