@@ -181,7 +181,20 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
 }
 
 // TODO: can this round-trip through DFA construction be avoided?
+// QUESTION: Could also independently transform intersection/complement
+// sub-expressions. Would that be more or less efficient? Yield larger or
+// smaller output expressions?
 export function toStdRegex(inputRegex: RE.ExtRegex): RE.StdRegex {
+  // Could check here in O(1) if `inputRegex` is already a `StdRegex` and
+  // skip the expensive computation:
+  // 
+  //     if (RE.isStdRegex(inputRegex))
+  //       return inputRegex
+  // 
+  // But that makes the benchmark "toStdRegex_output_length" and the
+  // "toStdRegex" tests trivial. `RegexBuilder.getStdRegex` has this
+  // check though.
+
   const dfa = regexToDFA(inputRegex)
   // printTrans(dfa)
   const outputRegex = dfaToRegex(dfa)
