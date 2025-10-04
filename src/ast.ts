@@ -470,8 +470,19 @@ export function concat(left: RegExpAST, right: RegExpAST): RegExpAST {
 }
 
 function seq(asts: RegExpAST[]): RegExpAST {
-  // Reducing right-to-left should trigger fewer normalization steps when converting to ExtRegex:
-  return asts.reduceRight((right, left) => concat(left, right), epsilon)
+  if (asts.length === 0)
+    return epsilon
+  else
+    // Reducing right-to-left should trigger fewer normalization steps when converting to ExtRegex:
+    return asts.reduceRight((right, left) => concat(left, right))
+}
+
+export function string(chars: string): RegExpAST {
+  return seq(
+    [...chars].map(
+      char => RE.literal(CharSet.singleton(char))
+    )
+  )
 }
 
 export function union(left: RegExpAST | undefined, right: RegExpAST | undefined): RegExpAST {
@@ -514,7 +525,7 @@ function repeatBoundsToString(bounds: RepeatBounds): string {
   if (typeof bounds === 'number')
     return `{${bounds}}`
   else
-    return `{${bounds.min ?? ''},${bounds.max ?? ''}}`
+    return `{${bounds.min ?? 0},${bounds.max ?? ''}}`
 }
 
 function captureGroupToString(name: string | undefined, inner: RegExpAST, options: RenderOptions) {

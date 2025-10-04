@@ -77,11 +77,6 @@ describe('toExtRegex', () => {
         assert.equal(actual.hash, expected.hash)
       })
     }
-
-    it('fixme', {todo:true}, () => {
-      const re = /^(?!a)(?!.*a$)(?!.*a{2})a+$/
-      AST.toExtRegex(parseRegExp(re))     
-    })
   })
 
   describe('lookahead elimination', () => {
@@ -113,5 +108,24 @@ describe('toExtRegex', () => {
     })
 
   })
+  
+})
+
+describe('toString', () => {
+
+  const testCases = [
+    [AST.repeat(AST.string('a'), { min: 0, max: 3 }), /a{0,3}/],
+    // If `min` is `undefined` it must still explicitly be set to zero
+    // because `a{,3}` is interpreted as the literal string "a{,3}" in 
+    // the JavaScript regex flavor:
+    [AST.repeat(AST.string('a'), { max: 3 }), /a{0,3}/],
+  ] as const
+
+  for (const [inputAST, expected] of testCases) {
+    it(`${expected}`, { only: true }, () => {
+      const str = AST.toString(inputAST, { useNonCapturingGroups: false })
+      assert.equal(str, expected.source)
+    })
+  }
   
 })
