@@ -116,17 +116,19 @@ import { RB } from '@gruhn/regex-utils'
 
 const strContainingCommentEnd = RB(/.*-->.*/)
 
-const commentRegex = RB('<!--')
-  .concat(strContainingEndMarker.not())
-  .concat('-->')
+const commentStart = RB('<!--')
+const commentInner = RB(/^.*-->.*$/).not()
+const commentEnd = RB('-->')
+
+const comment = commentStart.concat(commentInner).concat(commentEnd)
 ```
 
 With `.toRegExp()` we can convert back to a native JavaScript regex:
 ```typescript
-commentRegex.toRegExp()
+comment.toRegExp()
 ```
 ```
-/^(<!-{2}(-{2}-*[^->]|-?[^-])*-{2}-*>)$/
+/^<!--(---*[^->]|-?[^-])*---*>$/
 ```
 
 ### Password Regex using Intersections 🔐

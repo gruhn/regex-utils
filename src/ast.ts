@@ -614,6 +614,10 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
       const innerStr = maybeWithParens(ast.inner, ast, options)
       if (innerStr === '') 
         return ''
+      else if (typeof ast.bounds === 'number' && ast.bounds <= 3 && innerStr.length === 1)
+        // Just duplicate `innerStr` if that makes rendered expression shorter.
+        // E.g. `aaa` instead of `a{3}`.
+        return innerStr.repeat(ast.bounds)
       else
         return innerStr + repeatBoundsToString(ast.bounds)
     }

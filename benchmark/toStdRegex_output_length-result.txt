@@ -7,11 +7,11 @@ failed instances:
 - regexSyntaxError   : 0
 
 size multipliers:
-- mean   : 323.8333568093031
+- mean   : 321.86932736154387
 - median : 1.1923076923076923
 - max    : 178441.75438596492
 - min    : 0.0021570319240724763
 
 memory:
-- max heap used : 2370.280075073242 MB
-- max rss       : 2722.53515625 MB
+- max heap used : 2491.6993865966797 MB
+- max rss       : 2909.78515625 MB

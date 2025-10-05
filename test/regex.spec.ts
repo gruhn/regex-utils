@@ -264,10 +264,10 @@ describe('derivative', () => {
 
   const derivativeCases = [
     [/^((aa*)?)$/, 'a', /^a*$/],
-    [/^(a{2}(a{3})*)$/, 'a', /^a(a{3})*$/],
+    [/^(a{2}(a{3})*)$/, 'a', /^a(aaa)*$/],
     [/^(a{2}(a*)|(aa*))$/, 'a', /^a?a*$/],
-    [/^(a(a{3})*|(aa*)?)$/, 'a', /^((a{3})*|a*)$/],
-    [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(a{3})*|a*)$/],
+    [/^(a(a{3})*|(aa*)?)$/, 'a', /^((aaa)*|a*)$/],
+    [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(aaa)*|a*)$/],
   ] as const
   
   for (const [input, str, expected] of derivativeCases) {
