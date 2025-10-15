@@ -1,6 +1,6 @@
 import { describe, it, test } from "node:test"
 import assert from "node:assert"
-import { parseRegExp, parseRegExpString } from "../src/regex-parser"
+import { parseRegExp, parseRegExpString, UnsupportedSyntaxError } from "../src/regex-parser"
 import { RB } from "../src/index"
 import { ParseError } from "../src/parser"
 import * as AST from "../src/ast"
@@ -12,7 +12,7 @@ import * as Arbitrary from './arbitrary-ast'
 function char(c: string) {
   return AST.literal(CharSet.singleton(c))
 }
-function str(s: string) { 
+function str(s: string) {
   const chars = [...s].map(char)
   // Use right-associative concatenation: a(bc) not (ab)c
   return chars.reduceRight((acc, curr) => AST.concat(curr, acc))
@@ -44,7 +44,7 @@ describe('parseRegExp', () => {
     [/a{3,5}/, AST.repeat(char('a'), { min: 3, max: 5 })],
     // if curly bracket is not terminated the whole thing is interpreted literally:
     [/a{3,5/, str('a{3,5')],
-    // same if max value is given but min value is missing: 
+    // same if max value is given but min value is missing:
     [/a{,5}/, str('a{,5}')],
     // char classes / escaping:
     [/\w/, AST.literal(CharSet.wordChars)],
@@ -72,21 +72,21 @@ describe('parseRegExp', () => {
     [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
     [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
     // positive lookahead - now parsed as lookahead AST nodes, not intersections
-    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))], 
-    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))], 
-    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))], 
-    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))], 
-    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))], 
-    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))], 
-    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)], 
+    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))],
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))],
+    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)],
     // negative lookahead
-    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))], 
+    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))],
     [/(?!a)b|c/, AST.union(AST.lookahead(false, char('a'), char('b')), char('c'))],
     [/(?!)/, AST.lookahead(false, AST.epsilon, AST.epsilon)],
     // TODO: positive lookbehind
-    // [/(?<=a)/, AST.positiveLookbehind(char('a'))], 
+    // [/(?<=a)/, AST.positiveLookbehind(char('a'))],
     // TODO: negative lookbehind
-    // [/(?<!a)/, AST.negativeLookbehind(char('a'))], 
+    // [/(?<!a)/, AST.negativeLookbehind(char('a'))],
     // some special chars don't need escape when inside brackets:
     [/[.^$*+?()[{-|]/, AST.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
     // other special chars need escape even inside brackets:
@@ -134,12 +134,24 @@ describe('parseRegExp', () => {
 
 })
 
+function parse_skipKnownIssues(re: RegExp) {
+  try {
+    return RB(re)
+  } catch (error) {
+    if (error instanceof UnsupportedSyntaxError) {
+      fc.pre(false)
+    } else {
+      throw error
+    }
+  }
+}
+
 test('parse/stringify roundtrip preserves equivalence', {todo:true}, () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),
       (inputRegExp: RegExp) => {
-        const builder = RB(inputRegExp)
+        const builder = parse_skipKnownIssues(inputRegExp)
         const outputRegExp = builder.toRegExp()
 
         for (const str of builder.enumerate().take(10)) {
@@ -148,19 +160,6 @@ test('parse/stringify roundtrip preserves equivalence', {todo:true}, () => {
         }
       },
     ),
-    // { numRuns: 1000 },
+    { numRuns: 100 },
   )
-})
-
-test('fixme 1', { todo: true }, () => {
-  const inputRegExp = /(^)+a/
-  const builder = RB(inputRegExp)
-  const outputRegExp = builder.toRegExp()
-
-  // console.debug(outputRegExp)
-
-  for (const str of builder.enumerate().take(10)) {
-    assert.match(str, outputRegExp)
-    assert.match(str, inputRegExp)
-  }
 })

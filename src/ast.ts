@@ -5,15 +5,15 @@ import { assert, checkedAllCases, isOneOf } from './utils'
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
-export type RepeatBounds = 
+export type RepeatBounds =
   | number
   | { min: number, max?: number }
   | { min?: number, max: number }
 
-export type RegExpAST = 
+export type RegExpAST =
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: RegExpAST, right: RegExpAST }
@@ -78,7 +78,7 @@ function desugar(ast: RegExpAST): RegExpAST {
     case 'star': return star(desugar(ast.inner))
     case 'start-anchor': return startAnchor(desugar(ast.left), desugar(ast.right))
     case 'end-anchor': return endAnchor(desugar(ast.left), desugar(ast.right))
-    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner), desugar(ast.right))   
+    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner), desugar(ast.right))
     // sugar nodes:
     case 'capture-group': return desugar(ast.inner)
     case 'plus': {
@@ -98,7 +98,7 @@ function desugar(ast: RegExpAST): RegExpAST {
       } else {
         const { min = 0, max = Infinity } = ast.bounds
         assert(0 <= min && min <= max)
-        return desugarRepeat(inner, min, max)   
+        return desugarRepeat(inner, min, max)
       }
 
     }
@@ -110,24 +110,24 @@ function desugarRepeat(ast: RegExpAST, min: number, max: number): RegExpAST {
 
   if (max === Infinity)
     return concat(requiredPrefix, star(ast))
-  else 
+  else
     return concat(
       requiredPrefix,
       seq(Array(max - min).fill(union(epsilon, ast)))
     )
 }
 
-function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
+function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
   assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
 
   switch (ast.type) {
     case "epsilon": return ast
     case "literal": return ast
     case "concat": {
-      // Pull up start anchors on subexpressions first, so if they contain start 
+      // Pull up start anchors on subexpressions first, so if they contain start
       // anchors then `left` and `right` will have the start anchor at the top.
-      const left = pullUpStartAnchor(ast.left)
-      const right = pullUpStartAnchor(ast.right)     
+      const left = pullUpStartAnchor(ast.left, isLeftClosed)
+      const right = pullUpStartAnchor(ast.right, true) // TODO: maybe more like `hasPrefix || left != epsilon`
       if (right.type === 'start-anchor') {
         // Expression has the form `l^r` where `r` contains no start anchor.
         // `l` may contain one but it does not matter. `l` can at most match epsilon,
@@ -149,53 +149,65 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "union": {
-      const left = pullUpStartAnchor(ast.left)
-      const right = pullUpStartAnchor(ast.right)
-      if (left.type === 'start-anchor' && right.type === 'start-anchor') 
+      const left = pullUpStartAnchor(ast.left, isLeftClosed)
+      const right = pullUpStartAnchor(ast.right, isLeftClosed)
+      if (left.type === 'start-anchor' && right.type === 'start-anchor') {
         // Expression has the form `(^l|^r)`:
         return startAnchor(undefined, union(left.right, right.right)) // i.e. `^(l|r)`
-      else if (left.type === 'start-anchor')
-        // Expression has the form `(^l|r)`:
-        return startAnchor(undefined, union(left.right, concat(dotStar, right))) // i.e. `^(l|.*r)`
-      else if (right.type === 'start-anchor')
-        // Expression has the form `(l|^r)`:
-        return startAnchor(undefined, union(concat(dotStar, left), right.right)) // i.e. `^(.*l|r)`
-      else
+      } else if (left.type === 'start-anchor') {
+        if (isLeftClosed) {
+          // Expression has the form `p(^l|r)`:
+          throw new UnsupportedSyntaxError('union with non-empty prefix where only some members have anchors like a(^b|c)')
+        } else {
+          // Expression has the form `(^l|r)`:
+          return startAnchor(undefined, union(left.right, concat(dotStar, right))) // i.e. `^(l|.*r)`
+        }
+      } else if (right.type === 'start-anchor') {
+        if (isLeftClosed)
+          // Expression has the form `p(l|^r)`:
+          throw new UnsupportedSyntaxError('union with non-empty prefix where only some members have anchors like a(b|^c)')
+        else
+          // Expression has the form `(l|^r)`:
+          return startAnchor(undefined, union(concat(dotStar, left), right.right)) // i.e. `^(.*l|r)`
+      } else {
         // Expression has the form `(l|r)`:
         return union(left, right)
+      }
     }
     case "star": {
-      const inner = pullUpStartAnchor(ast.inner)
-      if (inner.type === 'start-anchor') 
+      const inner = pullUpStartAnchor(ast.inner, true) // TODO: correct?
+      if (inner.type === 'start-anchor') {
         // Expression has the form `(^r)*`. We can expand the star to:
         //
-        //     (^r)* == ε | (^r) | (^r)(^r)*
-        // 
-        // It turns out that the case `(^r)(^r)*` can be eliminated.
-        // If `r` is nullable then the `(^r)` on the left can only match epsilon, so:
+        //     (^r)* == ε | (^r) | (^r)(^r)(^r)*
         //
-        //        (^r)(^r)* == (^r)*
-        // 
-        //    ==> (^r)* == ε | (^r) | (^r)* == ε | (^r)
+        // It turns out that the case `(^r)(^r)(^r)*` can be eliminated.
+        // If `r` is nullable then the leftmost `(^r)` can only match epsilon, so:
         //
-        // Otherwise, `r` is not nullable and the expression collapses to the empty set:
-        // 
-        //        (^r)(^r)* == ∅
-        // 
-        //    ==> (^r)* == ε | (^r) | ∅  == ε | (^r)
-        // 
-        // Either way, we have:
-        // 
-        //     (^r)* == ε | (^r) == ^(.*|r) == ^.*
-        // 
-        return startAnchor(undefined, dotStar)
-      else
+        //        (^r)(^r)(^r)* == (^r)(^r)*
+        //
+        //    ==> (^r)* == ε | (^r) | (^r)(^r)*
+        //              == ε | (^r)
+        //
+        // If `r` is not nullable the expression collapses to the empty set:
+        //
+        //        (^r)(^r)(^r)* == ∅
+        //
+        //    ==> (^r)* == ε | (^r) | ∅
+        //              == ε | (^r)
+        //
+        if (isLeftClosed)
+          throw new UnsupportedSyntaxError('start anchor inside quantifier with non-empty prefix like (^a)*')
+        else
+          return startAnchor(undefined, union(dotStar, inner.right)) // i.e. `^(.*|r)`
+      } else {
         // Expression has the form `r*` so no start anchor to deal with:
         return star(inner)
+      }
     }
     case "start-anchor": {
-      const left = pullUpEndAnchor(ast.left)
-      const right = pullUpStartAnchor(ast.right)
+      const left = pullUpEndAnchor(ast.left, isLeftClosed)
+      const right = pullUpStartAnchor(ast.right, true)
 
       if (!isNullable(left)) {
         // Expression has the form `l^r` where `l` is not nullable. Thus, the whole
@@ -218,8 +230,8 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "end-anchor": {
-      const left = pullUpStartAnchor(ast.left)
-      const right = pullUpStartAnchor(ast.right)
+      const left = pullUpStartAnchor(ast.left, isLeftClosed)
+      const right = pullUpStartAnchor(ast.right, true)
 
       if (!isNullable(ast.right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
@@ -241,31 +253,31 @@ function pullUpStartAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "lookahead": {
-      const inner = pullUpStartAnchor(ast.inner)
-      const right = pullUpStartAnchor(ast.right)
+      const inner = pullUpStartAnchor(ast.inner, true)
+      const right = pullUpStartAnchor(ast.right, isLeftClosed)
       if (inner.type === 'start-anchor') {
-        throw new UnsupportedSyntaxError('start anchors inside lookaheads like (?=^a) are not supported')
+        throw new UnsupportedSyntaxError('start anchors inside lookaheads like (?=^a)')
       } else if (right.type === 'start-anchor') {
         return startAnchor(undefined, lookahead(ast.isPositive, ast.inner, right.right))
       } else {
-        return lookahead(ast.isPositive, ast.inner, right)
+        return lookahead(ast.isPositive, inner, right)
       }
     }
   }
   checkedAllCases(ast.type)
 }
 
-function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
+function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
   assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
-  
+
   switch (ast.type) {
     case "epsilon": return ast
     case "literal": return ast
     case "concat": {
       // Pull up end anchors on subexpressions first, so if they contain end
       // anchors then `left` and `right` will have the end anchor at the top.
-      const left = pullUpEndAnchor(ast.left)
-      const right = pullUpEndAnchor(ast.right)     
+      const left = pullUpEndAnchor(ast.left, true) // TODO: rather `isRightClosed || right != epsilon`
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
       if (left.type === 'end-anchor') {
         // Expression has the form `l$r` where `l` contains no end anchor.
         // `r` may contain one but it does not matter. `r` can at most match epsilon,
@@ -287,53 +299,47 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "union": {
-      const left = pullUpEndAnchor(ast.left)
-      const right = pullUpEndAnchor(ast.right)
-      if (left.type === 'end-anchor' && right.type === 'end-anchor') 
+      const left = pullUpEndAnchor(ast.left, isRightClosed)
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
+      if (left.type === 'end-anchor' && right.type === 'end-anchor') {
         // Expression has the form `(l$|r$)`:
         return endAnchor(union(left.left, right.left), undefined) // i.e. `(l$|r$)`
-      else if (left.type === 'end-anchor')
-        // Expression has the form `(l$|r)`:
-        return endAnchor(union(left.left, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
-      else if (right.type === 'end-anchor')
-        // Expression has the form `(l|r$)`:
-        return endAnchor(union(concat(left, dotStar), right.left), undefined) // i.e. `(l.*|r)$`
-      else
+      } else if (left.type === 'end-anchor') {
+        if (isRightClosed)
+          // Expression has the form `(l$|r)s`:
+          throw new UnsupportedSyntaxError('union with non-empty suffix where only some members have anchors like (a$|b)c')
+        else
+          // Expression has the form `(l$|r)`:
+          return endAnchor(union(left.left, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
+      } else if (right.type === 'end-anchor') {
+        // Expression has the form `(l|r$)s`:
+        if (isRightClosed)
+          throw new UnsupportedSyntaxError('union with non-empty suffix where only some members have anchors like (a|b$)c')
+        else
+          // Expression has the form `(l|r$)`:
+          return endAnchor(union(concat(left, dotStar), right.left), undefined) // i.e. `(l.*|r)$`
+      } else {
         // Expression has the form `(l|r)`:
         return union(left, right)
+      }
     }
     case "star": {
-      const inner = pullUpEndAnchor(ast.inner)
-      if (inner.type === 'end-anchor') 
-        // Expression has the form `(l$)*`. We can expand the star to:
-        //
-        //     (l$)* == ε | (l$) | (l$)*(l$)
-        // 
-        // It turns out that the case `(l$)*(l$)` can be eliminated.
-        // If `l` is nullable then the `(l$)` on the right can only match epsilon, so:
-        //
-        //        (l$)*(l$) == (l$)*
-        // 
-        //    ==> (l$)* == ε | (l$) | (l$)* == ε | (l$)
-        //
-        // Otherwise, `l` is not nullable and the expression collapses to the empty set:
-        // 
-        //        (l$)*(l$) == ∅
-        // 
-        //    ==> (l$)* == ε | (l$) | ∅  == ε | (l$)
-        // 
-        // Either way, we have:
-        // 
-        //     (l$)* == ε | (l$) == (.*|l)$ == .*$
-        // 
-        return endAnchor(dotStar, undefined)
+      const inner = pullUpEndAnchor(ast.inner, true) // TODO: correct?
+      if (inner.type === 'end-anchor')
+        if (isRightClosed)
+          // Expression has the form `(l$)*s`:
+          // (see explanation for the "star" case in `pullUpStartAnchor`)
+          throw new UnsupportedSyntaxError('end anchors inside quantifiers with non-empty suffix like (a$)*b')
+        else
+          // Expression has the form `(l$)*`
+          return endAnchor(union(dotStar, inner.left), undefined) // i.e. `(.*|l)$`
       else
         // Expression has the form `l*` so no end anchor to deal with:
         return star(inner)
     }
     case "start-anchor": {
-      const left = pullUpEndAnchor(ast.left)
-      const right = pullUpEndAnchor(ast.right)
+      const left = pullUpEndAnchor(ast.left, true)
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
 
       if (!isNullable(left)) {
         // Expression has the form `l^r` where `r` is not nullable. Thus, the whole
@@ -355,8 +361,8 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "end-anchor": {
-      const left = pullUpEndAnchor(ast.left)
-      const right = pullUpStartAnchor(ast.right)
+      const left = pullUpEndAnchor(ast.left, true)
+      const right = pullUpStartAnchor(ast.right, isRightClosed)
 
       if (!isNullable(right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
@@ -379,14 +385,14 @@ function pullUpEndAnchor(ast: RegExpAST): RegExpAST {
       }
     }
     case "lookahead": {
-      const inner = pullUpEndAnchor(ast.inner)
-      const right = pullUpEndAnchor(ast.right)
+      const inner = pullUpEndAnchor(ast.inner, false)
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
       if (inner.type === 'end-anchor') {
-        throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$) are not supported')
+        throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$)')
       } else if (right.type === 'end-anchor') {
         return endAnchor(lookahead(ast.isPositive, ast.inner, right.left), undefined)
       } else {
-        return lookahead(ast.isPositive, ast.inner, right)
+        return lookahead(ast.isPositive, inner, right)
       }
     }
   }
@@ -398,7 +404,7 @@ export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
   ast = desugar(ast)
 
   // Then eliminate start anchors by first pulling them to the top:
-  ast = pullUpStartAnchor(ast)
+  ast = pullUpStartAnchor(ast, false)
   if (ast.type === 'start-anchor') {
     // If the root node is indeed a start anchor now, then start anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
@@ -410,7 +416,7 @@ export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
   }
 
   // Then eliminate end anchors by first pulling them to the top:
-  ast = pullUpEndAnchor(ast)
+  ast = pullUpEndAnchor(ast, false)
   if (ast.type === 'end-anchor') {
     // If the root node is indeed an end anchor now, then end anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
@@ -436,7 +442,7 @@ function toExtRegexAux(ast: RegExpAST): RE.ExtRegex {
     case 'lookahead': {
       const inner = toExtRegexAux(ast.inner)
       const right = toExtRegexAux(ast.right)
-      if (ast.isPositive) 
+      if (ast.isPositive)
         return RE.intersection(inner, right)
       else
         return RE.intersection(RE.complement(inner), right)
@@ -529,9 +535,9 @@ function repeatBoundsToString(bounds: RepeatBounds): string {
 }
 
 function captureGroupToString(name: string | undefined, inner: RegExpAST, options: RenderOptions) {
-  if (name === undefined) 
+  if (name === undefined)
     return `(${toString(inner, options)})`
-  else 
+  else
     return `(?<${name}>${toString(inner, options)})`
 }
 
@@ -583,36 +589,36 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
       return CharSet.toString(ast.charset)
     case 'concat':
       return maybeWithParens(ast.left, ast, options) + maybeWithParens(ast.right, ast, options)
-    case 'union': 
-      return maybeWithParens(ast.left, ast, options) + '|' + maybeWithParens(ast.right, ast, options)   
+    case 'union':
+      return maybeWithParens(ast.left, ast, options) + '|' + maybeWithParens(ast.right, ast, options)
 
     // For postfix operators if we have to check whether `ast.inner` is not effectively epsilon.
     // In that case we shouldn't append the operator, otherwise can generate invalid expressions.
     // For example, `aε*` would become `a*`.
     case 'star': {
       const innerStr = maybeWithParens(ast.inner, ast, options)
-      if (innerStr === '') 
+      if (innerStr === '')
         return ''
       else
         return innerStr + '*'
     }
     case 'plus': {
       const innerStr = maybeWithParens(ast.inner, ast, options)
-      if (innerStr === '') 
+      if (innerStr === '')
         return ''
       else
         return innerStr + '+'
     }
     case 'optional': {
       const innerStr = maybeWithParens(ast.inner, ast, options)
-      if (innerStr === '') 
+      if (innerStr === '')
         return ''
       else
         return innerStr + '?'
     }
     case 'repeat': {
       const innerStr = maybeWithParens(ast.inner, ast, options)
-      if (innerStr === '') 
+      if (innerStr === '')
         return ''
       else if (typeof ast.bounds === 'number' && ast.bounds <= 3 && innerStr.length === 1)
         // Just duplicate `innerStr` if that makes rendered expression shorter.
@@ -635,7 +641,7 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
   }
   checkedAllCases(ast)
 }
-  
+
 // TODO: information is duplicated in parser:
 function precLevel(nodeType: RegExpAST['type']) {
   switch (nodeType) {
@@ -667,8 +673,8 @@ function precLevel(nodeType: RegExpAST['type']) {
  */
 const needsNoParensOnSamePrecLevel = new Set([
   'concat',
-  'positive-lookahead', 
-  'negative-lookahead', 
+  'positive-lookahead',
+  'negative-lookahead',
   'start-anchor',
   'end-anchor',
   'union',
@@ -681,7 +687,7 @@ const needsNoParensOnSamePrecLevel = new Set([
  * semantics.
  */
 function maybeWithParens(ast: RegExpAST, parent: RegExpAST, options: RenderOptions): string {
-  if (precLevel(ast.type) > precLevel(parent.type)) 
+  if (precLevel(ast.type) > precLevel(parent.type))
     return toString(ast, options)
   else if (precLevel(ast.type) === precLevel(parent.type) && needsNoParensOnSamePrecLevel.has(ast.type))
     return toString(ast, options)

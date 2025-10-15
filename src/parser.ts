@@ -4,6 +4,8 @@ export type ParseResult<T> = { value: T, restInput: string }
 
 export class ParseError extends Error {
 
+  name = "ParseError"
+
   constructor(
     message: string,
     public readonly restInput: string

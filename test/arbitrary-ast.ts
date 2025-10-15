@@ -78,7 +78,7 @@ function endAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AS
 
 /**
  * Traverses AST and renames capturing groups if the name already occurs in the expression.
- * `new RegExp(...)` throws an error when capture group names occur multiple times in the 
+ * `new RegExp(...)` throws an error when capture group names occur multiple times in the
  * same expression.
  */
 export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
@@ -94,7 +94,7 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
       return renameIfSeen(newName)
     }
   }
-  
+
   function traverse(node: AST.RegExpAST): AST.RegExpAST {
     switch (node.type) {
       case 'epsilon':
@@ -115,7 +115,7 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         return AST.repeat(traverse(node.inner), node.bounds)
        case 'capture-group': {
         const innerProcessed = traverse(node.inner)
-        
+
         if (node.name === undefined) {
           return AST.captureGroup(innerProcessed, node.name)
         } else {
@@ -133,7 +133,7 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         checkedAllCases(node)
     }
   }
-  
+
   return traverse(ast)
 }
 

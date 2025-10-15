@@ -29,7 +29,9 @@ const unescapedCharInsideBrackets = P.satisfy(char => !Range.mustBeEscapedInside
 const unescapedCharOutsideBrackets = P.satisfy(char => !Range.mustBeEscapedOutsideBrackets(char))
   .map(CharSet.singleton)
 
-export class UnsupportedSyntaxError extends Error {}
+export class UnsupportedSyntaxError extends Error {
+  name = "UnsupportedSyntaxError"
+}
 
 const escapeSequence = P.string('\\').andThen(_ => P.anyChar).andThen(escapedChar => {
   switch (escapedChar) {
@@ -45,16 +47,16 @@ const escapeSequence = P.string('\\').andThen(_ => P.anyChar).andThen(escapedCha
     case 'v': return P.pure(CharSet.singleton('\v')) // vertical tab
     case 'f': return P.pure(CharSet.singleton('\f')) // form feed
     case '0': return P.pure(CharSet.singleton('\0')) // NUL character
-    case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion not supported')
-    case 'c': throw new UnsupportedSyntaxError('\cX control characters not supported')
+    case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion')
+    case 'c': throw new UnsupportedSyntaxError('\cX control characters')
     case 'x': return P.count(2, P.hexChar).map(chars => 
                 CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
               )
     case 'u': return P.count(4, P.hexChar).map(chars =>
                 CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
               )
-    case 'p': throw new UnsupportedSyntaxError('\\p not supported')
-    case 'P': throw new UnsupportedSyntaxError('\\P not supported')
+    case 'p': throw new UnsupportedSyntaxError('\\p')
+    case 'P': throw new UnsupportedSyntaxError('\\P')
     default: return P.pure(CharSet.singleton(escapedChar)) // match character literally
   }
 })
@@ -175,7 +177,7 @@ const lookbehind: P.Parser<AST.RegExpAST> =
     P.string(')'),
     regex(),
   ).map(_ => {
-    throw new UnsupportedSyntaxError('lookbehind assertions are not supported')
+    throw new UnsupportedSyntaxError('lookbehind assertions')
   })
 
 function regexTerm() {

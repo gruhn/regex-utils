@@ -44,7 +44,7 @@ describe('toExtRegex', () => {
       [/^a^b/, RE.empty],
       // but two ^^ directly in a row are not a contradiction:
       [/(^^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
-      // in fact, as long as anything between two ^ can match epsilon, 
+      // in fact, as long as anything between two ^ can match epsilon,
       // there is no contradiction:
       [/(^(c|)^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
       [/(^c*^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
@@ -59,6 +59,9 @@ describe('toExtRegex', () => {
       [/$^/, RE.epsilon],
       // Nullable expressions on the left and right can be ignored:
       [/(a?)$^(b*)/, RE.epsilon],
+
+      // Contradiction inside lookahead collapses to empty set. Then empty set lookahead can't match anything:
+      [/(?=a^)/, RE.empty],
 
       [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
       [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar]) ],
@@ -89,7 +92,7 @@ describe('toExtRegex', () => {
       // negative lookahead:
       [/^a(?!b)c$/, RE.concat(RE.string('a'), RE.intersection(RE.complement(RE.string('b')), RE.string('c')))],
       // TODO: lookahead + lookbehind
-      // [/^a(?=b)(?<=a)b$/, RE.string('ab')], 
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
       // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
       // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
     ] as const
@@ -104,11 +107,11 @@ describe('toExtRegex', () => {
     it('fixme', { todo: true }, () => {
       const actual = AST.toExtRegex(parseRegExp(/^(a(?!b))*$/))
       const expected = RE.star(RE.string('a'))
-      assert.equal(actual.hash, expected.hash) 
+      assert.equal(actual.hash, expected.hash)
     })
 
   })
-  
+
 })
 
 describe('toString', () => {

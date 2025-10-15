@@ -428,7 +428,9 @@ export function isEmpty(regex: ExtRegex): boolean {
   return regex.type === 'literal' && CharSet.isEmpty(regex.charset)
 }
 
-export class CacheOverflowError extends Error {}
+export class CacheOverflowError extends Error {
+  name = "CacheOverflowError"
+}
 
 export function codePointDerivative(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
 export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
@@ -484,7 +486,7 @@ function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table
     // At least errors can be caught and handled. The limit is somewhat arbitrary.
     // TODO: maybe make this user configurable:
     if (Table.size(cache) >= 10_000) {
-      throw new CacheOverflowError('Cache overflow while computing DFA transitions.')
+      throw new CacheOverflowError('while computing DFA transitions.')
     }
 
     const result = codePointDerivative(codePoint, regex, cache)
@@ -668,7 +670,9 @@ function derivativeClassesAux(
 ///// exclusive standard regex utils     /////
 //////////////////////////////////////////////
 
-export class VeryLargeSyntaxTreeError extends Error {}
+export class VeryLargeSyntaxTreeError extends Error {
+  name = "VeryLargeSyntaxTreeError"
+}
 
 /**
  * TODO: docs
