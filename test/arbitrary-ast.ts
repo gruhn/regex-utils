@@ -62,8 +62,13 @@ function captureGroup(innerArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary
 }
 
 function lookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb(), childArb())
-    .map(([isPositive, inner, right]) => AST.lookahead(isPositive, inner, right))
+  return fc.tuple(fc.boolean(), childArb())
+    .map(([isPositive, inner]) => AST.lookahead(isPositive, inner))
+}
+
+function lookbehind(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
+  return fc.tuple(fc.boolean(), childArb())
+    .map(([isPositive, inner]) => AST.lookbehind(isPositive, inner))
 }
 
 function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
@@ -90,7 +95,7 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
       seenNames.set(name, 1)
       return name
     } else {
-      const newName = `${name}_${counter+1}`
+      const newName = `${name}_${counter + 1}`
       return renameIfSeen(newName)
     }
   }
@@ -101,19 +106,19 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         return node
       case 'literal':
         return node
-       case 'concat':
+      case 'concat':
         return AST.concat(traverse(node.left), traverse(node.right))
-       case 'union':
+      case 'union':
         return AST.union(traverse(node.left), traverse(node.right))
-       case 'star':
+      case 'star':
         return AST.star(traverse(node.inner))
-       case 'plus':
+      case 'plus':
         return AST.plus(traverse(node.inner))
-       case 'optional':
+      case 'optional':
         return AST.optional(traverse(node.inner))
-       case 'repeat':
+      case 'repeat':
         return AST.repeat(traverse(node.inner), node.bounds)
-       case 'capture-group': {
+      case 'capture-group': {
         const innerProcessed = traverse(node.inner)
 
         if (node.name === undefined) {
@@ -124,7 +129,9 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         }
       }
       case 'lookahead':
-        return AST.lookahead(node.isPositive, traverse(node.inner), traverse(node.right))
+        return AST.lookahead(node.isPositive, traverse(node.inner))
+      case 'lookbehind':
+        return AST.lookbehind(node.isPositive, traverse(node.inner))
       case 'start-anchor':
         return AST.startAnchor(traverse(node.left), traverse(node.right))
       case 'end-anchor':
@@ -159,6 +166,7 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
       { arbitrary: lookahead(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: lookbehind(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )

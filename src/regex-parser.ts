@@ -49,12 +49,12 @@ const escapeSequence = P.string('\\').andThen(_ => P.anyChar).andThen(escapedCha
     case '0': return P.pure(CharSet.singleton('\0')) // NUL character
     case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion')
     case 'c': throw new UnsupportedSyntaxError('\cX control characters')
-    case 'x': return P.count(2, P.hexChar).map(chars => 
-                CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
-              )
+    case 'x': return P.count(2, P.hexChar).map(chars =>
+      CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
+    )
     case 'u': return P.count(4, P.hexChar).map(chars =>
-                CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
-              )
+      CharSet.fromRange(Range.singleton(parseInt(chars.join(''), 16)))
+    )
     case 'p': throw new UnsupportedSyntaxError('\\p')
     case 'P': throw new UnsupportedSyntaxError('\\P')
     default: return P.pure(CharSet.singleton(escapedChar)) // match character literally
@@ -104,7 +104,7 @@ const charSet = P.choice([
   unescapedCharOutsideBrackets,
 ])
 
-const captureGroupName = 
+const captureGroupName =
   P.sequence([
     // must start with non-number word char:
     P.satisfy(char => /^[a-zA-Z_]$/.test(char)),
@@ -128,7 +128,7 @@ const group = P.choice([
     P.string('>'),
     regex(),
     P.string(')')
-  ]).map(([_, name, __, inner, ___]) => 
+  ]).map(([_, name, __, inner, ___]) =>
     AST.captureGroup(inner, name)
   ),
   // regular capture group:
@@ -142,14 +142,14 @@ const group = P.choice([
 // Need to backtrack on bounded quantifier because if the curly bracket is
 // not terminated (e.g. "a{2,3") then all characters are interpreted literally.
 // The same if min value is missing but max value is given (e.g. "a{,3}").
-// 
+//
 // FIXME: However, this breaks something else. E.g. "a*{3}" must still be rejected as
 // invalid and not interpreted as "a*" and then literal charactesr "{3}".
 const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrack(
   P.between(
     P.string('{'),
     P.string('}'),
-    P.decimal.andThen(min => 
+    P.decimal.andThen(min =>
       P.optional(P.string(',')).andThen(comma => {
         if (comma === undefined)
           // e.g. a{3}
@@ -168,74 +168,41 @@ const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrac
   )
 )
 
-const lookbehind: P.Parser<AST.RegExpAST> =
-  P.between(
-    P.choice([
-      P.string('(?<='),
-      P.string('(?<!'),
-    ]),
-    P.string(')'),
-    regex(),
-  ).map(_ => {
-    throw new UnsupportedSyntaxError('lookbehind assertions')
-  })
+const positiveLookAhead = P.between(
+  P.string('(?='),
+  P.string(')'),
+  regex(),
+).map(inner => AST.lookahead(true, inner))
+
+const negativeLookAhead = P.between(
+  P.string('(?!'),
+  P.string(')'),
+  regex(),
+).map(inner => AST.lookahead(false, inner))
+
+const positiveLookBehind = P.between(
+  P.string('(?<='),
+  P.string(')'),
+  regex(),
+).map(inner => AST.lookbehind(true, inner))
+
+const negativeLookBehind = P.between(
+  P.string('(?<!'),
+  P.string(')'),
+  regex(),
+).map(inner => AST.lookbehind(false, inner))
 
 function regexTerm() {
   return P.choice([
-    wildcard, 
+    wildcard,
     P.tryElseBacktrack(group),
     escapeSequence.map(AST.literal),
     charSet.map(AST.literal),
-    lookbehind,
+    positiveLookAhead,
+    negativeLookAhead,
+    positiveLookBehind,
+    negativeLookBehind,
   ])
-}
-
-function positiveLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
-  return P.between(
-    P.string('(?='),
-    P.string(')'),
-    // FIXME: that allows ^/$ inside lookaheads but that isn't
-    // handled correctly right now.
-    regex(),
-  ).map(inner => right => AST.lookahead(true, inner, right))
-}
-
-function negativeLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
-  return P.between(
-    P.string('(?!'),
-    P.string(')'),
-    // FIXME: that allows ^/$ inside lookaheads but that isn't
-    // handled correctly right now.
-    regex(),    
-  ).map(inner => right => AST.lookahead(false, inner, right))
-}
-
-/**
- * We treat lookAheads like a right-associative infix operator
- * even though it only "acts" on the right hand side:
- * 
- *     aaa (?=bbb) ccc
- * 
- * We could treat it as a prefix operator but then it's 
- * unclear what should have higher precedence: concat or 
- * lookAhead? But even when treating lookAheads as infix
- * operators, they need special treatment because the left- and
- * right operand can be optional:
- * 
- *     (?=bbb) fff
- *     aaa (?=bbb) 
- *     aaa (?=bbb) (?!ccc) ddd
- */
-function lookAheadOp(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
-  return P.choice([
-    positiveLookAhead(),
-    negativeLookAhead(),
-  ]).map(op => (left, right) => {
-    if (left === undefined)
-      return op(right ?? AST.epsilon)
-    else
-      return AST.concat(left, op(right ?? AST.epsilon))
-  })
 }
 
 function regex(): P.Parser<AST.RegExpAST> {
@@ -247,7 +214,6 @@ function regex(): P.Parser<AST.RegExpAST> {
       { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
       { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
-      { type: 'infixRightOptional', op: lookAheadOp() },
       { type: 'infixRightOptional', op: P.string('$').map(_ => AST.endAnchor) },
       { type: 'infixRightOptional', op: P.string('^').map(_ => AST.startAnchor) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
@@ -275,7 +241,7 @@ export function parseRegExpString(
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function parseRegExp(regexp: RegExp): AST.RegExpAST {
