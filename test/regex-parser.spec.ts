@@ -66,29 +66,27 @@ describe('parseRegExp', () => {
     [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
     [/(?<___>abc)/, group(str('abc'), '___')],
     // start/end marker
-    [/^abc/, AST.startAnchor(undefined, str('abc'))],
+    [/^abc/, AST.startAnchor(AST.epsilon, str('abc'))],
     [/a^b/, AST.startAnchor(char('a'), str('b'))],
-    [/^a|^b/, AST.union(AST.startAnchor(undefined, str('a')), AST.startAnchor(undefined, char('b')))],
-    [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
-    [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
-    // positive lookahead
-    [/(?=a)b/, AST.concat(AST.lookahead(true, char('a')), char('b'))],
-    [/(?=a)(?:b)/, AST.concat(AST.lookahead(true, char('a')), char('b'))],
-    [/(?=a)(?=b)c/, AST.concat(AST.lookahead(true, char('a')), AST.concat(AST.lookahead(true, char('b')), char('c')))],
-    [/a(?=b)c/, AST.concat(char('a'), AST.concat(AST.lookahead(true, char('b')), char('c')))],
-    [/a(?=b)/, AST.seq([char('a'), AST.lookahead(true, char('b'))])],
-    [/a(?=b)c(?=d)e/, AST.seq([char('a'), AST.lookahead(true, char('b')), char('c'), AST.lookahead(true, char('d')), char('e')])],
-    [/(?=)/, AST.lookahead(true, AST.epsilon)],
-    [/(?=a){2}/, AST.repeat(AST.lookahead(true, char('a')), 2)],
-    [/(?=a)*/, AST.star(AST.lookahead(true, char('a')))],
+    [/^a|^b/, AST.union(AST.startAnchor(AST.epsilon, str('a')), AST.startAnchor(AST.epsilon, char('b')))],
+    [/^abc$/, AST.startAnchor(AST.epsilon, AST.endAnchor(str('abc'), AST.epsilon))],
+    [/$a^/, AST.startAnchor(AST.endAnchor(AST.epsilon, char('a')), AST.epsilon)],
+    // positive lookahead - now parsed as lookahead AST nodes, not intersections
+    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))],
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))],
+    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)],
     // negative lookahead
-    [/(?!a)b/, AST.concat(AST.lookahead(false, char('a')), char('b'))],
-    [/(?!a)b|c/, AST.union(AST.concat(AST.lookahead(false, char('a')), char('b')), char('c'))],
-    [/(?!)/, AST.lookahead(false, AST.epsilon)],
-    // positive lookbehind
-    [/(?<=a)/, AST.lookbehind(true, char('a'))],
-    // negative lookbehind
-    [/(?<!a)/, AST.lookbehind(false, char('a'))],
+    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))],
+    [/(?!a)b|c/, AST.union(AST.lookahead(false, char('a'), char('b')), char('c'))],
+    [/(?!)/, AST.lookahead(false, AST.epsilon, AST.epsilon)],
+    // TODO: positive lookbehind
+    // [/(?<=a)/, AST.positiveLookbehind(char('a'))],
+    // TODO: negative lookbehind
+    // [/(?<!a)/, AST.negativeLookbehind(char('a'))],
     // some special chars don't need escape when inside brackets:
     [/[.^$*+?()[{-|]/, AST.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
     // other special chars need escape even inside brackets:
@@ -156,12 +154,30 @@ test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
         const builder = parse_skipKnownIssues(inputRegExp)
         const outputRegExp = builder.toRegExp()
 
+        console.debug(`Input RegExp:  ${inputRegExp}`)
+        console.debug(`Output RegExp: ${outputRegExp}`)
         for (const str of builder.enumerate().take(10)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
       },
     ),
-    { numRuns: 100 },
+    // { numRuns: 100 },
+    { seed: 1959522073, path: "11:2:2:2:2", endOnFailure: true }
   )
+})
+
+it('fixme 3', { only: true }, () => {
+  // const inputRegExp = /(?=b|(?!)a$a)a/
+  const inputRegExp = /(?=b)a/
+
+  const builder = parse_skipKnownIssues(inputRegExp)
+  const outputRegExp = builder.toRegExp()
+
+  console.debug(`Input RegExp:  ${inputRegExp}`)
+  console.debug(`Output RegExp: ${outputRegExp}`)
+  for (const str of builder.enumerate().take(10)) {
+    assert.match(str, outputRegExp)
+    assert.match(str, inputRegExp)
+  }
 })

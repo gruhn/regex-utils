@@ -6,18 +6,16 @@ import { parseRegExp } from "../src/regex-parser"
 
 describe('toExtRegex', () => {
 
-  const dotStar = RE.star(RE.anySingleChar)
-
   // function infix(regex: RE.ExtRegex) {
   //   return RE.seq([ dotStar, regex, dotStar ])
   // }
 
   function prefix(regex: RE.ExtRegex) {
-    return RE.concat(regex, dotStar)
+    return RE.concat(regex, RE.dotStar)
   }
 
   function suffix(regex: RE.ExtRegex) {
-    return RE.concat(dotStar, regex)
+    return RE.concat(RE.dotStar, regex)
   }
 
   describe('union with empty members', () => {
@@ -38,7 +36,7 @@ describe('toExtRegex', () => {
 
   describe('start/end anchor elimination', () => {
     const testCases = [
-      [/^abc/, RE.seq([RE.string('abc'), dotStar])],
+      [/^abc/, RE.seq([RE.string('abc'), RE.dotStar])],
       // start marker contradictions can only match empty set:
       [/a^b/, RE.empty],
       [/^a^b/, RE.empty],
@@ -50,8 +48,8 @@ describe('toExtRegex', () => {
       [/(^c*^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
       // Also, contradiction inside a union does NOT collapse
       // the whole expression to empty set:
-      [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
-      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
+      [/(a^b|c)/, RE.seq([RE.dotStar, RE.singleChar('c'), RE.dotStar])],
+      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), RE.dotStar])],
 
       // End anchor before start anchor is contradictory and describes empty set:
       [/$.^/, RE.empty],
@@ -61,11 +59,10 @@ describe('toExtRegex', () => {
       [/(a?)$^(b*)/, RE.epsilon],
 
       // Contradiction inside lookahead collapses to empty set. Then empty set lookahead can't match anything:
-      // FIXME:
-      // [/(?=a^)/, RE.empty],
+      [/(?=a^)/, RE.empty],
 
-      [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
-      [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar])],
+      [/(^a|)^b/, RE.seq([RE.singleChar('b'), RE.dotStar])],
+      [/^a(b^|c)/, RE.seq([RE.string('ac'), RE.dotStar])],
       [/(^|a)b/, prefix(RE.concat(RE.optional(suffix(RE.singleChar('a'))), RE.singleChar('b')))],
 
       // FIXME:
@@ -83,36 +80,54 @@ describe('toExtRegex', () => {
     }
   })
 
-  // FIXME:
-  // describe('lookahead elimination', () => {
-  //   const testCases = [
-  //     // positive lookahead:
-  //     [/^(?=a)a$/, RE.string('a')],
-  //     [/^a(?=b)b$/, RE.string('ab')],
-  //     [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
-  //     [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
-  //     // negative lookahead:
-  //     [/^a(?!b)c$/, RE.concat(RE.string('a'), RE.intersection(RE.complement(RE.string('b')), RE.string('c')))],
-  //     // TODO: lookahead + lookbehind
-  //     // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
-  //     // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
-  //     // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
-  //   ] as const
+  describe('lookahead elimination', () => {
+    const testCases = [
+      // positive lookahead:
+      [/^(?=a)a$/, RE.string('a')],
+      [/^a(?=b)b$/, RE.string('ab')],
+      [/(?=a)b/, RE.empty],
+      // FIXME:
+      // [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
+      [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
+      [/^(?=(?=(?=[0-5])[5-9])[3-7])[0-9]$/, RE.string('5')],
+      // negative lookahead:
+      [/^a(?!b)c$/, RE.intersection(RE.concat(RE.string('a'), RE.complement(RE.string('b'))), RE.string('ac'))],
+      [/(?!)/, RE.empty],
+      [/(?!a*)/, RE.empty],
+      [/(?![^abc])/, RE.empty],
+      // TODO: lookahead + lookbehind
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
+      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
+      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+    ] as const
 
-  //   for (const [regexp, expected] of testCases) {
-  //     it(`${regexp}`, () => {
-  //       const actual = AST.toExtRegex(parseRegExp(regexp))
-  //       assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
-  //     })
-  //   }
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = AST.toExtRegex(parseRegExp(regexp))
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
+      })
+    }
 
-  //   it('fixme', { todo: true }, () => {
-  //     const actual = AST.toExtRegex(parseRegExp(/^(a(?!b))*$/))
-  //     const expected = RE.star(RE.string('a'))
-  //     assert.equal(actual.hash, expected.hash)
-  //   })
+    it('fixme 1', { todo: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/^(a(?!b))*$/))
+      const expected = RE.star(RE.string('a'))
+      assert.equal(actual.hash, expected.hash)
+    })
 
-  // })
+    it('fixme 2', { todo: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/^((?=a)a|(?=b)b)$/))
+      const expected = RE.union(RE.string('a'), RE.string('b'))
+      assert.equal(actual.hash, expected.hash)
+    })
+
+    it('fixme 3', { todo: true }, () => {
+      const actual = AST.toExtRegex(parseRegExp(/(?![^a])/))
+      // const expected = RE.union(RE.string('a'), RE.string('b'))
+      // assert.equal(actual.hash, expected.hash)
+      RE.debugPrint(actual)
+      throw 'idk'
+    })
+  })
 
 })
 

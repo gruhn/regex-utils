@@ -62,13 +62,8 @@ function captureGroup(innerArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary
 }
 
 function lookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb())
-    .map(([isPositive, inner]) => AST.lookahead(isPositive, inner))
-}
-
-function lookbehind(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb())
-    .map(([isPositive, inner]) => AST.lookbehind(isPositive, inner))
+  return fc.tuple(fc.boolean(), childArb(), childArb())
+    .map(([isPositive, inner, right]) => AST.lookahead(isPositive, inner, right))
 }
 
 function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
@@ -129,9 +124,7 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
         }
       }
       case 'lookahead':
-        return AST.lookahead(node.isPositive, traverse(node.inner))
-      case 'lookbehind':
-        return AST.lookbehind(node.isPositive, traverse(node.inner))
+        return AST.lookahead(node.isPositive, traverse(node.inner), traverse(node.right))
       case 'start-anchor':
         return AST.startAnchor(traverse(node.left), traverse(node.right))
       case 'end-anchor':
@@ -166,7 +159,6 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
       { arbitrary: lookahead(() => regexpAST_(childSize)), weight: 1 },
-      { arbitrary: lookbehind(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )

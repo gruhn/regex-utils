@@ -24,7 +24,7 @@ type ExtRegexWithoutMetaInfo = (
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: ExtRegex, right: ExtRegex }
   | { type: "union", left: ExtRegex, right: ExtRegex }
-  | { type: "star", inner: ExtRegex  }
+  | { type: "star", inner: ExtRegex }
   // Extended with intersection and complement operator:
   | { type: "intersection", left: ExtRegex, right: ExtRegex }
   | { type: "complement", inner: ExtRegex }
@@ -41,7 +41,7 @@ export type StdRegex = StdRegexWithoutMetaInfo & { hash: number, isStdRegex: tru
 export type ExtRegex = ExtRegexWithoutMetaInfo & { hash: number, isStdRegex: boolean }
 
 export function withMetaInfo(regex: StdRegexWithoutMetaInfo): StdRegex
-export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex 
+export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex
 export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
   if (regex.type === 'epsilon')
     return {
@@ -88,7 +88,7 @@ export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
       hash: hashNums([hashStr(regex.type), regex.inner.hash]),
       isStdRegex: false
     }
-  checkedAllCases(regex)  
+  checkedAllCases(regex)
 }
 
 /**
@@ -102,7 +102,7 @@ export function isStdRegex(regex: ExtRegex): regex is StdRegex {
 ///// primitive composite constructors ///////
 //////////////////////////////////////////////
 
-export const epsilon: StdRegex = withMetaInfo({ type: 'epsilon'  })
+export const epsilon: StdRegex = withMetaInfo({ type: 'epsilon' })
 
 export function literal(charset: CharSet.CharSet): StdRegex {
   return withMetaInfo({ type: 'literal', charset })
@@ -132,9 +132,9 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
     if (equal(left.left, right))
       // (r + ε) · r ≈ r · (r + ε)
       return concat(right, left)
-    if (right.type === 'concat' && equal(left.left, right.left)) 
+    if (right.type === 'concat' && equal(left.left, right.left))
       // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
-      return concat(right.left, concat(left, right.right)) 
+      return concat(right.left, concat(left, right.right))
   }
 
   // Try to eliminate as many `star`s as possible,
@@ -200,7 +200,7 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // ∅ + r ≈ r
     return right
   if (left.type === 'epsilon')
-    // ε + r ≈ r + ε 
+    // ε + r ≈ r + ε
     return union(right, left)
   if (equal(empty, right))
     // r + ∅ ≈ r
@@ -281,20 +281,20 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
     return intersection(left.left, intersection(left.right, right))
   if (equal(left, empty))
     // ∅ & r ≈ ∅
-    return empty 
+    return empty
   if (equal(right, empty))
     // r & ∅ ≈ ∅
-    return empty 
+    return empty
   else if (equal(left, complement(empty)))
     // ¬∅ & r ≈ r
-    return right 
+    return right
   else if (equal(right, complement(empty)))
     // r & ¬∅ ≈ r
-    return left 
-  else if (equal(left, right)) 
+    return left
+  else if (equal(left, right))
     // r & r ≈ r
-    return left 
-  else if (left.type === 'literal' && right.type === 'literal') 
+    return left
+  else if (left.type === 'literal' && right.type === 'literal')
     // R & S ≈ R∩S
     return literal(CharSet.intersection(left.charset, right.charset))
 
@@ -303,16 +303,19 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function complement(inner: ExtRegex): ExtRegex {
   if (inner.type === "complement")
     // ¬(¬r) ≈ r
     return inner
+  else if (inner.type === 'epsilon')
+    // ¬ε ≈ Σ+
+    return repeat(literal(CharSet.alphabet), { min: 1 })
   // FIXME: actually wrong. Rather: ¬S ≈ ε + (Σ\S) + Σ{2,}
   // else if (inner.type === 'literal')
-  //   // ¬S ≈ (Σ\S
+  //   // ¬S ≈ (Σ\S)
   //   return literal(CharSet.complement(inner.charset))
   else
     return withMetaInfo({ type: "complement", inner })
@@ -323,9 +326,9 @@ export function complement(inner: ExtRegex): ExtRegex {
 //////////////////////////////////////////////
 
 /**
- * Regex that matches any single character. 
+ * Regex that matches any single character.
  * Equivalent to the dot: `.`.
- * 
+ *
  * @public
  */
 export const anySingleChar: StdRegex = literal(CharSet.alphabet)
@@ -333,7 +336,7 @@ export const anySingleChar: StdRegex = literal(CharSet.alphabet)
 /**
  * Regex that matches the single given character.
  * E.g. `singleChar('a')` is equivalent to `/^a$/`.
- * Meta characters like "$", ".", etc don't need to 
+ * Meta characters like "$", ".", etc don't need to
  * be escaped, i.e. `singleChar('.')` will match "."
  * literally and not any-single-character.
  *
@@ -378,8 +381,6 @@ export function optional(regex: ExtRegex): ExtRegex {
  * ```typescript
  * seq([ singleChar('a'), anySingleChar ]) // like /a./
  * ```
- * 
- * @public
  */
 export function seq(res: StdRegex[]): StdRegex
 export function seq(res: ExtRegex[]): ExtRegex
@@ -402,7 +403,7 @@ export function repeat(regex: ExtRegex, bounds?: AST.RepeatBounds): ExtRegex {
   } else {
     const { min = 0, max = Infinity } = bounds
     assert(0 <= min && min <= max)
-    return repeatAux(regex, min, max)   
+    return repeatAux(regex, min, max)
   }
 }
 
@@ -413,12 +414,14 @@ function repeatAux(regex: ExtRegex, min: number, max: number): ExtRegex {
 
   if (max === Infinity)
     return concat(requiredPrefix, star(regex))
-  else 
+  else
     return concat(
       requiredPrefix,
       seq(Array(max - min).fill(optional(regex)))
     )
 }
+
+export const dotStar = star(literal(CharSet.wildcard({ dotAll: false })))
 
 //////////////////////////////////////////////
 /////    derivatives & predicates        /////
@@ -450,7 +453,7 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: T
           concat(codePointDerivativeAux(codePoint, regex.left, cache), regex.right),
           codePointDerivativeAux(codePoint, regex.right, cache)
         )
-      else 
+      else
         return concat(
           codePointDerivativeAux(codePoint, regex.left, cache),
           regex.right
@@ -473,7 +476,7 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: T
       )
     case "complement":
       return complement(codePointDerivativeAux(codePoint, regex.inner, cache))
-  }  
+  }
   checkedAllCases(regex)
 }
 
@@ -501,20 +504,20 @@ function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function derivative(str: string, regex: StdRegex): StdRegex
-export function derivative(str: string, regex: ExtRegex): ExtRegex 
+export function derivative(str: string, regex: ExtRegex): ExtRegex
 export function derivative(str: string, regex: ExtRegex): ExtRegex {
   const firstCodePoint = str.codePointAt(0)
   if (firstCodePoint === undefined) {
     return regex
   } else {
-    const restStr = str.slice(1) 
+    const restStr = str.slice(1)
     const restRegex = codePointDerivative(firstCodePoint, regex, new Map())
 
-    if (equal(empty, restRegex)) 
+    if (equal(empty, restRegex))
       return empty
     else
       return derivative(restStr, restRegex)
@@ -540,7 +543,7 @@ export function isNullable(regex: ExtRegex): boolean {
       return true
     case "complement":
       return !isNullable(regex.inner)
-  }  
+  }
   checkedAllCases(regex)
 }
 
@@ -549,10 +552,10 @@ export function matches(regex: ExtRegex, string: string): boolean {
 }
 
 /**
- * Checks if `regexA` and `regexB` are structurally equal. 
- * Since regex instances are always kept in "canonical form", 
+ * Checks if `regexA` and `regexB` are structurally equal.
+ * Since regex instances are always kept in "canonical form",
  * structural equality approximates regex equivalence quite well.
- * 
+ *
  * TODO: write property based test to find more examples where this does
  * not detect regex equivalence.
  */
@@ -593,8 +596,8 @@ function allNonEmptyIntersections(
     }
   }
 
-  const finalResult = uniqWith(result, CharSet.compare) 
-  Table.set(hashMin, hashMax, finalResult, cache)   
+  const finalResult = uniqWith(result, CharSet.compare)
+  Table.set(hashMin, hashMax, finalResult, cache)
   return finalResult
 }
 
@@ -610,9 +613,9 @@ export function derivativeClasses(
   switch (regex.type) {
     case "epsilon":
       return [CharSet.alphabet]
-    case "literal": 
+    case "literal":
       return [regex.charset, CharSet.complement(regex.charset)]
-        .filter(charset => !CharSet.isEmpty(charset))   
+        .filter(charset => !CharSet.isEmpty(charset))
         .toSorted(CharSet.compare)
     case "concat": {
       if (isNullable(regex.left))
@@ -621,7 +624,7 @@ export function derivativeClasses(
           derivativeClassesAux(regex.right, cache),
           cache.intersections,
         )
-      else 
+      else
         return derivativeClassesAux(regex.left, cache)
     }
     case "union":
@@ -640,7 +643,7 @@ export function derivativeClasses(
       return derivativeClassesAux(regex.inner, cache)
     case "complement":
       return derivativeClassesAux(regex.inner, cache)
-  }  
+  }
   checkedAllCases(regex)
 }
 
@@ -676,7 +679,7 @@ export class VeryLargeSyntaxTreeError extends Error {
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function toRegExp(regex: StdRegex): RegExp {
@@ -697,7 +700,7 @@ export function toString(regex: StdRegex): string {
   // but at large sizes like this it hardly hurts readability anymore:
   const useNonCapturingGroups = size > 10_000
 
-  const ast = AST.startAnchor(undefined, AST.endAnchor(toRegExpAST(regex), undefined))
+  const ast = AST.startAnchor(AST.epsilon, AST.endAnchor(toRegExpAST(regex), AST.epsilon))
   return AST.toString(ast, { useNonCapturingGroups })
 }
 
@@ -719,16 +722,16 @@ function toRegExpAST(regex: StdRegex): AST.RegExpAST {
           toRegExpAST(regex.right),
         )
       } else {
-        const left = AST.repeat(toRegExpAST(regex.left), len+1)
+        const left = AST.repeat(toRegExpAST(regex.left), len + 1)
 
         if (rest === undefined)
           return left
-        else 
+        else
           return AST.concat(left, toRegExpAST(rest))
       }
     }
     case 'union': {
-      // The `union` smart constructor should guarantee that there is only 
+      // The `union` smart constructor should guarantee that there is only
       // ever a right epsilon (never only on the left or on both sides):
       if (regex.right.type === 'epsilon')
         return AST.optional(toRegExpAST(regex.left))
@@ -752,7 +755,7 @@ function toRegExpAST(regex: StdRegex): AST.RegExpAST {
 function extractConcatChain(left: StdRegex, right: StdRegex): [number, StdRegex | undefined] {
   if (right.type === 'concat' && equal(left, right.left)) {
     const [len, rest] = extractConcatChain(left, right.right)
-    return [len+1, rest]
+    return [len + 1, rest]
   } else if (equal(left, right)) {
     return [1, undefined]
   } else {
@@ -788,7 +791,7 @@ function enumerateMemoizedAux(
       return CharSet.enumerate(regex.charset)
     case 'concat':
       return Stream.diagonalize(
-        (l,r) => l+r,
+        (l, r) => l + r,
         enumerateMemoized(regex.left, cache),
         enumerateMemoized(regex.right, cache),
       )
@@ -801,7 +804,7 @@ function enumerateMemoizedAux(
       return Stream.cons(
         '',
         () => Stream.diagonalize(
-          (l,r) => l+r,
+          (l, r) => l + r,
           enumerateMemoized(regex.inner, cache),
           enumerateMemoized(regex, cache),
         )
@@ -813,11 +816,11 @@ function enumerateMemoizedAux(
  * Generates random strings that match the given regex using a deterministic seed.
  * Unlike enumerate(), this produces a stream of random samples rather than
  * a fair enumeration of all possible matches.
- * 
+ *
  * @param re - The regex to sample from
  * @param seed - Deterministic seed for random generation (default: 42)
  * @returns Generator yielding random matching strings
- * 
+ *
  * @public
  */
 export function* sample(re: StdRegex, seed: number): Generator<string> {
@@ -838,7 +841,7 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
     assert(count !== undefined, 'logic error: node count cache should be populated for all subexpressions')
     return count
   }
-  
+
   while (true) {
     try {
       const result = sampleAux(re, rng, 1000, lookupNodeCount)
@@ -864,11 +867,11 @@ function sampleAux(
   switch (regex.type) {
     case 'epsilon':
       return ''
-    
+
     case 'literal': {
       return CharSet.sampleChar(regex.charset, (max) => rng.nextInt(max))
     }
-    
+
     case 'concat': {
       const leftSample = sampleAux(regex.left, rng, maxDepth / 2, lookupNodeCount)
       if (leftSample === null) return null
@@ -876,13 +879,13 @@ function sampleAux(
       if (rightSample === null) return null
       return leftSample + rightSample
     }
-    
+
     case 'union': {
       // For unions we randomly sample from the left- or right subtree.
       // The probability is weighted by the number of nodes in the subtree.
       // Consider the expression /^(aa|(bb|cc))$/ which matches the three strings: "aa", "bb", "cc".
       // If we give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
-      // Weighting by node count does not eliminate this problem completely. 
+      // Weighting by node count does not eliminate this problem completely.
       // We could also weight by the number of strings matched by the subtrees (computed using `size`).
       // But what to we do if one of the subtrees matches infinitely many strings (e.g. /^(a|b*)$/)?
       const leftCount = lookupNodeCount(regex.left)
@@ -895,7 +898,7 @@ function sampleAux(
         return sampleAux(regex.right, rng, maxDepth - 1, lookupNodeCount)
       }
     }
-    
+
     case 'star': {
       // Randomly choose whether to stop repetition or to continue:
       const chooseStop = rng.next() < 0.5
@@ -911,7 +914,7 @@ function sampleAux(
 
     }
   }
-  
+
   checkedAllCases(regex)
 }
 
@@ -966,7 +969,7 @@ function sizeMemoizedAux(
     }
     case 'star': {
       const innerSize = sizeMemoized(regex.inner, cache)
-      if (innerSize === 0n) 
+      if (innerSize === 0n)
         // `inner` is empty so `star(inner)` the only match is the empty string:
         return 1n
       else
@@ -1007,7 +1010,7 @@ function nodeCountAux(
 ): number {
   const cachedResult = cache.get(regex.hash)
   if (cachedResult === undefined) {
-    const result = nodeCount(regex, cache)   
+    const result = nodeCount(regex, cache)
     cache.set(regex.hash, result)
     return result
   } else {
@@ -1015,14 +1018,13 @@ function nodeCountAux(
   }
 }
 
-export function debugShow(regex: ExtRegex): any {
+export function debugShow(regex: ExtRegex) {
   return JSON.stringify(debugShowAux(regex), null, 2)
 }
-export function debugPrint(regex: ExtRegex): any {
+export function debugPrint(regex: ExtRegex) {
   return console.debug(JSON.stringify(debugShowAux(regex), null, 2))
 }
-
-function debugShowAux(regex: ExtRegex): any {
+export function debugShowAux(regex: ExtRegex): unknown {
   switch (regex.type) {
     case 'epsilon':
       return 'ε'
