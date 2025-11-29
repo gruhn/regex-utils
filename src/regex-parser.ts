@@ -190,26 +190,6 @@ function regexTerm() {
   ])
 }
 
-function positiveLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
-  return P.between(
-    P.string('(?='),
-    P.string(')'),
-    // FIXME: that allows ^/$ inside lookaheads but that isn't
-    // handled correctly right now.
-    regex(),
-  ).map(inner => right => AST.lookahead(true, inner, right))
-}
-
-function negativeLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
-  return P.between(
-    P.string('(?!'),
-    P.string(')'),
-    // FIXME: that allows ^/$ inside lookaheads but that isn't
-    // handled correctly right now.
-    regex(),
-  ).map(inner => right => AST.lookahead(false, inner, right))
-}
-
 /**
  * We treat lookAheads like a right-associative infix operator
  * even though it only "acts" on the right hand side:
@@ -226,16 +206,23 @@ function negativeLookAhead(): P.Expr.UnaryOperator<AST.RegExpAST> {
  *     aaa (?=bbb)
  *     aaa (?=bbb) (?!ccc) ddd
  */
-function lookAheadOp(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
-  return P.choice([
-    positiveLookAhead(),
-    negativeLookAhead(),
-  ]).map(op => (left, right) => {
-    if (left === undefined)
-      return op(right ?? AST.epsilon)
-    else
-      return AST.concat(left, op(right ?? AST.epsilon))
-  })
+function positiveLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?='),
+    P.string(')'),
+    regex(),
+  ).map(inner => (left, right) =>
+    AST.lookahead(true, inner, left ?? AST.epsilon, right ?? AST.epsilon)
+  )
+}
+function negativeLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?!'),
+    P.string(')'),
+    regex(),
+  ).map(inner => (left, right) =>
+    AST.lookahead(true, inner, left ?? AST.epsilon, right ?? AST.epsilon)
+  )
 }
 
 function regex(): P.Parser<AST.RegExpAST> {
@@ -247,7 +234,8 @@ function regex(): P.Parser<AST.RegExpAST> {
       { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
       { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
-      { type: 'infixRightOptional', op: lookAheadOp() },
+      { type: 'infixRightOptional', op: negativeLookAhead() },
+      { type: 'infixRightOptional', op: positiveLookAhead() },
       { type: 'infixRightOptional', op: P.string('$').map(_ => (left, right) => AST.endAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('^').map(_ => (left, right) => AST.startAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },

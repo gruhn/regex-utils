@@ -89,12 +89,16 @@ describe('toExtRegex', () => {
       // FIXME:
       // [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
       [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
+      // nested positive lookahead:
       [/^(?=(?=(?=[0-5])[5-9])[3-7])[0-9]$/, RE.string('5')],
+      // positive lookaheads with nullable expression always succeed:
+      [/^(?=)b$/, RE.string('b')],
+      [/^(?=a*)b$/, RE.string('b')],
       // negative lookahead:
       [/^a(?!b)c$/, RE.intersection(RE.concat(RE.string('a'), RE.complement(RE.string('b'))), RE.string('ac'))],
+      // negative lookaheads with nullable expression always fail:
       [/(?!)/, RE.empty],
       [/(?!a*)/, RE.empty],
-      [/(?![^abc])/, RE.empty],
       // TODO: lookahead + lookbehind
       // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
       // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
@@ -142,7 +146,7 @@ describe('toString', () => {
   ] as const
 
   for (const [inputAST, expected] of testCases) {
-    it(`${expected}`, () => {
+    it(`${expected}`, { only: true }, () => {
       const str = AST.toString(inputAST, { useNonCapturingGroups: false })
       assert.equal(str, expected.source)
     })

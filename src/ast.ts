@@ -27,7 +27,7 @@ export type RegExpAST =
   | { type: "optional", inner: RegExpAST }
   | { type: "repeat", inner: RegExpAST, bounds: RepeatBounds }
   | { type: "capture-group", name?: string, inner: RegExpAST }
-  | { type: "lookahead", isPositive: boolean, inner: RegExpAST, right: RegExpAST }
+  | { type: "lookahead", isPositive: boolean, inner: RegExpAST, left: RegExpAST, right: RegExpAST }
   | { type: "start-anchor", left: RegExpAST, right: RegExpAST }
   | { type: "end-anchor", left: RegExpAST, right: RegExpAST }
 
@@ -51,7 +51,7 @@ type InterAST =
   | { type: "optional", inner: InterAST }
   | { type: "repeat", inner: InterAST, bounds: RepeatBounds }
   | { type: "capture-group", name?: string, inner: InterAST }
-  | { type: "lookahead", isPositive: boolean, inner: InterAST, right: InterAST }
+  | { type: "lookahead", isPositive: boolean, inner: InterAST, left: InterAST, right: InterAST }
   | { type: "start-anchor", left: InterAST, right: InterAST }
   | { type: "end-anchor", left: InterAST, right: InterAST }
 
@@ -65,7 +65,7 @@ type InterAST_desugared =
   | { type: "concat", left: InterAST_desugared, right: InterAST_desugared }
   | { type: "union", left: InterAST_desugared, right: InterAST_desugared }
   | { type: "star", inner: InterAST_desugared }
-  | { type: "lookahead", isPositive: boolean, inner: InterAST_desugared, right: InterAST_desugared }
+  | { type: "lookahead", isPositive: boolean, inner: InterAST_desugared, left: InterAST_desugared, right: InterAST_desugared }
   | { type: "start-anchor", left: InterAST_desugared, right: InterAST_desugared }
   | { type: "end-anchor", left: InterAST_desugared, right: InterAST_desugared }
 
@@ -77,17 +77,21 @@ type InterAST_no_achnors =
   | { type: "concat", left: InterAST_no_achnors, right: InterAST_no_achnors }
   | { type: "union", left: InterAST_no_achnors, right: InterAST_no_achnors }
   | { type: "star", inner: InterAST_no_achnors }
-  | { type: "lookahead", isPositive: boolean, inner: InterAST_no_achnors, right: InterAST_no_achnors }
+  | { type: "lookahead", isPositive: boolean, inner: InterAST_no_achnors, left: InterAST_no_achnors, right: InterAST_no_achnors }
 
 /**
  * Lookahead node that has been normalized to:
  * - always be positive and
- * - have only ExtRegex as sub-expressions.
+ * - have only ExtRegex sub-expressions.
  */
 type NormalizedLookahead = {
   type: "lookahead"
   isPositive: true
   inner: {
+    type: "ext-regex"
+    content: RE.ExtRegex
+  }
+  left: {
     type: "ext-regex"
     content: RE.ExtRegex
   }
@@ -102,6 +106,7 @@ function isNormalizedLookahead(ast: InterAST_desugared): ast is NormalizedLookah
     ast.type === 'lookahead' &&
     ast.isPositive &&
     ast.inner.type === 'ext-regex' &&
+    ast.left.type === 'ext-regex' &&
     ast.right.type === 'ext-regex'
   )
 }
@@ -120,7 +125,12 @@ function isNullable(ast: InterAST_desugared): boolean {
     case "concat": return isNullable(ast.left) && isNullable(ast.right)
     case "union": return isNullable(ast.left) || isNullable(ast.right)
     case "star": return true
-    case "lookahead": return isNullable(ast.inner) && isNullable(ast.right)
+    case "lookahead": return (
+      isNullable(ast.left) &&
+      isNullable(ast.right) &&
+      // TODO: explain
+      isNullable(ast.inner) === ast.isPositive
+    )
     case "start-anchor": return isNullable(ast.left) && isNullable(ast.right)
     case "end-anchor": return isNullable(ast.left) && isNullable(ast.right)
   }
@@ -136,7 +146,7 @@ function desugar(ast: RegExpAST): InterAST_desugared {
     case 'star': return star(desugar(ast.inner))
     case 'start-anchor': return startAnchor(desugar(ast.left), desugar(ast.right))
     case 'end-anchor': return endAnchor(desugar(ast.left), desugar(ast.right))
-    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner), desugar(ast.right))
+    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner), desugar(ast.left), desugar(ast.right))
     case 'capture-group': return desugar(ast.inner)
     case 'optional':
       // `a?` ==> `ε|a`
@@ -439,12 +449,17 @@ function pullUpEndAnchor(ast: InterAST_desugared, isRightClosed: boolean): Inter
     case "lookahead": {
       const inner = pullUpEndAnchor(ast.inner, false)
       const right = pullUpEndAnchor(ast.right, isRightClosed)
+      const left = pullUpEndAnchor(ast.left, true)
       if (inner.type === 'end-anchor') {
         throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$)')
+      } else if (left.type === 'end-anchor') {
+        // if (isNullable())
+
       } else if (right.type === 'end-anchor') {
-        return endAnchor(lookahead(ast.isPositive, ast.inner, right.left), extRegex(RE.epsilon))
+        // Expression has the form `a(?=b)(c$)`:
+        return endAnchor(lookahead(ast.isPositive, ast.inner, ast.left, right.left), extRegex(RE.epsilon)) // i.e. `(a(?=b)c)$`
       } else {
-        return lookahead(ast.isPositive, inner, right)
+        return lookahead(ast.isPositive, inner, left, right)
       }
     }
   }
@@ -720,11 +735,11 @@ export function captureGroup(inner: RegExpAST, name?: string): RegExpAST {
   return { type: 'capture-group', inner, name }
 }
 
-export function lookahead(isPositive: true, inner: ExtRegexNode, right: ExtRegexNode): NormalizedLookahead
-export function lookahead(isPositive: boolean, inner: InterAST_desugared, right: InterAST_desugared): InterAST_desugared
-export function lookahead(isPositive: boolean, inner: RegExpAST, right: RegExpAST): RegExpAST
-export function lookahead(isPositive: boolean, inner: InterAST, right: InterAST): InterAST {
-  return { type: 'lookahead', isPositive, inner, right }
+export function lookahead(isPositive: true, inner: ExtRegexNode, left: ExtRegexNode, right: ExtRegexNode): NormalizedLookahead
+export function lookahead(isPositive: boolean, inner: InterAST_desugared, left: InterAST_desugared, right: InterAST_desugared): InterAST_desugared
+export function lookahead(isPositive: boolean, inner: RegExpAST, left: RegExpAST, right: RegExpAST): RegExpAST
+export function lookahead(isPositive: boolean, inner: InterAST, left: InterAST, right: InterAST): InterAST {
+  return { type: 'lookahead', isPositive, inner, left, right }
 }
 
 //////////////////////////////////////////////
