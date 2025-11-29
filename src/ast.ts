@@ -449,12 +449,8 @@ function pullUpEndAnchor(ast: InterAST_desugared, isRightClosed: boolean): Inter
     case "lookahead": {
       const inner = pullUpEndAnchor(ast.inner, false)
       const right = pullUpEndAnchor(ast.right, isRightClosed)
-      const left = pullUpEndAnchor(ast.left, true)
       if (inner.type === 'end-anchor') {
         throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$)')
-      } else if (left.type === 'end-anchor') {
-        // if (isNullable())
-
       } else if (right.type === 'end-anchor') {
         // Expression has the form `a(?=b)(c$)`:
         return endAnchor(lookahead(ast.isPositive, ast.inner, ast.left, right.left), extRegex(RE.epsilon)) // i.e. `(a(?=b)c)$`
@@ -474,6 +470,7 @@ function complement(ast: ExtRegexNode): ExtRegexNode {
   return extRegex(RE.complement(ast.content))
 }
 
+// FIXME:
 function pullUpLookahead(ast: InterAST_no_achnors): ExtRegexNode | NormalizedLookahead {
   switch (ast.type) {
     case "ext-regex": return ast
