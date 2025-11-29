@@ -69,7 +69,7 @@ vrskllsvblqb@gemi.wc
 
 ### Refactor Regex then Check Equivalence 🔄
 
-Say we identified a regex in the code base that is prone to
+Say we identified a regex in the codebase that is prone to
 [catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression)
 and came up with a new version:
 
@@ -99,11 +99,11 @@ How do you write a regex that matches HTML comments like:
 ```
 <!-- This is a comment -->
 ```
-A straight forward attempt would be:
+A straightforward attempt would be:
 ```typescript
 <!--.*-->
 ```
-The problem is that `.*` also matches the end marker `-->`, 
+The problem is that `.*` also matches the end marker `-->`,
 so this is also a match:
 ```typescript
 <!-- This is a comment --> and this shouldn't be part of it -->
@@ -113,8 +113,6 @@ With `.not()` (aka. regex complement) this is easy:
 
 ```typescript
 import { RB } from '@gruhn/regex-utils'
-
-const strContainingCommentEnd = RB(/.*-->.*/)
 
 const commentStart = RB('<!--')
 const commentInner = RB(/^.*-->.*$/).not()
@@ -142,7 +140,7 @@ import { RB } from '@gruhn/regex-utils'
 
 const passwordRegex = RB(/^[a-zA-Z0-9]{12,32}$/) // 12-32 alphanumeric characters
   .and(/[0-9]/) // at least one number
-  .and(/[A-Z]/) // at least one upper case letter   
+  .and(/[A-Z]/) // at least one upper case letter
   .and(/[a-z]/) // at least one lower case letter
 ```
 
@@ -150,7 +148,7 @@ We can convert this back to a native JavaScript RegExp with:
 ```typescript
 passwordRegex.toRegExp()
 ```
-> [!NOTE]  
+> [!NOTE]
 > The output `RegExp` can be very large.
 
 We can also use other utilities like `.size()` to determine how many potential passwords match this regex:
@@ -208,7 +206,7 @@ This can also be written as a regular expression:
  - Between digits we write `o+`.
  - Additionally, arbitrary many `o` are allowed at the start and end,
    so we add `o*` at the start and end.
-   
+
 Thus, `1,1,3` would be written as:
 ```typescript
 const secondRegex = /^o*#{1}o+#{1}o+#{3}o*$/

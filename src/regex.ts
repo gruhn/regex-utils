@@ -702,9 +702,9 @@ export function toString(regex: StdRegex): string {
 }
 
 // TODO:
-// - "a+" instead of "aa*".
-// - "a{3,}" instead of "a{3}a*".
-// - "a{,3}" instead of "a?a?a?".
+// - "a+" instead of "aa*"
+// - "a{3,}" instead of "a{3}a*"
+// - "a{,3}" instead of "a?a?a?"
 function toRegExpAST(regex: StdRegex): AST.RegExpAST {
   switch (regex.type) {
     case 'epsilon':

@@ -13,16 +13,16 @@ export { type RegexBuilder }
 
 /**
  * Union of types which can be converted to a `RegexBuilder` instance.
- * 
- * Native JavaScript `RegExp` are interpreted as is. Note, if start/end 
- * markers are missing (i.e. `^`/`$`) then there is an implicit `.*` at 
+ *
+ * Native JavaScript `RegExp` are interpreted as is. Note, if start/end
+ * markers are missing (i.e. `^`/`$`) then there is an implicit `.*` at
  * the start and end:
- * 
+ *
  * ```typescript
  * RB(/^abc$/) // is like /^abc$/
  * RB(/abc/) // is like /^.*abc.*$/
  * ```
- * 
+ *
  * Strings are interpreted as literal characters. For example, `.` is
  * interpreted as the literal dot character and not _any character_ as in
  * regular expression:
@@ -31,24 +31,24 @@ export { type RegexBuilder }
  * RB('abc') // is like /^abc$/
  * RB('.') // is like /^\.$/
  * ```
- * 
- * If no arguments (or `undefined`) is passed to `RB`, then it returns an
+ *
+ * If no arguments (or `undefined`) is passed to `RB`, then it returns one
  * that matches no strings at all. This can be useful when constructing `RB`
  * instances programmatically.
- * 
+ *
  * ```typescript
  * ['a', 'b', 'c'].reduce((acc, char) => acc.or(RB(char)), RB()) // like /^(a|b|c)$/
  * ```
- * 
+ *
  * This is also an example why `RegexBuilder` itself is accepted as input.
- * 
+ *
  * The final type `ExtRegex` is an internal representation that's likely not
  * interesting.
  */
-export type RegexLike = undefined | string | RegExp | RegexBuilder | RE.ExtRegex 
+export type RegexLike = undefined | string | RegExp | RegexBuilder | RE.ExtRegex
 
 function fromRegexLike(re: RegexLike): RE.ExtRegex {
-  if (re === undefined) 
+  if (re === undefined)
     return RE.empty
   else if (typeof re === 'string')
     return RE.string(re)
@@ -61,7 +61,7 @@ function fromRegexLike(re: RegexLike): RE.ExtRegex {
 }
 
 /**
- * A wrapper class for JavaScript regular expressions that exposes the utility 
+ * A wrapper class for JavaScript regular expressions that exposes the utility
  * functions of this library and also provides a DSL for constructing regular
  * expression.
  */
@@ -96,7 +96,7 @@ class RegexBuilder {
    * ```typescript
    * RB('a').or('b') // like /^(a|b)$/
    * ```
-   * 
+   *
    * @public
    */
   or(re: RegexLike): RegexBuilder {
@@ -105,14 +105,14 @@ class RegexBuilder {
 
   /**
    * Constructs the intersection of two regex.
-   * This is useful to combine several constraints into one. 
+   * This is useful to combine several constraints into one.
    * For example, to build a regular expression that can validate a new password:
-   * 
+   *
    * @example
    * ```typescript
    * const passwordRegex = RB(/.{12,}/) // 12 letters or more
    *   .and(/[0-9]/) // at least one number
-   *   .and(/[A-Z]/) // at least one upper case letter   
+   *   .and(/[A-Z]/) // at least one upper case letter
    *   .and(/[a-z]/) // at least one lower case letter
    *   .toRegExp()
    *
@@ -122,20 +122,20 @@ class RegexBuilder {
    * ```
    *
    * In most cases it's simpler and more efficient to match each `RegExp` individually:
-   * 
+   *
    * ```typescript
    * function isValidPassword(str: string) {
    *   return /.{12,}/.test(str) && /[0-9]/.test(str) && /[A-Z]/.test(str) && /[a-z]/.test(str)
    * }
    * ```
-   * 
-   * However, this is not always possible. 
+   *
+   * However, this is not always possible.
    * For example, when a third-party interface expect a single `RegExp` as input like:
    * - Express.js - for route parameter matching and path specifications
    * - Yup/Joi/Zod - for string pattern validation
    * - Webpack - in various configuration options like test, include, and exclude patterns
    * - fast-check - for random string generation during fuzzing / property based testing
-   * 
+   *
    * @public
    */
   and(re: RegexLike): RegexBuilder {
@@ -143,7 +143,7 @@ class RegexBuilder {
   }
 
   /**
-   * Constructs the regex complement, i.e. the regex that matches exactly the strings that the
+   * Constructs the regex complement, i.e., the regex that matches exactly the strings that the
    * current regex is not matching.
    *
    * TODO: examples.
@@ -159,7 +159,7 @@ class RegexBuilder {
    * ```typescript
    * RB('aaa').concat('bbb') // like /^aaabbb$/
    * ```
-   * 
+   *
    * @public
    */
   concat(re: RegexLike): RegexBuilder {
@@ -180,7 +180,7 @@ class RegexBuilder {
    * RB('a').repeat({ min: 0 }) // a*
    * RB('a').repeat() // a*
    * ```
-   * 
+   *
    * @public
    */
   repeat(bounds: AST.RepeatBounds = { min: 0 }): RegexBuilder {
@@ -196,7 +196,7 @@ class RegexBuilder {
    * ```typescript
    * RB('a').optional() // like /^a?$/
    * ```
-   * 
+   *
    * @public
    */
   optional(): RegexBuilder {
@@ -207,7 +207,7 @@ class RegexBuilder {
    * Compute a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the given `RegExp`.
    *
    * TODO: examples.
-   * 
+   *
    * @public
    */
   derivative(prefix: string): RegexBuilder {
@@ -216,26 +216,26 @@ class RegexBuilder {
 
   /**
    * Returns the number of strings that match the regex or `undefined` if there are infinitely many matches.
-   * 
+   *
    * @example
    * ```typescript
    * RB(/^[a-z]$/).size() === 26n
-   * 
+   *
    * RB(/^[a-z][0-9]$/).size() === 260n
-   * 
+   *
    * // this one has infinitely many matches:
    * RB(/^[a-z]*$/).size() === undefined
-   * 
-   * // that's why the return type is `bigint`;
-   * RB(/^[a-z]{60}/).size() === 7914088058189701615326255069116716194962212229317838559326167922356251403772678373376n 
+   *
+   * // that's why the return type is `bigint`:
+   * RB(/^[a-z]{60}/).size() === 7914088058189701615326255069116716194962212229317838559326167922356251403772678373376n
    * ```
-   * 
+   *
    * > [!NOTE]
-   * > Double counting is often avoided. 
+   * > Double counting is often avoided.
    * > For example, `RB(/^(hello|hello)$/).size()` is only `1n` and not `2n`.
    * > But it probably still happens.
    * > The value should always be an upper bound though.
-   * 
+   *
    * @public
    */
   size() {
@@ -246,11 +246,11 @@ class RegexBuilder {
    * A [generator function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*)
    * that returns a (potentially infinite) stream of strings that match the given `RegExp`.
    * This can be useful for testing regular expressions.
-   * 
+   *
    * @example
    * ```typescript
    * const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
-   * 
+   *
    * for (const matchedStr of RB(emailRegex).enumerate()) {
    *   console.log(matchedStr)
    * }
@@ -280,14 +280,14 @@ class RegexBuilder {
    * g@a.aa
    * ...
    * ```
-   * 
+   *
    * > [!WARNING]
    * > If the regular expression matches infinitely many strings then a loop like above won't terminate.
-   * 
+   *
    * > [!TIP]
    * > Use the new [Iterator helpers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Iterator/take)
    * > to only get the first N matches, e.g `RB(emailRegex).enumerate().take(100)`.
-   * 
+   *
    * The generator produces a _fair enumeration_.
    * That means every string that matches the regular expression is _eventually_ enumerated.
    * To illustrate, an unfair enumeration of `/^(a+|b+)$/` would be:
@@ -309,20 +309,20 @@ class RegexBuilder {
    * Unlike enumerate(), this produces a stream of random samples rather than
    * a fair enumeration of all possible matches. This is more useful for generating
    * representative examples without unusual characters like "\u0000".
-   * 
+   *
    * @example
    * ```typescript
    * const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
-   * 
+   *
    * // Generate 10 random email examples with seed 42
    * for (const sample of RB(emailRegex).sample(42).take(10)) {
    *   console.log(sample)
    * }
    * ```
-   * 
+   *
    * @param seed - Optional seed to make sampling deterministic.
    * @returns Generator yielding random matching strings
-   * 
+   *
    * @public
    */
   sample(seed: number = Date.now()) {
@@ -330,8 +330,8 @@ class RegexBuilder {
   }
 
   /**
-   * Converts back to a native JavaScript `RegExp`. 
-   * 
+   * Converts back to a native JavaScript `RegExp`.
+   *
    * @warning
    * The generated `RegExp` can be very large if it was constructed with
    * `.and(...)` or `.not(...)`.
@@ -342,7 +342,7 @@ class RegexBuilder {
 
   /**
    * Checks if the regex matches no strings at all.
-   * 
+   *
    * @example
    * ```typescript
    * RB('a').isEmpty() // false
@@ -362,7 +362,7 @@ class RegexBuilder {
    * they match the exact same set of strings.
    *
    * @example
-   * ```typescript 
+   * ```typescript
    * RB(/a{1,}/).isEquivalent(/a+/) // true
    * ```
    *
@@ -378,7 +378,7 @@ class RegexBuilder {
    * the current regex matches EXCEPT everything that `re` matches.
    *
    * @example
-   * ```typescript 
+   * ```typescript
    * RB(/^a*$/).without(/^a{5}$/) // /^(a{0,4}|a{6,})$/
    * ```
    *
@@ -414,13 +414,13 @@ class RegexBuilder {
   isDisjointFrom(re: RegexLike): boolean {
     return this.and(RB(re)).isEmpty()
   }
- 
+
 }
 
 /**
  * The main entry point of this library. It creates a `RegexBuilder` instance from
  * various sources (see `RegexLike`).
- * 
+ *
  * @public
  */
 export function RB(re: RegexLike) {

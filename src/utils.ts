@@ -24,10 +24,10 @@
  * but if the assumption is actually broken, we get a silent error.
  * In contrast, with
  *
- *     assert(foo !== null, 'Element cant be found although it was just created')
+ *     assert(foo !== null, 'Element cannot be found although it was just created')
  *     foo.children // no type error!
  *
- * We make the assumption explicit and force a laud error. Also, after the assertion
+ * We make the assumption explicit and force a loud error. Also, after the assertion
  * the type-checker can infer that `foo` is never `null` so we don't get a type
  * error when accessing `foo.children`.
  *
@@ -87,8 +87,8 @@ export function identity<T>(x: T): T {
 }
 
 /**
- * Yields tuples of elements from the two input arrays. Excess elements are ignored., if one
- * of the arrays is longer
+ * Yields tuples of elements from the two input arrays. Excess elements are ignored if one
+ * of the arrays is longer.
  */
 export function* zip<A,B>(arrayA: readonly A[], arrayB: readonly B[]): Generator<[A,B]> {
   for (let i = 0; i < Math.min(arrayA.length, arrayB.length); i++) {

@@ -82,17 +82,17 @@ export function concat<A>(streams: Stream<Stream<A>>): Stream<A> {
 }
 
 /**
- * This function is useful to create a fair enumeration of 
- * the cartesian product of two infinite streams, i.e. all 
+ * This function is useful to create a fair enumeration of
+ * the cartesian product of two infinite streams, i.e., all
  * possible ways to pair up items from the two streams.
  *
  * For example, say `streamA` and `streamB` produce all non-
- * negative integers (0,1,2,3,4,...) then one could start 
+ * negative integers (0,1,2,3,4,...) then one could start
  * by pairing 0 from `streamA` with everything from `streamB`:
- * 
+ *
  *     (0,0) -> (0,1) -> (0,2) -> (0,3) -> ...
  *
- * However, this enumeration is unfair because it never 
+ * However, this enumeration is unfair because it never
  * produces (1,0) or (2,0) etc. A trick to make it fair
  * is to enumerate the pairs in a "diagonal" fashion:
  *
@@ -103,11 +103,11 @@ export function concat<A>(streams: Stream<Stream<A>>): Stream<A> {
  *           /     /     /
  *         /     /     /
  *     (2,0) (2,1) (2,2)
- *           /     /    
+ *           /     /
  *         /     /
  *     (3,0) (3,1)
  *
- * Where each stripes is oriented top-right to bottom-left.
+ * Where each stripe is oriented top-right to bottom-left.
  * This guarantees that every possible pair is produced eventually.
  */
 export function diagonalize<A,B,C>(

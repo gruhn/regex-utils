@@ -83,7 +83,7 @@ const alphaNumRange: P.Parser<CharSet.CharSet> = alphaNumChar.andThen(start =>
 
 const charSet = P.choice([
   P.between(
-    // square brackets cant't be nested
+    // square brackets can't be nested
     P.string('['),
     P.string(']'),
     P.optional(P.string('^')).andThen(negated =>

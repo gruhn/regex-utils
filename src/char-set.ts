@@ -33,8 +33,8 @@ function node({ left, right, range }: {
     //         xyz        abc
     //         /            \
     //       abc            xyz
-    // 
-    // We want he hash to identify the ranges contained within,
+    //
+    // We want the hash to identify the ranges contained within,
     // independent of the structure of the tree and how it's balanced,
     // so it's cheap to detect when two `CharSet`s are equal.
     hash: [

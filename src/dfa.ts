@@ -151,12 +151,12 @@ export function dfaToRegex(dfa: DFA): RE.StdRegex {
             succLabel,
           ])
           Graph.setEdge(
-            pred, 
+            pred,
             succ,
             transitiveLabel,
-            graph, 
+            graph,
             // Flipping the arguments avoids that the associativity rewrite rule of `union`
-            // keeps getting triggered. This makes a segnificant performance difference:
+            // keeps getting triggered. This makes a significant performance difference:
             (oldValue, newValue) => RE.union(newValue, oldValue),
           )
         }

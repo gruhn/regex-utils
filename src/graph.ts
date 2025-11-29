@@ -88,7 +88,7 @@ export function ripNode<A>(node: number, graph: Graph<A>): RipNodeResult<A> {
 
 /**
  * Adds an edge to `graph` from `sourceNode` to `targetNode` with `edgeLabel`.
- * If there is already an edge between these nodes, `combine` is called to 
+ * If there is already an edge between these nodes, `combine` is called
  * to combine the two edge labels.
  */
 export function setEdge<A>(
