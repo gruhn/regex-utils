@@ -6,10 +6,11 @@ bench: benchmark/aoc2023-day12-result.txt benchmark/parser-bench-result.txt benc
 
 ####################################################
 
-docs/.stamp: dist/.stamp equiv-checker.html tsconfig.build.json
+docs/.stamp: dist/.stamp equiv-checker.html regex-sampler.html tsconfig.build.json
 	npx typedoc --tsconfig tsconfig.build.json
 	cp -r dist/ docs/dist/
 	cp equiv-checker.html docs/
+	cp regex-sampler.html docs/
 	touch $@
 
 dist/.stamp: tsconfig.build.json src/*.ts

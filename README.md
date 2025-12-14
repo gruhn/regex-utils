@@ -3,8 +3,10 @@
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language. ✨
 
-- 📚 [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
-- 🔍 [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
+- [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
+- Online demos:
+  - [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
+  - [Random String Generator](https://gruhn.github.io/regex-utils/regex-sampler.html)
 
 ## API Overview 🚀
 
