@@ -2,16 +2,16 @@
 failed instances:
 - parseError         : 111
 - cacheOverflow      : 80
-- veryLargeSyntaTree : 23
+- veryLargeSyntaTree : 22
 - stackOverflow      : 12
 - regexSyntaxError   : 0
 
 size multipliers:
-- mean   : 330.0766901004811
+- mean   : 315.30197540687936
 - median : 1.6666666666666667
-- max    : 178441.75438596492
+- max    : 179880.1052631579
 - min    : 0.0021570319240724763
 
 memory:
-- max heap used : 2354.146553039551 MB
-- max rss       : 2755.58203125 MB
+- max heap used : 2412.567398071289 MB
+- max rss       : 2797.00390625 MB
