@@ -12,7 +12,7 @@ export class ParseError extends Error {
   ) {
     super(`${message}\nInput: "${restInput.slice(0, 20).padEnd(25, '.')}"`)
   }
-  
+
 }
 
 export class Parser<T> {
@@ -32,8 +32,8 @@ export class Parser<T> {
 
 }
 
-export function failure(message: string) {
-  return new Parser(input => {
+export function failure<T>(message: string) {
+  return new Parser<T>(input => {
     throw new ParseError(message, input)
   })
 }
@@ -70,9 +70,9 @@ export function string(str: string): Parser<string> {
 
 export function char(char: string): Parser<string> {
   return new Parser(input => {
-    if (input[0] === char) 
+    if (input[0] === char)
       return { value: char, restInput: input.slice(1) }
-    else 
+    else
       throw new ParseError(`Expected "${char}".`, input)
   })
 }
@@ -126,7 +126,7 @@ export function many<T>(parser: Parser<T>): Parser<T[]> {
             // => applied parser maximum number of times
             break
           } else {
-            // parser failed and consumed characters: 
+            // parser failed and consumed characters:
             throw error
           }
         } else {
@@ -149,7 +149,7 @@ export function some<T>(parser: Parser<T>): Parser<[T, ...T[]]> {
 export function count<T>(n: number, parser: Parser<T>): Parser<T[]> {
   assert(Number.isInteger(n) && n >= 0)
 
-  if (n === 0) 
+  if (n === 0)
     return pure([])
   else // n > 0
     return parser.andThen(first => count(n-1, parser)
@@ -168,7 +168,7 @@ export function optional<T>(parser: Parser<T>): Parser<T | undefined> {
           // ==> return `undefined` and consume no characters:
           return { value: undefined, restInput: input }
         } else {
-          // parser failed and consumed characters. 
+          // parser failed and consumed characters.
           // ==> don't backtrack by default:
           throw error
         }
@@ -265,7 +265,7 @@ export namespace Expr {
   }
 
   export function infixOpRightAssoc<T>(
-    left: T,   
+    left: T,
     operatorParser: BinaryOperator<T>,
     rightParser: Parser<T>,
   ): Parser<T> {
@@ -277,14 +277,14 @@ export namespace Expr {
         ])
       ).map(right => op(left, right))
     )
-  } 
+  }
 
   /**
-   * Right-associative infix operator where both left- and right 
+   * Right-associative infix operator where both left- and right
    * operand can be optional.
    */
   export function infixOpRightAssocOptional<T>(
-    left: T | undefined,   
+    left: T | undefined,
     operatorParser: BinaryOperator<T | undefined, T>,
     rightParser: Parser<T>,
   ): Parser<T> {
@@ -296,7 +296,7 @@ export namespace Expr {
         ])
       ).map(right => op(left, right))
     )
-  } 
+  }
 
   export type Operator<T> = Readonly<
     | { type: 'prefix', op: Expr.UnaryOperator<T> }
@@ -311,7 +311,7 @@ export namespace Expr {
     operator: Operator<T>,
   ): Parser<T> {
     switch (operator.type) {
-      case 'prefix': 
+      case 'prefix':
         return prefixOp(
           optional(operator.op).map(pre => pre ?? identity),
           termParser,

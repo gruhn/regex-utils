@@ -36,7 +36,7 @@ test('deleteRange respects invariants', () => {
   )
 })
 
-test('(A \\ B) ⋃ (A ⋂ B) = A', () => { 
+test('(A \\ B) ⋃ (A ⋂ B) = A', () => {
   fc.assert(
     fc.property(
       fc.array(arbitraryRange),

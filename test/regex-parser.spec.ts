@@ -23,10 +23,9 @@ function group(inner: AST.RegExpAST, name?: string) {
 
 describe('parseRegExp', () => {
 
-  const testCases = [
+  const astTestCases = [
     [/a/, char('a')],
     [/(a)/, group(char('a'))],
-    [/./, AST.literal(CharSet.wildcard({ dotAll: false }))],
     // [/./s, AST.literal(CharSet.wildcard({ dotAll: true }))],
     [/a*/, AST.star(char('a'))],
     [/a+/, AST.plus(char('a'))],
@@ -46,16 +45,6 @@ describe('parseRegExp', () => {
     [/a{3,5/, str('a{3,5')],
     // same if max value is given but min value is missing:
     [/a{,5}/, str('a{,5}')],
-    // char classes / escaping:
-    [/\w/, AST.literal(CharSet.wordChars)],
-    [/\W/, AST.literal(CharSet.nonWordChars)],
-    [/\n/, AST.literal(CharSet.singleton('\n'))],
-    [/\./, AST.literal(CharSet.singleton('.'))],
-    // char class from range:
-    [/[a-z]/, AST.literal(CharSet.charRange('a', 'z'))],
-    [/[a-]/, AST.literal(CharSet.fromArray(['a', '-']))],
-    // negative char class:
-    [/[^abc]/, AST.literal(CharSet.complement(CharSet.fromArray(['a', 'b', 'c'])))],
     // regular capturing groups:
     [/()/, group(AST.epsilon)],
     // non-capturing groups
@@ -89,17 +78,53 @@ describe('parseRegExp', () => {
     [/(?<=a)/, AST.lookbehind(true, char('a'))],
     // negative lookbehind
     [/(?<!a)/, AST.lookbehind(false, char('a'))],
-    // some special chars don't need escape when inside brackets:
-    [/[.^$*+?()[{-|]/, AST.literal(CharSet.fromArray([...'.^$*+?()[{-|']))],
-    // other special chars need escape even inside brackets:
-    [/[\\\]\/]/, AST.literal(CharSet.fromArray([...'\\]/']))],
   ] as const
 
-  for (const [regexp, expected] of testCases) {
-    it(`can parse ${regexp}`, () => {
+  for (const [regexp, expected] of astTestCases) {
+    it(`returns correct AST for ${regexp}`, () => {
       assert.equal(
         AST.debugShow(parseRegExp(regexp)),
         AST.debugShow(expected)
+      )
+    })
+  }
+
+  const charSetTestCases = [
+    [/./, CharSet.wildcard({ dotAll: false })],
+    // char classes / escaping:
+    [/\w/, CharSet.wordChars],
+    [/\W/, CharSet.nonWordChars],
+    [/\n/, CharSet.singleton('\n')],
+    [/\./, CharSet.singleton('.')],
+    // char class from range:
+    [/[a-z]/, CharSet.charRange('a', 'z')],
+    // when dash is at the start or end it's interpreted literally:
+    [/[a-]/, CharSet.fromArray(['a', '-'])],
+    [/[-a]/, CharSet.fromArray(['a', '-'])],
+    // except the for [^-a] (this is not a range):
+    [/[^-a]/, CharSet.complement(CharSet.fromArray(['a', '-']))],
+    // can also have ranges of non-alphanumeric chars:
+    [/[ -~]/, CharSet.printableAsciiChars],
+    [/[\x20-\x7E]/, CharSet.printableAsciiChars],
+    // interpreted as range from dash to dash:
+    [/[---]/, CharSet.singleton('-')],
+    // interpreted as: range 'a-c' and literal '-' and 'e':
+    [/[a-c-e]/, CharSet.fromArray(['a', 'b', 'c', '-', 'e'])],
+    // negative char class:
+    [/[^abc]/, CharSet.complement(CharSet.fromArray(['a', 'b', 'c']))],
+    // some special chars don't need escape when inside brackets:
+    [/[.^$*+?()[{|]/, CharSet.fromArray([...'.^$*+?()[{|'])],
+    // other special chars need escape even inside brackets:
+    [/[\\\]\/]/, CharSet.fromArray([...'\\]/'])],
+  ] as const
+
+  for (const [regexp, expected] of charSetTestCases) {
+    it(`returns correct CharSet for ${regexp}`, () => {
+      const parsed = parseRegExp(regexp)
+      assert(parsed.type === 'literal')
+      assert.deepEqual(
+        [...CharSet.getRanges(parsed.charset)],
+        [...CharSet.getRanges(expected)]
       )
     })
   }
@@ -118,10 +143,8 @@ describe('parseRegExp', () => {
     // TODO:
     // 'a?{2}',
     // 'a+{2}',
-
-    // TODO: invalid ranges:
-    // '[a-#]',
-    // '[%-#]',
+    // '[z-a]', // out-of-order ranges
+    // '[\\w-z]', // can't have range between char classes
   ]
 
   for (const regexStr of invalidTestCases) {

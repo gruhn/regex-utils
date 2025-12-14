@@ -5,7 +5,7 @@ export type CodePointRange = { start: number, end: number }
 export const empty: CodePointRange = { start: +Infinity, end: -Infinity }
 
 export function range(start: number, end: number = start): CodePointRange {
-  if (start > end) 
+  if (start > end)
     return empty
   else
     return { start, end }
@@ -46,7 +46,7 @@ export function singleton(char: string | number): CodePointRange {
   if (typeof char === 'number') {
     return { start: char, end: char }
   } else {
-    const codePoint = char.codePointAt(0) 
+    const codePoint = char.codePointAt(0)
     assert(codePoint !== undefined && char.length <= 1, `Invalid character: ${char}`)
     return { start: codePoint, end: codePoint }
   }
@@ -63,7 +63,7 @@ export function isEmpty(range: CodePointRange): boolean {
 /**
  *      rangeA      rangeB
  *     |-------|  |--------|
- *     |-------------------| 
+ *     |-------------------|
  *        leastUpperBound
  */
 export function leastUpperBound(rangeA: CodePointRange, rangeB: CodePointRange): CodePointRange {
@@ -85,11 +85,11 @@ export function union(rangeA: CodePointRange, rangeB: CodePointRange): [] | [Cod
     return [rangeB]
   else if (isEmpty(rangeB))
     return [rangeA]
-  else if (rangeA.end + 1 < rangeB.start) 
+  else if (rangeA.end + 1 < rangeB.start)
     return [rangeA, rangeB]
-  else if (rangeB.end + 1 < rangeA.start) 
+  else if (rangeB.end + 1 < rangeA.start)
     return [rangeB, rangeA]
-  else 
+  else
     return [{
       start: Math.min(rangeA.start, rangeB.start),
       end: Math.max(rangeA.end, rangeB.end),
@@ -111,18 +111,23 @@ export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] |
 
 /**
  * Returns true iff the given char must always be escaped to occur literally
- * in a regular expression. Some special chars like `$` don't need to be 
+ * in a regular expression. Some special chars like `$` don't need to be
  * escaped when inside brackets (e.g. `/[$]/`). But `\` must even be
  * escaped when inside brackets. And `]` must only be escaped inside brackets.
  */
 export function mustBeEscapedInsideBrackets(char: string) {
-  return char === '\\' || char === ']'
+  // Whether '-' needs to be escaped depends on order. For example,
+  // to write a class for the characters 'a', 'b', '-' we could write [-ab]
+  // and the '-' does not need to be escaped. But if we write [a-b] it's interpreted
+  // as a range, so to write the '-' in the middle it would need to be escaped.
+  // To simplify the logic, we always escape '-' inside brackets.
+  return char === '\\' || char === ']' || char === '-'
 }
 
 /**
  * Returns true iff the given char must be escaped to occur literally
  * in a regular expression, unless within square brackets. That's true
- * for special chars like `$`. Outside brackets we have to write `\$`. 
+ * for special chars like `$`. Outside brackets we have to write `\$`.
  * Inside brackets `[$]` is allowed.
  */
 export function mustBeEscapedOutsideBrackets(char: string) {
@@ -132,25 +137,25 @@ export function mustBeEscapedOutsideBrackets(char: string) {
 function codePointToString(codePoint: number): string {
   const char = String.fromCharCode(codePoint)
 
-  if (mustBeEscapedInsideBrackets(char) || mustBeEscapedOutsideBrackets(char)) 
-    // e.g. \$ \+ \. 
+  if (mustBeEscapedInsideBrackets(char) || mustBeEscapedOutsideBrackets(char))
+    // e.g. \$ \+ \.
     return '\\' + char
   else if (codePoint > 126)
     // char is outside ASCII range --> need \uXXXX encoding:
     return '\\u' + codePoint.toString(16).padStart(4, '0')
   else
-    return char 
+    return char
 }
 
 export function toString(range: CodePointRange): string {
   const rangeSize = size(range)
   assert(rangeSize > 0)
 
-  if (rangeSize === 1) 
-    return codePointToString(range.start) 
-  else if (rangeSize === 2) 
-    return codePointToString(range.start) + codePointToString(range.end) 
-  else 
+  if (rangeSize === 1)
+    return codePointToString(range.start)
+  else if (rangeSize === 2)
+    return codePointToString(range.start) + codePointToString(range.end)
+  else
     // rangeSize >= 3
     return `${codePointToString(range.start)}-${codePointToString(range.end)}`
 }

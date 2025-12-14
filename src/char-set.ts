@@ -24,7 +24,7 @@ function node({ left, right, range }: {
   return {
     type: 'node',
     range,
-    left, 
+    left,
     right,
     // Could use `hashNums` to combine hashes but it's not associative,
     // which means these two trees would receive different hashes although
@@ -50,11 +50,11 @@ function node({ left, right, range }: {
  * Ranges in a CharSet should always be: non-empty, sorted and strictly disjoint.
  * For example, the following ranges are disjoint, but they could be merged into
  * a single range, so they are not strictly disjoint:
- * 
+ *
  *     { start: 0, end: 5 }, { start: 6, end: 7 }
  */
 export function checkInvariants(set: CharSet): void {
-  if (set.type === 'node') {   
+  if (set.type === 'node') {
     const { range: parentRange, left, right } = set
 
     assert(!Range.isEmpty(parentRange), 'CharSet node with empty range')
@@ -143,7 +143,7 @@ function extractOverlap(set: CharSet, range: Range.CodePointRange): ExtractedOve
       newRight = resultRight.restCharSet
     }
 
-    if (Range.strictlyDisjoint(range, set.range)) 
+    if (Range.strictlyDisjoint(range, set.range))
       return {
         extendedRange,
         restCharSet: node({
@@ -156,7 +156,7 @@ function extractOverlap(set: CharSet, range: Range.CodePointRange): ExtractedOve
       // `set.range` itself overlaps and needs to get extracted:
       return {
         extendedRange: Range.leastUpperBound(set.range, extendedRange),
-        restCharSet: union(newLeft, newRight), 
+        restCharSet: union(newLeft, newRight),
       }
   }
   checkedAllCases(set)
@@ -185,13 +185,13 @@ export function insertRange(set: CharSet, range: Range.CodePointRange): CharSet 
     const resultRange = [set.range, resultLeft.extendedRange, resultRight.extendedRange].reduce(Range.leastUpperBound)
     if (Range.isEmpty(resultRange))
       return empty
-    else 
+    else
       return node({
         range: resultRange,
         left: resultLeft.restCharSet,
         right: resultRight.restCharSet,
       })
-  } 
+  }
 }
 
 export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet {
@@ -208,22 +208,22 @@ export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet 
 
     const setRangeRest = Range.difference(set.range, rangeRest2)
 
-    if (setRangeRest.length === 0) 
+    if (setRangeRest.length === 0)
       return union(newLeft, newRight)
-    else if (setRangeRest.length === 1) 
+    else if (setRangeRest.length === 1)
       return node({
         range: setRangeRest[0],
         left: newLeft,
         right: newRight
       })
-    else if (setRangeRest.length === 2) 
+    else if (setRangeRest.length === 2)
       return union(
         insertRange(newLeft, setRangeRest[0]),
         insertRange(newRight, setRangeRest[1])
       )
 
     checkedAllCases(setRangeRest)
-  } 
+  }
   checkedAllCases(set)
 }
 
@@ -275,7 +275,7 @@ export function compare(setA: CharSet, setB: CharSet): number {
 
 // TODO: render unicode characters with escape sequences:
 export function toString(set: CharSet): string {
-  // First check if the set matches any of the 
+  // First check if the set matches any of the
   // predefined characters classes:
   switch (set.hash) {
     case wordChars.hash:
@@ -319,7 +319,7 @@ export function toString(set: CharSet): string {
 export function enumerate(set: CharSet): Stream.Stream<string> {
   // If we enumerate the set in "unicode order" then we only get
   // chars like "\u0000", "\u0001" for a while. We prefer to enumerate
-  // more common characters first, since users will usually only 
+  // more common characters first, since users will usually only
   // look at the first few items in the enumeration.
   const lowerChars = charRange('a', 'z')
   const upperChars = charRange('A', 'Z')
@@ -352,7 +352,7 @@ export function size(set: CharSet): number {
     return 0
   } else {
     return Range.size(set.range) + size(set.left) + size(set.right)
-  } 
+  }
 }
 
 /**
@@ -362,7 +362,7 @@ export function size(set: CharSet): number {
 export function sampleChar(set: CharSet, randomInt: (max: number) => number): string | null {
   const totalSize = size(set)
   if (totalSize === 0) return null
-  
+
   let targetIndex = randomInt(totalSize)
   return sampleCharAux(set, targetIndex)
 }
@@ -390,7 +390,7 @@ function sampleCharAux(set: CharSet, targetIndex: number): string | null {
 }
 
 ////////////////////////////////////////////////////////////
-//////////////// Specific Character Classes //////////////// 
+//////////////// Specific Character Classes ////////////////
 ////////////////////////////////////////////////////////////
 
 /**
@@ -405,7 +405,7 @@ export const alphabet = // fromRange({ start: 0, end: 0x10FFFF })
 
 /**
  * Equivalent to the dot ".". Whether or not the dot matches
- * line terminators like \n depends on the dotAll-flag attached to 
+ * line terminators like \n depends on the dotAll-flag attached to
  * a regular expression. For example, this regex matches
  * line terminators `/./s` but this one doesn't `/./`.
  */
@@ -471,4 +471,10 @@ export const whiteSpaceChars = [
  * Equivalent to \S
  */
 export const nonWhiteSpaceChars = complement(whiteSpaceChars)
+
+
+/**
+ * Printable ASCII chars.
+ */
+export const printableAsciiChars = fromRange({ start: 32, end: 126 })
 
