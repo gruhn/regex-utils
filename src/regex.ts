@@ -840,71 +840,61 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
   }
   
   while (true) {
-    try {
-      const result = sampleAux(re, rng, 1000, lookupNodeCount)
-      if (result !== null) {
-        yield result
-      }
-    } catch {
-      // If we hit max depth or other issues, skip this sample
-      continue
+    const result = sampleAux(re, rng, lookupNodeCount)
+    if (result !== null) {
+      yield result
     }
   }
 }
 function sampleAux(
   regex: StdRegex,
   rng: PRNG,
-  maxDepth: number,
   lookupNodeCount: (subExpr: StdRegex) => number
 ): string | null {
-  if (maxDepth <= 0) {
-    throw new Error('Max depth exceeded')
-  }
-
   switch (regex.type) {
     case 'epsilon':
       return ''
-    
+
     case 'literal': {
       return CharSet.sampleChar(regex.charset, (max) => rng.nextInt(max))
     }
-    
+
     case 'concat': {
-      const leftSample = sampleAux(regex.left, rng, maxDepth / 2, lookupNodeCount)
+      const leftSample = sampleAux(regex.left, rng, lookupNodeCount)
       if (leftSample === null) return null
-      const rightSample = sampleAux(regex.right, rng, maxDepth / 2, lookupNodeCount)
+      const rightSample = sampleAux(regex.right, rng, lookupNodeCount)
       if (rightSample === null) return null
       return leftSample + rightSample
     }
-    
+
     case 'union': {
       // For unions we randomly sample from the left- or right subtree.
       // The probability is weighted by the number of nodes in the subtree.
       // Consider the expression /^(aa|(bb|cc))$/ which matches the three strings: "aa", "bb", "cc".
       // If we give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
-      // Weighting by node count does not eliminate this problem completely. 
+      // Weighting by node count does not eliminate this problem completely.
       // We could also weight by the number of strings matched by the subtrees (computed using `size`).
-      // But what to we do if one of the subtrees matches infinitely many strings (e.g. /^(a|b*)$/)?
+      // But what do we do if one of the subtrees matches infinitely many strings (e.g. /^(a|b*)$/)?
       const leftCount = lookupNodeCount(regex.left)
       const rightCount = lookupNodeCount(regex.right)
       const chooseLeft = rng.next() < leftCount / (leftCount + rightCount)
 
       if (chooseLeft) {
-        return sampleAux(regex.left, rng, maxDepth - 1, lookupNodeCount)
+        return sampleAux(regex.left, rng, lookupNodeCount)
       } else {
-        return sampleAux(regex.right, rng, maxDepth - 1, lookupNodeCount)
+        return sampleAux(regex.right, rng, lookupNodeCount)
       }
     }
-    
+
     case 'star': {
       // Randomly choose whether to stop repetition or to continue:
       const chooseStop = rng.next() < 0.5
       if (chooseStop) {
         return ""
       } else {
-        const innerSample = sampleAux(regex.inner, rng, maxDepth / 2, lookupNodeCount)
+        const innerSample = sampleAux(regex.inner, rng, lookupNodeCount)
         if (innerSample === null) return null
-        const restSample = sampleAux(regex, rng, maxDepth / 2, lookupNodeCount)
+        const restSample = sampleAux(regex, rng, lookupNodeCount)
         if (restSample === null) return null
         return innerSample + restSample
       }
