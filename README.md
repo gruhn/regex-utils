@@ -1,4 +1,4 @@
-# Regex Utils 🔤
+# Regex Utils
 
 Zero-dependency TypeScript library for regex utilities that go beyond string matching.
 These are surprisingly hard to come by for any programming language. ✨
@@ -33,6 +33,50 @@ npm install @gruhn/regex-utils
 ```
 ```typescript
 import { RB } from '@gruhn/regex-utils'
+```
+
+## Syntax Support
+
+| Feature | Support | Examples |
+|---------|---------|-------------|
+| Quantifiers | ✅ | `a*`, `a+`, `a{3,10}`, `a?` |
+| Alternation | ✅ | `a\|b` |
+| Character classes | ✅ | `.`, `\w`, `[a-zA-Z]`, ... |
+| Escaping | ✅ | `\$`, `\.`, ... |
+| (Non-)capturing groups | ✅ <sup>1</sup> | `(?...)`, `(...)` |
+| Start/end anchors | ⚠️ <sup>2</sup> | `^`, `$` |
+| Global flags | ❌ | `/.../g`, `/.../i`, `/.../m`, ... |
+| Local flags | ❌ | `(?i:...)`, ... |
+| Unicode property escapes | ❌ | `\p{...}`, `\P{...}` |
+| Backreferences | ❌ | `\1` `\2` ... |
+| Lookahead | ❌ | `(?=...)`, `(?!...)` |
+| Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
+| Word boundary | ❌ | `\b`, `\B` |
+
+1. Both capturing- and non-capturing groups are just treated as parenthesis, because this library is never doing string extraction.
+2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)*`.
+
+An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
+The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.
+Please report a bug if the library silently uses a faulty interpretation. 
+
+Handling syntax-related errors:
+```typescript
+import { RB, ParseError, UnsupportedSyntaxError } from '@gruhn/regex-utils'
+
+try {
+  RB(/^[a-z]*$/)
+} catch (error) {
+  if (error instanceof SyntaxError) {
+    // Invalid regex syntax! Native error, not emitted by this library.
+    // E.g. this will also throw a `SyntaxError`: new RegExp(')')
+  } else if (error instanceof ParseError) {
+    // The regex syntax is valid but the internal parser could not handle it.
+    // If this happens it's a bug in this library.
+  } else if (error instanceof UnsupportedSyntaxError) {
+    // Regex syntax is valid but not supported by this library.
+  }
+}
 ```
 
 ## Example Use Cases 💡
