@@ -6,7 +6,7 @@ These are surprisingly hard to come by for any programming language. ✨
 - [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
 - Online demos:
   - [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
-  - [Random String Generator](https://gruhn.github.io/regex-utils/regex-sampler.html)
+  - [Random Password Generator](https://gruhn.github.io/regex-utils/password-generator.html)
 
 ## API Overview 🚀
 
@@ -58,7 +58,7 @@ import { RB } from '@gruhn/regex-utils'
 
 An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
 The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.
-Please report a bug if the library silently uses a faulty interpretation. 
+Please report a bug if the library silently uses a faulty interpretation.
 
 Handling syntax-related errors:
 ```typescript
