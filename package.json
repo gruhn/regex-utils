@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test --import=tsx",
     "build": "make",
-    "serve": "http-server -p 8080",
+    "serve": "http-server docs -p 8080",
     "profile": "0x --output-dir prof"
   },
   "main": "./dist/index.js",

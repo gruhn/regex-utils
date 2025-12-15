@@ -6,10 +6,10 @@ bench: benchmark/aoc2023-day12-result.txt benchmark/parser-bench-result.txt benc
 
 ####################################################
 
-docs/.stamp: dist/.stamp tsconfig.build.json *.html
+docs/.stamp: dist/.stamp tsconfig.build.json demos/*.html
 	npx typedoc --tsconfig tsconfig.build.json
 	cp -r dist/ docs/dist/
-	cp *.html docs/
+	cp demos/*.html docs/
 	touch $@
 
 dist/.stamp: tsconfig.build.json src/*.ts
@@ -20,7 +20,6 @@ dist/.stamp: tsconfig.build.json src/*.ts
 node_modules/.stamp: package-lock.json
 	npm ci
 	touch $@
-
 
 ####################################################
 
