@@ -77,7 +77,7 @@ const charRangeBound = P.choice([
 
 // E.g. `a-z`, `0-9`, `\x20-\x7E` or even ` -~` (space to tilde).
 // Not possible are `z-a` (out-of-order range) or `\w-z` (range start/end must be single char).
-const charRange: P.Parser<CharSet.CharSet> = P.choice([
+const charRange: P.Parser<CharSet.CharSet> =
   charRangeBound.andThen(start =>
     P.optional(P.string('-')).andThen(dash => {
       if (dash === undefined) {
@@ -96,7 +96,6 @@ const charRange: P.Parser<CharSet.CharSet> = P.choice([
       }
     })
   )
-])
 
 const charSetInBrackets: P.Parser<CharSet.CharSet> =
   P.between(
@@ -105,7 +104,13 @@ const charSetInBrackets: P.Parser<CharSet.CharSet> =
     P.string(']'),
     P.sequence([
       P.optional(P.string('^')),
-      P.many(P.choice([charRange, charClass])),
+      P.many(P.choice([
+        // Try char class first (e.g. \w) but char range can
+        // also start with slash (e.g. \x21-\x7E), so we need
+        // to backtrack in case of failure:
+        P.tryElseBacktrack(charClass),
+        charRange,
+      ])),
     ]).map(([negated, sets]) => {
       if (negated === undefined)
         return sets.reduce(CharSet.union, CharSet.empty)

@@ -93,11 +93,19 @@ describe('parseRegExp', () => {
     [/./, CharSet.wildcard({ dotAll: false })],
     // char classes / escaping:
     [/\w/, CharSet.wordChars],
+    [/[\w]/, CharSet.wordChars], // surrounding brackets change nothing
     [/\W/, CharSet.nonWordChars],
+    [/\s/, CharSet.whiteSpaceChars],
+    [/\S/, CharSet.nonWhiteSpaceChars],
+    [/\d/, CharSet.digitChars],
+    [/\D/, CharSet.nonDigitChars],
     [/\n/, CharSet.singleton('\n')],
     [/\./, CharSet.singleton('.')],
+    [/\x20/, CharSet.singleton(' ')], // 21 is hexcode for space:
     // char class from range:
     [/[a-z]/, CharSet.charRange('a', 'z')],
+    // combined range/char classes:
+    [/[a-z_A-Z\d]/, CharSet.wordChars],
     // when dash is at the start or end it's interpreted literally:
     [/[a-]/, CharSet.fromArray(['a', '-'])],
     [/[-a]/, CharSet.fromArray(['a', '-'])],
