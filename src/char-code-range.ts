@@ -1,35 +1,35 @@
 import { assert } from './utils'
 
-export type CodePointRange = { start: number, end: number }
+export type CharCodeRange = { start: number, end: number }
 
-export const empty: CodePointRange = { start: +Infinity, end: -Infinity }
+export const empty: CharCodeRange = { start: +Infinity, end: -Infinity }
 
-export function range(start: number, end: number = start): CodePointRange {
+export function range(start: number, end: number = start): CharCodeRange {
   if (start > end)
     return empty
   else
     return { start, end }
 }
 
-export function includes(range: CodePointRange, codePoint: number): boolean {
-  return range.start <= codePoint && codePoint <= range.end
+export function includes(range: CharCodeRange, charCode: number): boolean {
+  return range.start <= charCode && charCode <= range.end
 }
 
-export function isSubRangeOf(rangeA: CodePointRange, rangeB: CodePointRange): boolean {
+export function isSubRangeOf(rangeA: CharCodeRange, rangeB: CharCodeRange): boolean {
   return rangeA.start >= rangeB.start && rangeA.end <= rangeB.end
 }
 
-export function isStrictlyBefore(rangeA: CodePointRange, rangeB: CodePointRange): boolean {
+export function isStrictlyBefore(rangeA: CharCodeRange, rangeB: CharCodeRange): boolean {
   // TODO: how to handle empty case?
   assert(!isEmpty(rangeA) && !isEmpty(rangeB))
   return rangeA.end + 1 < rangeB.start
 }
 
-export function isStrictlyAfter(rangeA: CodePointRange, rangeB: CodePointRange): boolean {
+export function isStrictlyAfter(rangeA: CharCodeRange, rangeB: CharCodeRange): boolean {
   return isStrictlyBefore(rangeB, rangeA)
 }
 
-export function disjoint(rangeA: CodePointRange, rangeB: CodePointRange): boolean {
+export function disjoint(rangeA: CharCodeRange, rangeB: CharCodeRange): boolean {
   return (
     isEmpty(rangeA)
     || isEmpty(rangeB)
@@ -38,25 +38,25 @@ export function disjoint(rangeA: CodePointRange, rangeB: CodePointRange): boolea
   )
 }
 
-export function strictlyDisjoint(rangeA: CodePointRange, rangeB: CodePointRange): boolean {
+export function strictlyDisjoint(rangeA: CharCodeRange, rangeB: CharCodeRange): boolean {
   return isStrictlyBefore(rangeA, rangeB) || isStrictlyAfter(rangeA, rangeB)
 }
 
-export function singleton(char: string | number): CodePointRange {
+export function singleton(char: string | number): CharCodeRange {
   if (typeof char === 'number') {
     return { start: char, end: char }
   } else {
-    const codePoint = char.codePointAt(0)
-    assert(codePoint !== undefined && char.length <= 1, `Invalid character: ${char}`)
-    return { start: codePoint, end: codePoint }
+    const charCode = char.charCodeAt(0)
+    assert(charCode !== undefined && char.length <= 1, `Invalid character: ${char}`)
+    return { start: charCode, end: charCode }
   }
 }
 
-export function size(range: CodePointRange): number {
+export function size(range: CharCodeRange): number {
   return range.end + 1 - range.start
 }
 
-export function isEmpty(range: CodePointRange): boolean {
+export function isEmpty(range: CharCodeRange): boolean {
   return range.start > range.end
 }
 
@@ -66,7 +66,7 @@ export function isEmpty(range: CodePointRange): boolean {
  *     |-------------------|
  *        leastUpperBound
  */
-export function leastUpperBound(rangeA: CodePointRange, rangeB: CodePointRange): CodePointRange {
+export function leastUpperBound(rangeA: CharCodeRange, rangeB: CharCodeRange): CharCodeRange {
   if (isEmpty(rangeA))
     return rangeB
   else if (isEmpty(rangeB))
@@ -78,7 +78,7 @@ export function leastUpperBound(rangeA: CodePointRange, rangeB: CodePointRange):
     }
 }
 
-export function union(rangeA: CodePointRange, rangeB: CodePointRange): [] | [CodePointRange] | [CodePointRange, CodePointRange] {
+export function union(rangeA: CharCodeRange, rangeB: CharCodeRange): [] | [CharCodeRange] | [CharCodeRange, CharCodeRange] {
   if (isEmpty(rangeA) && isEmpty(rangeB))
     return []
   else if (isEmpty(rangeA))
@@ -96,14 +96,14 @@ export function union(rangeA: CodePointRange, rangeB: CodePointRange): [] | [Cod
     }]
 }
 
-export function splitAt(point: number, range: CodePointRange): [CodePointRange, CodePointRange] {
+export function splitAt(point: number, range: CharCodeRange): [CharCodeRange, CharCodeRange] {
   return [
     { start: range.start, end: Math.min(range.end, point) },
     { start: Math.max(range.start, point+1), end: range.end },
   ]
 }
 
-export function difference(rangeA: CodePointRange, rangeB: CodePointRange): [] | [CodePointRange] | [CodePointRange, CodePointRange] {
+export function difference(rangeA: CharCodeRange, rangeB: CharCodeRange): [] | [CharCodeRange] | [CharCodeRange, CharCodeRange] {
   const [before, restRangeA] = splitAt(rangeB.start-1, rangeA)
   const [_deleted, after] = splitAt(rangeB.end, restRangeA)
   return union(before, after)
@@ -134,28 +134,28 @@ export function mustBeEscapedOutsideBrackets(char: string) {
   return '.^$*+?()[|/\\'.includes(char)
 }
 
-function codePointToString(codePoint: number): string {
-  const char = String.fromCharCode(codePoint)
+function charCodeToString(charCode: number): string {
+  const char = String.fromCharCode(charCode)
 
   if (mustBeEscapedInsideBrackets(char) || mustBeEscapedOutsideBrackets(char))
     // e.g. \$ \+ \.
     return '\\' + char
-  else if (codePoint > 126)
+  else if (charCode > 126)
     // char is outside ASCII range --> need \uXXXX encoding:
-    return '\\u' + codePoint.toString(16).padStart(4, '0')
+    return '\\u' + charCode.toString(16).padStart(4, '0')
   else
     return char
 }
 
-export function toString(range: CodePointRange): string {
+export function toString(range: CharCodeRange): string {
   const rangeSize = size(range)
   assert(rangeSize > 0)
 
   if (rangeSize === 1)
-    return codePointToString(range.start)
+    return charCodeToString(range.start)
   else if (rangeSize === 2)
-    return codePointToString(range.start) + codePointToString(range.end)
+    return charCodeToString(range.start) + charCodeToString(range.end)
   else
     // rangeSize >= 3
-    return `${codePointToString(range.start)}-${codePointToString(range.end)}`
+    return `${charCodeToString(range.start)}-${charCodeToString(range.end)}`
 }

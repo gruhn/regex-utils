@@ -41,7 +41,7 @@ export type StdRegex = StdRegexWithoutMetaInfo & { hash: number, isStdRegex: tru
 export type ExtRegex = ExtRegexWithoutMetaInfo & { hash: number, isStdRegex: boolean }
 
 export function withMetaInfo(regex: StdRegexWithoutMetaInfo): StdRegex
-export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex 
+export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex
 export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
   if (regex.type === 'epsilon')
     return {
@@ -88,7 +88,7 @@ export function withMetaInfo(regex: ExtRegexWithoutMetaInfo): ExtRegex {
       hash: hashNums([hashStr(regex.type), regex.inner.hash]),
       isStdRegex: false
     }
-  checkedAllCases(regex)  
+  checkedAllCases(regex)
 }
 
 /**
@@ -132,9 +132,9 @@ export function concat(left: ExtRegex, right: ExtRegex): ExtRegex {
     if (equal(left.left, right))
       // (r + ε) · r ≈ r · (r + ε)
       return concat(right, left)
-    if (right.type === 'concat' && equal(left.left, right.left)) 
+    if (right.type === 'concat' && equal(left.left, right.left))
       // (r + ε) · (r · s) ≈ r · ((r + ε) · s)
-      return concat(right.left, concat(left, right.right)) 
+      return concat(right.left, concat(left, right.right))
   }
 
   // Try to eliminate as many `star`s as possible,
@@ -200,7 +200,7 @@ export function union(left: ExtRegex, right: ExtRegex): ExtRegex {
     // ∅ + r ≈ r
     return right
   if (left.type === 'epsilon')
-    // ε + r ≈ r + ε 
+    // ε + r ≈ r + ε
     return union(right, left)
   if (equal(empty, right))
     // r + ∅ ≈ r
@@ -281,20 +281,20 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
     return intersection(left.left, intersection(left.right, right))
   if (equal(left, empty))
     // ∅ & r ≈ ∅
-    return empty 
+    return empty
   if (equal(right, empty))
     // r & ∅ ≈ ∅
-    return empty 
+    return empty
   else if (equal(left, complement(empty)))
     // ¬∅ & r ≈ r
-    return right 
+    return right
   else if (equal(right, complement(empty)))
     // r & ¬∅ ≈ r
-    return left 
-  else if (equal(left, right)) 
+    return left
+  else if (equal(left, right))
     // r & r ≈ r
-    return left 
-  else if (left.type === 'literal' && right.type === 'literal') 
+    return left
+  else if (left.type === 'literal' && right.type === 'literal')
     // R & S ≈ R∩S
     return literal(CharSet.intersection(left.charset, right.charset))
 
@@ -303,7 +303,7 @@ export function intersection(left: ExtRegex, right: ExtRegex): ExtRegex {
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function complement(inner: ExtRegex): ExtRegex {
@@ -323,17 +323,17 @@ export function complement(inner: ExtRegex): ExtRegex {
 //////////////////////////////////////////////
 
 /**
- * Regex that matches any single character. 
+ * Regex that matches any single character.
  * Equivalent to the dot: `.`.
- * 
+ *
  * @public
  */
-export const anySingleChar: StdRegex = literal(CharSet.alphabet)
+export const anySingleChar: StdRegex = literal(CharSet.wildcard())
 
 /**
  * Regex that matches the single given character.
  * E.g. `singleChar('a')` is equivalent to `/^a$/`.
- * Meta characters like "$", ".", etc don't need to 
+ * Meta characters like "$", ".", etc don't need to
  * be escaped, i.e. `singleChar('.')` will match "."
  * literally and not any-single-character.
  *
@@ -378,7 +378,7 @@ export function optional(regex: ExtRegex): ExtRegex {
  * ```typescript
  * seq([ singleChar('a'), anySingleChar ]) // like /a./
  * ```
- * 
+ *
  * @public
  */
 export function seq(res: StdRegex[]): StdRegex
@@ -402,7 +402,7 @@ export function repeat(regex: ExtRegex, bounds?: AST.RepeatBounds): ExtRegex {
   } else {
     const { min = 0, max = Infinity } = bounds
     assert(0 <= min && min <= max)
-    return repeatAux(regex, min, max)   
+    return repeatAux(regex, min, max)
   }
 }
 
@@ -413,7 +413,7 @@ function repeatAux(regex: ExtRegex, min: number, max: number): ExtRegex {
 
   if (max === Infinity)
     return concat(requiredPrefix, star(regex))
-  else 
+  else
     return concat(
       requiredPrefix,
       seq(Array(max - min).fill(optional(regex)))
@@ -432,14 +432,14 @@ export class CacheOverflowError extends Error {
   name = "CacheOverflowError"
 }
 
-export function codePointDerivative(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
-export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
-export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
+export function charCodeDerivative(charCode: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
+export function charCodeDerivative(charCode: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
+export function charCodeDerivative(charCode: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
   switch (regex.type) {
     case "epsilon":
       return empty
     case "literal": {
-      if (CharSet.includes(regex.charset, codePoint))
+      if (CharSet.includes(regex.charset, charCode))
         return epsilon
       else
         return empty
@@ -447,40 +447,40 @@ export function codePointDerivative(codePoint: number, regex: ExtRegex, cache: T
     case "concat": {
       if (isNullable(regex.left))
         return union(
-          concat(codePointDerivativeAux(codePoint, regex.left, cache), regex.right),
-          codePointDerivativeAux(codePoint, regex.right, cache)
+          concat(charCodeDerivativeAux(charCode, regex.left, cache), regex.right),
+          charCodeDerivativeAux(charCode, regex.right, cache)
         )
-      else 
+      else
         return concat(
-          codePointDerivativeAux(codePoint, regex.left, cache),
+          charCodeDerivativeAux(charCode, regex.left, cache),
           regex.right
         )
     }
     case "union":
       return union(
-        codePointDerivativeAux(codePoint, regex.left, cache),
-        codePointDerivativeAux(codePoint, regex.right, cache)
+        charCodeDerivativeAux(charCode, regex.left, cache),
+        charCodeDerivativeAux(charCode, regex.right, cache)
       )
     case "intersection":
       return intersection(
-        codePointDerivativeAux(codePoint, regex.left, cache),
-        codePointDerivativeAux(codePoint, regex.right, cache)
+        charCodeDerivativeAux(charCode, regex.left, cache),
+        charCodeDerivativeAux(charCode, regex.right, cache)
       )
     case "star":
       return concat(
-        codePointDerivativeAux(codePoint, regex.inner, cache),
+        charCodeDerivativeAux(charCode, regex.inner, cache),
         star(regex.inner)
       )
     case "complement":
-      return complement(codePointDerivativeAux(codePoint, regex.inner, cache))
-  }  
+      return complement(charCodeDerivativeAux(charCode, regex.inner, cache))
+  }
   checkedAllCases(regex)
 }
 
-function codePointDerivativeAux(codePoint: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
-function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
-function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
-  const cachedResult = Table.get(codePoint, regex.hash, cache)
+function charCodeDerivativeAux(charCode: number, regex: StdRegex, cache: Table.Table<StdRegex>): StdRegex
+function charCodeDerivativeAux(charCode: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex
+function charCodeDerivativeAux(charCode: number, regex: ExtRegex, cache: Table.Table<ExtRegex>): ExtRegex {
+  const cachedResult = Table.get(charCode, regex.hash, cache)
   if (cachedResult === undefined) {
     // Rather throw an error when cache grows too large than getting OOM killed.
     // At least errors can be caught and handled. The limit is somewhat arbitrary.
@@ -489,8 +489,8 @@ function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table
       throw new CacheOverflowError('while computing DFA transitions.')
     }
 
-    const result = codePointDerivative(codePoint, regex, cache)
-    Table.set(codePoint, regex.hash, result, cache)
+    const result = charCodeDerivative(charCode, regex, cache)
+    Table.set(charCode, regex.hash, result, cache)
     return result
   } else {
     return cachedResult
@@ -501,20 +501,20 @@ function codePointDerivativeAux(codePoint: number, regex: ExtRegex, cache: Table
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function derivative(str: string, regex: StdRegex): StdRegex
-export function derivative(str: string, regex: ExtRegex): ExtRegex 
+export function derivative(str: string, regex: ExtRegex): ExtRegex
 export function derivative(str: string, regex: ExtRegex): ExtRegex {
-  const firstCodePoint = str.codePointAt(0)
-  if (firstCodePoint === undefined) {
+  const firstCharCode = str.charCodeAt(0)
+  if (isNaN(firstCharCode)) {
     return regex
   } else {
-    const restStr = str.slice(1) 
-    const restRegex = codePointDerivative(firstCodePoint, regex, new Map())
+    const restStr = str.slice(1)
+    const restRegex = charCodeDerivative(firstCharCode, regex, new Map())
 
-    if (equal(empty, restRegex)) 
+    if (equal(empty, restRegex))
       return empty
     else
       return derivative(restStr, restRegex)
@@ -540,7 +540,7 @@ export function isNullable(regex: ExtRegex): boolean {
       return true
     case "complement":
       return !isNullable(regex.inner)
-  }  
+  }
   checkedAllCases(regex)
 }
 
@@ -549,10 +549,10 @@ export function matches(regex: ExtRegex, string: string): boolean {
 }
 
 /**
- * Checks if `regexA` and `regexB` are structurally equal. 
- * Since regex instances are always kept in "canonical form", 
+ * Checks if `regexA` and `regexB` are structurally equal.
+ * Since regex instances are always kept in "canonical form",
  * structural equality approximates regex equivalence quite well.
- * 
+ *
  * TODO: write property based test to find more examples where this does
  * not detect regex equivalence.
  */
@@ -593,8 +593,8 @@ function allNonEmptyIntersections(
     }
   }
 
-  const finalResult = uniqWith(result, CharSet.compare) 
-  Table.set(hashMin, hashMax, finalResult, cache)   
+  const finalResult = uniqWith(result, CharSet.compare)
+  Table.set(hashMin, hashMax, finalResult, cache)
   return finalResult
 }
 
@@ -610,9 +610,9 @@ export function derivativeClasses(
   switch (regex.type) {
     case "epsilon":
       return [CharSet.alphabet]
-    case "literal": 
+    case "literal":
       return [regex.charset, CharSet.complement(regex.charset)]
-        .filter(charset => !CharSet.isEmpty(charset))   
+        .filter(charset => !CharSet.isEmpty(charset))
         .toSorted(CharSet.compare)
     case "concat": {
       if (isNullable(regex.left))
@@ -621,7 +621,7 @@ export function derivativeClasses(
           derivativeClassesAux(regex.right, cache),
           cache.intersections,
         )
-      else 
+      else
         return derivativeClassesAux(regex.left, cache)
     }
     case "union":
@@ -640,7 +640,7 @@ export function derivativeClasses(
       return derivativeClassesAux(regex.inner, cache)
     case "complement":
       return derivativeClassesAux(regex.inner, cache)
-  }  
+  }
   checkedAllCases(regex)
 }
 
@@ -676,7 +676,7 @@ export class VeryLargeSyntaxTreeError extends Error {
 
 /**
  * TODO: docs
- * 
+ *
  * @public
  */
 export function toRegExp(regex: StdRegex): RegExp {
@@ -723,12 +723,12 @@ function toRegExpAST(regex: StdRegex): AST.RegExpAST {
 
         if (rest === undefined)
           return left
-        else 
+        else
           return AST.concat(left, toRegExpAST(rest))
       }
     }
     case 'union': {
-      // The `union` smart constructor should guarantee that there is only 
+      // The `union` smart constructor should guarantee that there is only
       // ever a right epsilon (never only on the left or on both sides):
       if (regex.right.type === 'epsilon')
         return AST.optional(toRegExpAST(regex.left))
@@ -813,11 +813,11 @@ function enumerateMemoizedAux(
  * Generates random strings that match the given regex using a deterministic seed.
  * Unlike enumerate(), this produces a stream of random samples rather than
  * a fair enumeration of all possible matches.
- * 
+ *
  * @param re - The regex to sample from
  * @param seed - Deterministic seed for random generation (default: 42)
  * @returns Generator yielding random matching strings
- * 
+ *
  * @public
  */
 export function* sample(re: StdRegex, seed: number): Generator<string> {
@@ -838,7 +838,7 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
     assert(count !== undefined, 'logic error: node count cache should be populated for all subexpressions')
     return count
   }
-  
+
   while (true) {
     const result = sampleAux(re, rng, lookupNodeCount)
     if (result !== null) {
@@ -901,7 +901,7 @@ function sampleAux(
 
     }
   }
-  
+
   checkedAllCases(regex)
 }
 
@@ -956,7 +956,7 @@ function sizeMemoizedAux(
     }
     case 'star': {
       const innerSize = sizeMemoized(regex.inner, cache)
-      if (innerSize === 0n) 
+      if (innerSize === 0n)
         // `inner` is empty so `star(inner)` the only match is the empty string:
         return 1n
       else
@@ -997,7 +997,7 @@ function nodeCountAux(
 ): number {
   const cachedResult = cache.get(regex.hash)
   if (cachedResult === undefined) {
-    const result = nodeCount(regex, cache)   
+    const result = nodeCount(regex, cache)
     cache.set(regex.hash, result)
     return result
   } else {

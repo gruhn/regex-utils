@@ -1,5 +1,5 @@
 import { assert, checkedAllCases, hashStr, xor } from './utils'
-import * as Range from './code-point-range'
+import * as Range from './char-code-range'
 import * as Stream from './stream'
 
 type WithHash<T> = T & { hash: number }
@@ -7,7 +7,7 @@ type WithHash<T> = T & { hash: number }
 // TODO: ensure tree is balanced
 type CharSetWithoutHash =
   | { type: 'empty' }
-  | { type: 'node', range: Range.CodePointRange, left: CharSet, right: CharSet }
+  | { type: 'node', range: Range.CharCodeRange, left: CharSet, right: CharSet }
 
 export type CharSet = Readonly<WithHash<CharSetWithoutHash>>
 
@@ -17,7 +17,7 @@ export const empty: CharSet = {
 }
 
 function node({ left, right, range }: {
-  range: Range.CodePointRange,
+  range: Range.CharCodeRange,
   left: CharSet,
   right: CharSet,
 }): CharSet {
@@ -80,7 +80,7 @@ export function isEmpty(set: CharSet): boolean {
   return set.type === 'empty'
 }
 
-export function fromRange(range: Range.CodePointRange): CharSet {
+export function fromRange(range: Range.CharCodeRange): CharSet {
   if (Range.isEmpty(range))
     return empty
   else
@@ -88,8 +88,8 @@ export function fromRange(range: Range.CodePointRange): CharSet {
 }
 
 export function charRange(startChar: string, endChar: string) {
-  const start = startChar.codePointAt(0)
-  const end = endChar.codePointAt(0)
+  const start = startChar.charCodeAt(0)
+  const end = endChar.charCodeAt(0)
   assert(start !== undefined && startChar.length <= 1)
   assert(end !== undefined && endChar.length <= 1)
   return fromRange(Range.range(start, end))
@@ -104,26 +104,26 @@ export function isSingleton(set: CharSet): boolean {
   )
 }
 
-export function includes(set: CharSet, codePoint: number): boolean {
+export function includes(set: CharSet, charCode: number): boolean {
   if (set.type === 'empty') {
     return false
   } else if (set.type === 'node') {
-    if (codePoint < set.range.start - 1)
-      return includes(set.left, codePoint)
-    else if (codePoint > set.range.end + 1)
-      return includes(set.right, codePoint)
+    if (charCode < set.range.start - 1)
+      return includes(set.left, charCode)
+    else if (charCode > set.range.end + 1)
+      return includes(set.right, charCode)
     else
-      return Range.includes(set.range, codePoint)
+      return Range.includes(set.range, charCode)
   }
   checkedAllCases(set)
 }
 
 type ExtractedOverlap = {
   restCharSet: CharSet
-  extendedRange: Range.CodePointRange
+  extendedRange: Range.CharCodeRange
 }
 
-function extractOverlap(set: CharSet, range: Range.CodePointRange): ExtractedOverlap {
+function extractOverlap(set: CharSet, range: Range.CharCodeRange): ExtractedOverlap {
   if (set.type === 'empty') {
     return { restCharSet: set, extendedRange: range }
   } else if (set.type === 'node') {
@@ -162,7 +162,7 @@ function extractOverlap(set: CharSet, range: Range.CodePointRange): ExtractedOve
   checkedAllCases(set)
 }
 
-export function insertRange(set: CharSet, range: Range.CodePointRange): CharSet {
+export function insertRange(set: CharSet, range: Range.CharCodeRange): CharSet {
   if (Range.isEmpty(range)) {
     return set
   } else if (set.type === 'empty') {
@@ -194,7 +194,7 @@ export function insertRange(set: CharSet, range: Range.CodePointRange): CharSet 
   }
 }
 
-export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet {
+export function deleteRange(set: CharSet, range: Range.CharCodeRange): CharSet {
   if (Range.isEmpty(range)) {
     return set
   } else if (set.type === 'empty') {
@@ -227,7 +227,7 @@ export function deleteRange(set: CharSet, range: Range.CodePointRange): CharSet 
   checkedAllCases(set)
 }
 
-export function intersectRange(set: CharSet, range: Range.CodePointRange): Range.CodePointRange[] {
+export function intersectRange(set: CharSet, range: Range.CharCodeRange): Range.CharCodeRange[] {
   if (set.type === 'empty' || Range.isEmpty(range)) {
     return []
   } else if (set.type === 'node') {
@@ -242,7 +242,7 @@ export function intersectRange(set: CharSet, range: Range.CodePointRange): Range
   checkedAllCases(set)
 }
 
-export function* getRanges(set: CharSet): Generator<Range.CodePointRange> {
+export function* getRanges(set: CharSet): Generator<Range.CharCodeRange> {
   if (set.type === 'node') {
     yield* getRanges(set.left)
     yield set.range
@@ -292,6 +292,8 @@ export function toString(set: CharSet): string {
       return '\\d'
     case nonDigitChars.hash:
       return '\\D'
+    case wildcard().hash:
+      return '.'
     case alphabet.hash:
       // TODO: if dotAll flag is set then the "." is enough:
       return '(.|[\n\r\u2028\u2029])'
@@ -340,7 +342,7 @@ export function enumerate(set: CharSet): Stream.Stream<string> {
   return Stream.concat(Stream.fromArray(
     rangesWithBiasedOrder.map(
       range => Stream.map(
-        codePoint => String.fromCodePoint(codePoint),
+        charCode => String.fromCharCode(charCode),
         Stream.range(range.start, range.end)
       )
     )
@@ -381,8 +383,8 @@ function sampleCharAux(set: CharSet, targetIndex: number): string | null {
   const rootSize = Range.size(set.range)
   if (targetIndex < rootSize) {
     // Target is in this range
-    const codePoint = set.range.start + targetIndex
-    return String.fromCodePoint(codePoint)
+    const charCode = set.range.start + targetIndex
+    return String.fromCharCode(charCode)
   }
 
   targetIndex -= rootSize
@@ -394,14 +396,9 @@ function sampleCharAux(set: CharSet, targetIndex: number): string | null {
 ////////////////////////////////////////////////////////////
 
 /**
- * Full unicode range.
+ * Full UTF-16 code unit range.
  */
-export const alphabet = // fromRange({ start: 0, end: 0x10FFFF })
-  difference(
-    fromRange({ start: 0, end: 0x10FFFF }),
-    // alphabet,
-    fromArray(['\r', '\n', '\u2028', '\u2029'])
-  )
+export const alphabet = fromRange({ start: 0, end: 0xFFFF })
 
 /**
  * Equivalent to the dot ".". Whether or not the dot matches
@@ -409,8 +406,10 @@ export const alphabet = // fromRange({ start: 0, end: 0x10FFFF })
  * a regular expression. For example, this regex matches
  * line terminators `/./s` but this one doesn't `/./`.
  */
-export const wildcard = (options: { dotAll: boolean }) => {
-  if (options.dotAll)
+export const wildcard = (options?: { dotAll: boolean }) => {
+  const { dotAll = false } = options ?? {}
+
+  if (dotAll)
     return alphabet
   else
     return difference(

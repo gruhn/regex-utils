@@ -32,7 +32,7 @@ export type RenderOptions = {
   useNonCapturingGroups: boolean
 }
 
-const dotStar = star(literal(CharSet.wildcard({ dotAll: false })))
+const dotStar = star(literal(CharSet.wildcard()))
 
 //////////////////////////////////////////////
 ///// Mapping: AST -> ExtRegex           /////

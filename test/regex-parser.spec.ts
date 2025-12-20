@@ -90,7 +90,7 @@ describe('parseRegExp', () => {
   }
 
   const charSetTestCases = [
-    [/./, CharSet.wildcard({ dotAll: false })],
+    [/./, CharSet.wildcard()],
     // char classes / escaping:
     [/\w/, CharSet.wordChars],
     [/[\w]/, CharSet.wordChars], // surrounding brackets change nothing

@@ -2,9 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert'
 import * as CharSet from '../src/char-set'
 import fc from 'fast-check'
-import * as Range from '../src/code-point-range'
+import * as Range from '../src/char-code-range'
 
-const arbitraryRange: fc.Arbitrary<Range.CodePointRange> =
+const arbitraryRange: fc.Arbitrary<Range.CharCodeRange> =
   fc.tuple(
     fc.integer({ min: 48, max: 122 }), // 0-9a-zA-Z
     fc.integer({ min: 48, max: 122 }),

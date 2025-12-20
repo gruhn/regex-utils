@@ -22,7 +22,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
 
   const worklist = [regex]
 
-  const codePointDerivCache: Table.Table<RE.ExtRegex> = new Map()
+  const charCodeDerivCache: Table.Table<RE.ExtRegex> = new Map()
   const derivClassesCache: RE.DerivativeClassesCache = {
     classes: new Map(),
     intersections: new Map()
@@ -36,7 +36,7 @@ function regexToDFA(regex: RE.ExtRegex): DFA {
 
     for (const charSet of RE.derivativeClasses(sourceState, derivClassesCache)) {
       const char = pickChar(charSet)
-      const targetState = RE.codePointDerivative(char, sourceState, codePointDerivCache)
+      const targetState = RE.charCodeDerivative(char, sourceState, charCodeDerivCache)
       const knownState = allStates.get(targetState.hash)
 
       if (knownState === undefined) {

@@ -1,7 +1,7 @@
 import * as AST from "./ast"
 import * as P from "./parser"
 import * as CharSet from './char-set'
-import * as Range from './code-point-range'
+import * as Range from './char-code-range'
 import { assert } from "./utils"
 import { failure } from "./parser"
 
@@ -19,7 +19,7 @@ const regExpFlags = [
 // type RegExpFlag = typeof regExpFlags[number]
 
 const wildcard = P.string('.').map(
-  () => AST.literal(CharSet.wildcard({ dotAll: false }))
+  () => AST.literal(CharSet.wildcard())
 )
 
 const unescapedCharInsideBrackets = P.satisfy(char => !Range.mustBeEscapedInsideBrackets(char))
