@@ -101,7 +101,8 @@ describe('parseRegExp', () => {
     [/\D/, CharSet.nonDigitChars],
     [/\n/, CharSet.singleton('\n')],
     [/\./, CharSet.singleton('.')],
-    [/\x20/, CharSet.singleton(' ')], // 21 is hexcode for space:
+    [/\x5A/, CharSet.singleton('Z')],
+    [/\x{005A}/, CharSet.singleton('Z')],
     // char class from range:
     [/[a-z]/, CharSet.charRange('a', 'z')],
     // combined range/char classes:
