@@ -1,7 +1,7 @@
 
 // declare global {
 //   interface ErrorConstructor {
-//     // Non-standard v8-specific function. Since it is not guaranteed to be 
+//     // Non-standard v8-specific function. Since it is not guaranteed to be
 //     // available, we make it optional.
 //     captureStackTrace?: (target: any, func: any) => void
 //   }
@@ -34,7 +34,7 @@
  * Additionally, assertions help static analysis tools like SonarQube reason about
  * the code.
  */
-export function assert(condition : boolean, failureMessage? : string): asserts condition {
+export function assert(condition: boolean, failureMessage?: string): asserts condition {
   if (condition === false) {
     const err = new Error(failureMessage ?? 'assertion failure')
     // Preferably omit the `assert` call itself from the stack trace,
@@ -74,8 +74,8 @@ export function assert(condition : boolean, failureMessage? : string): asserts c
  *     checkedAllCases("obviously not never" as never)
  *
  */
-export function checkedAllCases(_witness: never): never {
-  throw new Error('not all cases checked')
+export function checkedAllCases(witness: never): never {
+  throw new Error('Not all cases checked: ' + JSON.stringify(witness))
 }
 
 /**
@@ -90,7 +90,7 @@ export function identity<T>(x: T): T {
  * Yields tuples of elements from the two input arrays. Excess elements are ignored if one
  * of the arrays is longer.
  */
-export function* zip<A,B>(arrayA: readonly A[], arrayB: readonly B[]): Generator<[A,B]> {
+export function* zip<A, B>(arrayA: readonly A[], arrayB: readonly B[]): Generator<[A, B]> {
   for (let i = 0; i < Math.min(arrayA.length, arrayB.length); i++) {
     yield [arrayA[i], arrayB[i]]
   }
@@ -99,7 +99,7 @@ export function* zip<A,B>(arrayA: readonly A[], arrayB: readonly B[]): Generator
 /**
  * Returns an array of tuples containing all adjacent pairs in the input array.
  */
-export function* adjacentPairs<T>(array: readonly T[]): Generator<[T,T]> {
+export function* adjacentPairs<T>(array: readonly T[]): Generator<[T, T]> {
   yield* zip(array.slice(0, -1), array.slice(1))
 }
 
@@ -109,7 +109,7 @@ export function* adjacentPairs<T>(array: readonly T[]): Generator<[T,T]> {
  */
 export function uniqWith<T>(array: T[], compare: (l: T, r: T) => number): T[] {
   return array.toSorted(compare).filter((item, index, arraySorted) => {
-    const prevItem = arraySorted[index-1]
+    const prevItem = arraySorted[index - 1]
     return prevItem === undefined || compare(prevItem, item) !== 0
   })
 }
@@ -120,14 +120,14 @@ export function uniqWith<T>(array: T[], compare: (l: T, r: T) => number): T[] {
  */
 export function hashNums(nums: number[], seed = 0): number {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed
-  for (let i=0; i < nums.length; i++) {
+  for (let i = 0; i < nums.length; i++) {
     const ch = nums[i]
     h1 = Math.imul(h1 ^ ch, 2654435761)
     h2 = Math.imul(h2 ^ ch, 1597334677)
   }
-  h1  = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
   h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909)
-  h2  = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
   h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909)
 
   return 4294967296 * (2097151 & h2) + (h1 >>> 0)
@@ -139,14 +139,14 @@ export function hashNums(nums: number[], seed = 0): number {
  */
 export function hashStr(str: string, seed = 0): number {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed
-  for (let i=0; i < str.length; i++) {
+  for (let i = 0; i < str.length; i++) {
     const ch = str[i].charCodeAt(0)
     h1 = Math.imul(h1 ^ ch, 2654435761)
     h2 = Math.imul(h2 ^ ch, 1597334677)
   }
-  h1  = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
   h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909)
-  h2  = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
   h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909)
 
   return 4294967296 * (2097151 & h2) + (h1 >>> 0)
@@ -156,7 +156,7 @@ export function hashStr(str: string, seed = 0): number {
  * Performs bitwise XOR operation on two numbers.
  */
 export function xor(a: number, b: number): number {
-  return a^b
+  return a ^ b
 }
 
 /**
@@ -180,7 +180,7 @@ export function minBy<T>(iterable: Iterable<T>, scoreOf: (item: T) => number): T
  * Calculates the sum of all numbers in the array.
  */
 export function sum(items: number[]) {
-  return items.reduce((a,b) => a+b, 0)
+  return items.reduce((a, b) => a + b, 0)
 }
 
 /**
@@ -190,3 +190,15 @@ export function sum(items: number[]) {
 export function isOneOf<T>(item: unknown, array: readonly T[]): item is T {
   return (array as unknown[]).includes(item)
 }
+
+/**
+ * Placeholder function to indicate unimplemented code.
+ */
+export function todo<T>(msg?: string): T {
+  throw 'TODO: ' + msg
+}
+
+/**
+ * Asserts at compile time that `_Sub` is a subtype of `Super`.
+ */
+export function assertSubtype<_Sub extends Super, Super>(): void { }

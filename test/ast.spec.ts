@@ -2,22 +2,21 @@ import { describe, it } from "node:test"
 import { strict as assert } from "node:assert"
 import * as RE from "../src/regex"
 import * as AST from "../src/ast"
-import { parseRegExp } from "../src/regex-parser"
+import { parseRegExp, UnsupportedSyntaxError } from "../src/regex-parser"
+import { toStdRegex } from "src/dfa"
 
 describe('toExtRegex', () => {
-
-  const dotStar = RE.star(RE.anySingleChar)
 
   // function infix(regex: RE.ExtRegex) {
   //   return RE.seq([ dotStar, regex, dotStar ])
   // }
 
   function prefix(regex: RE.ExtRegex) {
-    return RE.concat(regex, dotStar)
+    return RE.concat(regex, RE.dotStar)
   }
 
   function suffix(regex: RE.ExtRegex) {
-    return RE.concat(dotStar, regex)
+    return RE.concat(RE.dotStar, regex)
   }
 
   describe('union with empty members', () => {
@@ -38,10 +37,11 @@ describe('toExtRegex', () => {
 
   describe('start/end anchor elimination', () => {
     const testCases = [
-      [/^abc/, RE.seq([RE.string('abc'), dotStar])],
+      [/^abc/, prefix(RE.string('abc'))],
       // start marker contradictions can only match empty set:
       [/a^b/, RE.empty],
       [/^a^b/, RE.empty],
+      [/a(^)/, RE.empty],
       // but two ^^ directly in a row are not a contradiction:
       [/(^^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
       // in fact, as long as anything between two ^ can match epsilon,
@@ -50,8 +50,8 @@ describe('toExtRegex', () => {
       [/(^c*^a|b)/, prefix(RE.union(RE.singleChar('a'), suffix(RE.singleChar('b'))))],
       // Also, contradiction inside a union does NOT collapse
       // the whole expression to empty set:
-      [/(a^b|c)/, RE.seq([dotStar, RE.singleChar('c'), dotStar])],
-      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), dotStar])],
+      [/(a^b|c)/, RE.seq([RE.dotStar, RE.singleChar('c'), RE.dotStar])],
+      [/^(a^b|c)/, RE.seq([RE.singleChar('c'), RE.dotStar])],
 
       // End anchor before start anchor is contradictory and describes empty set:
       [/$.^/, RE.empty],
@@ -59,60 +59,109 @@ describe('toExtRegex', () => {
       [/$^/, RE.epsilon],
       // Nullable expressions on the left and right can be ignored:
       [/(a?)$^(b*)/, RE.epsilon],
+      // Nullable lookaheads before start anchor have no effect:
+      [/(?=a*)^b$/, RE.string('b')],
+      // Nullable lookaheads after end anchor have no effect:
+      [/^b$(?=a*)/, RE.string('b')],
+      // Non-nullable lookaheads before start anchor introduce contraction:
+      [/(?=a+)^b/, RE.empty],
+      // Non-nullable lookaheads after end anchor introduce contraction:
+      [/^b$(?=a+)/, RE.empty],
 
-      // Contradiction inside lookahead collapses to empty set. Then empty set lookahead can't match anything:
-      // FIXME:
-      // [/(?=a^)/, RE.empty],
-
-      [/(^a|)^b/, RE.seq([RE.singleChar('b'), dotStar])],
-      [/^a(b^|c)/, RE.seq([RE.string('ac'), dotStar])],
-      [/(^|a)b/, prefix(RE.concat(RE.optional(suffix(RE.singleChar('a'))), RE.singleChar('b')))],
-
-      // FIXME:
-      // [/(^)+a$/, RE.singleChar('a') ],
+      // Anchors inside quantifier:
       [/(^)*a$/, suffix(RE.singleChar('a'))],
       [/(b|^)a$/, RE.concat(RE.optional(suffix(RE.singleChar('b'))), RE.singleChar('a'))],
-      [/a(^)/, RE.empty],
+      [/(^a)*$/, RE.union(RE.dotStar, RE.singleChar('a'))], // (^a)*$ == (^a)?$ == ^(.*|a)$
+      // TODO:
+      // [/(^)+a$/, RE.singleChar('a')],
+      // [/(^a*)+b$/, suffix(RE.singleChar('b'))],
+
+      // TODO: Contradiction inside lookahead collapses to empty set. Then empty set lookahead can't match anything:
+      // [/(?=a^)/, RE.empty],
+
+      // Start anchor + union:
+      [/(^a|)^b/, prefix(RE.singleChar('b'))],
+      [/^a(b^|c)/, prefix(RE.string('ac'))],
+      [/(^|a)b/, prefix(RE.concat(RE.optional(suffix(RE.singleChar('a'))), RE.singleChar('b')))],
     ] as const
 
     for (const [regexp, expected] of testCases) {
       it(`${regexp}`, () => {
         const actual = AST.toExtRegex(parseRegExp(regexp))
-        assert.equal(actual.hash, expected.hash)
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
       })
     }
   })
 
-  // FIXME:
-  // describe('lookahead elimination', () => {
-  //   const testCases = [
-  //     // positive lookahead:
-  //     [/^(?=a)a$/, RE.string('a')],
-  //     [/^a(?=b)b$/, RE.string('ab')],
-  //     [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
-  //     [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
-  //     // negative lookahead:
-  //     [/^a(?!b)c$/, RE.concat(RE.string('a'), RE.intersection(RE.complement(RE.string('b')), RE.string('c')))],
-  //     // TODO: lookahead + lookbehind
-  //     // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
-  //     // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
-  //     // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
-  //   ] as const
+  describe('lookahead elimination', () => {
+    const testCases = [
+      // positive lookahead:
+      [/^(?=a)a$/, RE.string('a')],
+      [/^a(?=b)b$/, RE.string('ab')],
+      [/(?=a)b/, RE.empty],
+      [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
+      [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
+      // nested positive lookahead:
+      [/^(?=(?=(?=[0-5])[5-9])[3-7])[0-9]$/, RE.string('5')],
+      // positive lookaheads with nullable expression always succeed:
+      [/^a(?=)b$/, RE.string('ab')],
+      [/^a(?=b*)c$/, RE.string('ac')],
+      // negative lookahead:
+      [/^a(?!a)[ab]$/, RE.string('ab')],
+      // negative lookaheads with nullable expression always fail:
+      [/a(?!)c/, RE.empty],
+      [/a(?!b*)c/, RE.empty],
 
-  //   for (const [regexp, expected] of testCases) {
-  //     it(`${regexp}`, () => {
-  //       const actual = AST.toExtRegex(parseRegExp(regexp))
-  //       assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
-  //     })
-  //   }
+      // TODO: lookahead inside quantifier
+      // [/^(a(?!b))*$/, RE.star(RE.string('a'))],
+      // [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
+      // [/(?![^a])/, ???],
 
-  //   it('fixme', { todo: true }, () => {
-  //     const actual = AST.toExtRegex(parseRegExp(/^(a(?!b))*$/))
-  //     const expected = RE.star(RE.string('a'))
-  //     assert.equal(actual.hash, expected.hash)
-  //   })
+      // TODO: lookahead + lookbehind
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
+      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
+      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+    ] as const
 
-  // })
+    for (const [regexp, expected] of testCases) {
+      it(`${regexp}`, () => {
+        const actual = toStdRegex(AST.toExtRegex(parseRegExp(regexp)))
+        assert.equal(actual.hash, expected.hash, RE.debugShow(actual) + '\n\n' + RE.debugShow(expected))
+      })
+    }
+  })
+
+  const testCasesUnsupported = [
+    // start anchor inside single union member with non-empty prefix:
+    /p(^l|r)/,
+    /p(l|^r)/,
+    // start anchor inside unbounded quantifier with non-empty prefix:
+    /p(^i)*/,
+    /p(^i)+/,
+    /p(^i){3,}/,
+    // end anchor inside single union member with non-empty prefix:
+    /(l$|r)s/,
+    /(l|r$)s/,
+    // end anchor inside unbounded quantifier with non-empty prefix:
+    /(i$)*s/,
+    /(i$)+s/,
+    /(i$){3,}s/,
+    // anchors inside lookaheads:
+    /(?=^a)/,
+    /(?=a$)/,
+    /(?!^a)/,
+    /(?!a$)/,
+    /(?<=^a)/,
+    /(?<=a$)/,
+    /(?<!^a)/,
+    /(?<!a$)/,
+  ] as const
+
+  for (const regexp of testCasesUnsupported) {
+    it(`throws UnsupportedSyntaxError for ${regexp}`, () => {
+      assert.throws(() => AST.toExtRegex(parseRegExp(regexp)), UnsupportedSyntaxError)
+    })
+  }
 
 })
 
@@ -127,7 +176,7 @@ describe('toString', () => {
   ] as const
 
   for (const [inputAST, expected] of testCases) {
-    it(`${expected}`, () => {
+    it(`${expected}`, { only: true }, () => {
       const str = AST.toString(inputAST, { useNonCapturingGroups: false })
       assert.equal(str, expected.source)
     })

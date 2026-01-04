@@ -1,4 +1,4 @@
-.PHONY: all bench
+.PHONY: build bench
 
 build: Makefile node_modules/.stamp docs/.stamp dist/.stamp
 

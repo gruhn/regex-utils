@@ -24,7 +24,7 @@ type ExtRegexWithoutMetaInfo = (
   | { type: "literal", charset: CharSet.CharSet }
   | { type: "concat", left: ExtRegex, right: ExtRegex }
   | { type: "union", left: ExtRegex, right: ExtRegex }
-  | { type: "star", inner: ExtRegex  }
+  | { type: "star", inner: ExtRegex }
   // Extended with intersection and complement operator:
   | { type: "intersection", left: ExtRegex, right: ExtRegex }
   | { type: "complement", inner: ExtRegex }
@@ -102,7 +102,7 @@ export function isStdRegex(regex: ExtRegex): regex is StdRegex {
 ///// primitive composite constructors ///////
 //////////////////////////////////////////////
 
-export const epsilon: StdRegex = withMetaInfo({ type: 'epsilon'  })
+export const epsilon: StdRegex = withMetaInfo({ type: 'epsilon' })
 
 export function literal(charset: CharSet.CharSet): StdRegex {
   return withMetaInfo({ type: 'literal', charset })
@@ -310,9 +310,12 @@ export function complement(inner: ExtRegex): ExtRegex {
   if (inner.type === "complement")
     // ¬(¬r) ≈ r
     return inner
+  else if (inner.type === 'epsilon')
+    // ¬ε ≈ Σ+
+    return repeat(literal(CharSet.alphabet), { min: 1 })
   // FIXME: actually wrong. Rather: ¬S ≈ ε + (Σ\S) + Σ{2,}
   // else if (inner.type === 'literal')
-  //   // ¬S ≈ (Σ\S
+  //   // ¬S ≈ (Σ\S)
   //   return literal(CharSet.complement(inner.charset))
   else
     return withMetaInfo({ type: "complement", inner })
@@ -378,8 +381,6 @@ export function optional(regex: ExtRegex): ExtRegex {
  * ```typescript
  * seq([ singleChar('a'), anySingleChar ]) // like /a./
  * ```
- *
- * @public
  */
 export function seq(res: StdRegex[]): StdRegex
 export function seq(res: ExtRegex[]): ExtRegex
@@ -419,6 +420,8 @@ function repeatAux(regex: ExtRegex, min: number, max: number): ExtRegex {
       seq(Array(max - min).fill(optional(regex)))
     )
 }
+
+export const dotStar = star(literal(CharSet.wildcard({ dotAll: false })))
 
 //////////////////////////////////////////////
 /////    derivatives & predicates        /////
@@ -496,8 +499,6 @@ function charCodeDerivativeAux(charCode: number, regex: ExtRegex, cache: Table.T
     return cachedResult
   }
 }
-
-
 
 /**
  * TODO: docs
@@ -697,7 +698,7 @@ export function toString(regex: StdRegex): string {
   // but at large sizes like this it hardly hurts readability anymore:
   const useNonCapturingGroups = size > 10_000
 
-  const ast = AST.startAnchor(undefined, AST.endAnchor(toRegExpAST(regex), undefined))
+  const ast = AST.startAnchor(AST.epsilon, AST.endAnchor(toRegExpAST(regex), AST.epsilon))
   return AST.toString(ast, { useNonCapturingGroups })
 }
 
@@ -719,7 +720,7 @@ function toRegExpAST(regex: StdRegex): AST.RegExpAST {
           toRegExpAST(regex.right),
         )
       } else {
-        const left = AST.repeat(toRegExpAST(regex.left), len+1)
+        const left = AST.repeat(toRegExpAST(regex.left), len + 1)
 
         if (rest === undefined)
           return left
@@ -752,7 +753,7 @@ function toRegExpAST(regex: StdRegex): AST.RegExpAST {
 function extractConcatChain(left: StdRegex, right: StdRegex): [number, StdRegex | undefined] {
   if (right.type === 'concat' && equal(left, right.left)) {
     const [len, rest] = extractConcatChain(left, right.right)
-    return [len+1, rest]
+    return [len + 1, rest]
   } else if (equal(left, right)) {
     return [1, undefined]
   } else {
@@ -788,7 +789,7 @@ function enumerateMemoizedAux(
       return CharSet.enumerate(regex.charset)
     case 'concat':
       return Stream.diagonalize(
-        (l,r) => l+r,
+        (l, r) => l + r,
         enumerateMemoized(regex.left, cache),
         enumerateMemoized(regex.right, cache),
       )
@@ -801,7 +802,7 @@ function enumerateMemoizedAux(
       return Stream.cons(
         '',
         () => Stream.diagonalize(
-          (l,r) => l+r,
+          (l, r) => l + r,
           enumerateMemoized(regex.inner, cache),
           enumerateMemoized(regex, cache),
         )
@@ -1005,14 +1006,13 @@ function nodeCountAux(
   }
 }
 
-export function debugShow(regex: ExtRegex): any {
+export function debugShow(regex: ExtRegex) {
   return JSON.stringify(debugShowAux(regex), null, 2)
 }
-export function debugPrint(regex: ExtRegex): any {
+export function debugPrint(regex: ExtRegex) {
   return console.debug(JSON.stringify(debugShowAux(regex), null, 2))
 }
-
-function debugShowAux(regex: ExtRegex): any {
+export function debugShowAux(regex: ExtRegex): unknown {
   switch (regex.type) {
     case 'epsilon':
       return 'ε'
