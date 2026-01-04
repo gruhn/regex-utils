@@ -29,6 +29,9 @@ const unescapedCharOutsideBrackets = P.satisfy(char => !Range.mustBeEscapedOutsi
 
 export class UnsupportedSyntaxError extends Error {
   name = "UnsupportedSyntaxError"
+  constructor(details: string) {
+    super('Syntax is valid but not supported yet: ' + details)
+  }
 }
 
 const charClass: P.Parser<CharSet.CharSet> =
@@ -184,29 +187,17 @@ const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrac
   )
 )
 
-const positiveLookAhead = P.between(
-  P.string('(?='),
-  P.string(')'),
-  regex(),
-).map(inner => AST.lookahead(true, inner))
-
-const negativeLookAhead = P.between(
-  P.string('(?!'),
-  P.string(')'),
-  regex(),
-).map(inner => AST.lookahead(false, inner))
-
-const positiveLookBehind = P.between(
-  P.string('(?<='),
-  P.string(')'),
-  regex(),
-).map(inner => AST.lookbehind(true, inner))
-
-const negativeLookBehind = P.between(
-  P.string('(?<!'),
-  P.string(')'),
-  regex(),
-).map(inner => AST.lookbehind(false, inner))
+const lookbehind: P.Parser<AST.RegExpAST> =
+  P.between(
+    P.choice([
+      P.string('(?<='),
+      P.string('(?<!'),
+    ]),
+    P.string(')'),
+    regex(),
+  ).map(_ => {
+    throw new UnsupportedSyntaxError('lookbehind assertions')
+  })
 
 function regexTerm() {
   return P.choice([
@@ -220,11 +211,53 @@ function regexTerm() {
 
     charSetInBrackets.map(AST.literal),
     unescapedCharOutsideBrackets.map(AST.literal),
-    positiveLookAhead,
-    negativeLookAhead,
-    positiveLookBehind,
-    negativeLookBehind,
+    lookbehind,
   ])
+}
+
+/**
+ * We treat lookAheads like a right-associative infix operator
+ * even though it only "acts" on the right hand side:
+ *
+ *     aaa (?=bbb) ccc
+ *
+ * We could treat it as a prefix operator but then it's
+ * unclear what should have higher precedence: concat or
+ * lookAhead? But even when treating lookAheads as infix
+ * operators, they need special treatment because the left- and
+ * right operand can be optional:
+ *
+ *     (?=bbb) fff
+ *     aaa (?=bbb)
+ *     aaa (?=bbb) (?!ccc) ddd
+ */
+function positiveLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?='),
+    P.string(')'),
+    regex(),
+  ).map(inner => (left, right) => {
+    const lookaheadNode = AST.lookahead(true, inner, right ?? AST.epsilon)
+    if (left === undefined) {
+      return lookaheadNode
+    } else {
+      return AST.concat(left, lookaheadNode)
+    }
+  })
+}
+function negativeLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?!'),
+    P.string(')'),
+    regex(),
+  ).map(inner => (left, right) => {
+    const lookaheadNode = AST.lookahead(false, inner, right ?? AST.epsilon)
+    if (left === undefined) {
+      return lookaheadNode
+    } else {
+      return AST.concat(left, lookaheadNode)
+    }
+  })
 }
 
 function regex(): P.Parser<AST.RegExpAST> {
@@ -236,8 +269,10 @@ function regex(): P.Parser<AST.RegExpAST> {
       { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
       { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
-      { type: 'infixRightOptional', op: P.string('$').map(_ => AST.endAnchor) },
-      { type: 'infixRightOptional', op: P.string('^').map(_ => AST.startAnchor) },
+      { type: 'infixRightOptional', op: negativeLookAhead() },
+      { type: 'infixRightOptional', op: positiveLookAhead() },
+      { type: 'infixRightOptional', op: P.string('$').map(_ => (left, right) => AST.endAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
+      { type: 'infixRightOptional', op: P.string('^').map(_ => (left, right) => AST.startAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
     ]
   ))

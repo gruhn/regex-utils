@@ -43,18 +43,19 @@ import { RB } from '@gruhn/regex-utils'
 | Alternation | ✅ | `a\|b` |
 | Character classes | ✅ | `.`, `\w`, `[a-zA-Z]`, ... |
 | Escaping | ✅ | `\$`, `\.`, ... |
-| (Non-)capturing groups | ✅ <sup>1</sup> | `(?...)`, `(...)` |
-| Start/end anchors | ⚠️ <sup>2</sup> | `^`, `$` |
+| (Non-)capturing groups | ✅<sup>1</sup> | `(?...)`, `(...)` |
+| Start/end anchors | ⚠️<sup>2</sup> | `^`, `$` |
+| Lookahead | ⚠️<sup>3</sup> | `(?=...)`, `(?!...)` |
+| Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
+| Word boundary | ❌ | `\b`, `\B` |
 | Global flags | ❌ | `/.../g`, `/.../i`, `/.../m`, ... |
 | Local flags | ❌ | `(?i:...)`, ... |
 | Unicode property escapes | ❌ | `\p{...}`, `\P{...}` |
 | Backreferences | ❌ | `\1` `\2` ... |
-| Lookahead | ❌ | `(?=...)`, `(?!...)` |
-| Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
-| Word boundary | ❌ | `\b`, `\B` |
 
 1. Both capturing- and non-capturing groups are just treated as parenthesis, because this library is never doing string extraction.
-2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)*`.
+2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)+`.
+3. Anchors inside lookaheads like `(?=^a)` are not supported.
 
 An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
 The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.

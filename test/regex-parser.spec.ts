@@ -1,7 +1,7 @@
 import { describe, it, test } from "node:test"
 import assert from "node:assert"
 import { parseRegExp, parseRegExpString, UnsupportedSyntaxError } from "../src/regex-parser"
-import { RB } from "../src/index"
+import { CacheOverflowError, RB, RegexBuilder } from "../src/index"
 import { ParseError } from "../src/parser"
 import * as AST from "../src/ast"
 import * as CharSet from "../src/char-set"
@@ -55,29 +55,27 @@ describe('parseRegExp', () => {
     [/(?<ABC>abc)/, group(str('abc'), 'ABC')],
     [/(?<___>abc)/, group(str('abc'), '___')],
     // start/end marker
-    [/^abc/, AST.startAnchor(undefined, str('abc'))],
+    [/^abc/, AST.startAnchor(AST.epsilon, str('abc'))],
     [/a^b/, AST.startAnchor(char('a'), str('b'))],
-    [/^a|^b/, AST.union(AST.startAnchor(undefined, str('a')), AST.startAnchor(undefined, char('b')))],
-    [/^abc$/, AST.startAnchor(undefined, AST.endAnchor(str('abc'), undefined))],
-    [/$a^/, AST.startAnchor(AST.endAnchor(undefined, char('a')), undefined)],
+    [/^a|^b/, AST.union(AST.startAnchor(AST.epsilon, str('a')), AST.startAnchor(AST.epsilon, char('b')))],
+    [/^abc$/, AST.startAnchor(AST.epsilon, AST.endAnchor(str('abc'), AST.epsilon))],
+    [/$a^/, AST.startAnchor(AST.endAnchor(AST.epsilon, char('a')), AST.epsilon)],
     // positive lookahead
-    [/(?=a)b/, AST.concat(AST.lookahead(true, char('a')), char('b'))],
-    [/(?=a)(?:b)/, AST.concat(AST.lookahead(true, char('a')), char('b'))],
-    [/(?=a)(?=b)c/, AST.concat(AST.lookahead(true, char('a')), AST.concat(AST.lookahead(true, char('b')), char('c')))],
-    [/a(?=b)c/, AST.concat(char('a'), AST.concat(AST.lookahead(true, char('b')), char('c')))],
-    [/a(?=b)/, AST.seq([char('a'), AST.lookahead(true, char('b'))])],
-    [/a(?=b)c(?=d)e/, AST.seq([char('a'), AST.lookahead(true, char('b')), char('c'), AST.lookahead(true, char('d')), char('e')])],
-    [/(?=)/, AST.lookahead(true, AST.epsilon)],
-    [/(?=a){2}/, AST.repeat(AST.lookahead(true, char('a')), 2)],
-    [/(?=a)*/, AST.star(AST.lookahead(true, char('a')))],
+    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))],
+    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))],
+    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))],
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))],
+    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)],
     // negative lookahead
-    [/(?!a)b/, AST.concat(AST.lookahead(false, char('a')), char('b'))],
-    [/(?!a)b|c/, AST.union(AST.concat(AST.lookahead(false, char('a')), char('b')), char('c'))],
-    [/(?!)/, AST.lookahead(false, AST.epsilon)],
-    // positive lookbehind
-    [/(?<=a)/, AST.lookbehind(true, char('a'))],
-    // negative lookbehind
-    [/(?<!a)/, AST.lookbehind(false, char('a'))],
+    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))],
+    [/(?!a)b|c/, AST.union(AST.lookahead(false, char('a'), char('b')), char('c'))],
+    [/(?!)/, AST.lookahead(false, AST.epsilon, AST.epsilon)],
+    // TODO: positive lookbehind
+    // [/(?<=a)/, AST.positiveLookbehind(char('a'))],
+    // TODO: negative lookbehind
+    // [/(?<!a)/, AST.negativeLookbehind(char('a'))],
   ] as const
 
   for (const [regexp, expected] of astTestCases) {
@@ -179,21 +177,34 @@ function parse_skipKnownIssues(re: RegExp) {
     }
   }
 }
+function toRegExp_ignoreCacheOverflow(builder: RegexBuilder) {
+  try {
+    return builder.toRegExp()
+  } catch (error) {
+    if (error instanceof CacheOverflowError) {
+      fc.pre(false)
+    } else {
+      throw error
+    }
+  }
+}
 
-test('parse/stringify roundtrip preserves equivalence', { todo: true }, () => {
+test('parse/stringify roundtrip preserves equivalence', () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),
       (inputRegExp: RegExp) => {
         const builder = parse_skipKnownIssues(inputRegExp)
-        const outputRegExp = builder.toRegExp()
+        const outputRegExp = toRegExp_ignoreCacheOverflow(builder)
 
+        // console.debug(`Input RegExp:  ${inputRegExp}`)
+        // console.debug(`Output RegExp: ${outputRegExp}`)
         for (const str of builder.enumerate().take(10)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
       },
     ),
-    { numRuns: 100 },
+    { numRuns: 100 }
   )
 })

@@ -1,7 +1,6 @@
 import fc from 'fast-check'
 import * as AST from '../src/ast'
 import * as CharSet from '../src/char-set'
-import { checkedAllCases } from 'src/utils'
 
 export function charSet(): fc.Arbitrary<CharSet.CharSet> {
   return fc.constantFrom('a', 'b', 'c', 'd', 'e', 'f')
@@ -62,13 +61,8 @@ function captureGroup(innerArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary
 }
 
 function lookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb())
-    .map(([isPositive, inner]) => AST.lookahead(isPositive, inner))
-}
-
-function lookbehind(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb())
-    .map(([isPositive, inner]) => AST.lookbehind(isPositive, inner))
+  return fc.tuple(fc.boolean(), childArb(), childArb())
+    .map(([isPositive, inner, right]) => AST.lookahead(isPositive, inner, right))
 }
 
 function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
@@ -89,7 +83,10 @@ function endAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AS
 export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
   const seenNames = new Map<string, number>()
 
-  function renameIfSeen(name: string) {
+  function renameIfSeen(name: string | undefined) {
+    if (name === undefined) {
+      return undefined
+    }
     const counter = seenNames.get(name)
     if (counter === undefined) {
       seenNames.set(name, 1)
@@ -100,48 +97,13 @@ export function makeCaptureGroupNamesUnique(ast: AST.RegExpAST): AST.RegExpAST {
     }
   }
 
-  function traverse(node: AST.RegExpAST): AST.RegExpAST {
-    switch (node.type) {
-      case 'epsilon':
-        return node
-      case 'literal':
-        return node
-      case 'concat':
-        return AST.concat(traverse(node.left), traverse(node.right))
-      case 'union':
-        return AST.union(traverse(node.left), traverse(node.right))
-      case 'star':
-        return AST.star(traverse(node.inner))
-      case 'plus':
-        return AST.plus(traverse(node.inner))
-      case 'optional':
-        return AST.optional(traverse(node.inner))
-      case 'repeat':
-        return AST.repeat(traverse(node.inner), node.bounds)
-      case 'capture-group': {
-        const innerProcessed = traverse(node.inner)
-
-        if (node.name === undefined) {
-          return AST.captureGroup(innerProcessed, node.name)
-        } else {
-          const nameProcessed = renameIfSeen(node.name)
-          return AST.captureGroup(innerProcessed, nameProcessed)
-        }
-      }
-      case 'lookahead':
-        return AST.lookahead(node.isPositive, traverse(node.inner))
-      case 'lookbehind':
-        return AST.lookbehind(node.isPositive, traverse(node.inner))
-      case 'start-anchor':
-        return AST.startAnchor(traverse(node.left), traverse(node.right))
-      case 'end-anchor':
-        return AST.endAnchor(traverse(node.left), traverse(node.right))
-      default:
-        checkedAllCases(node)
+  return AST.traverseDepthFirst(ast, node => {
+    if (node.type === 'capture-group') {
+      return AST.captureGroup(node.inner, renameIfSeen(node.name))
+    } else {
+      return node
     }
-  }
-
-  return traverse(ast)
+  })
 }
 
 export function regexpAST(size = 20): fc.Arbitrary<AST.RegExpAST> {
@@ -166,7 +128,6 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
       { arbitrary: lookahead(() => regexpAST_(childSize)), weight: 1 },
-      { arbitrary: lookbehind(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )

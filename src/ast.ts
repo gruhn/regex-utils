@@ -1,7 +1,7 @@
 import * as CharSet from './char-set'
 import * as RE from './regex'
 import { UnsupportedSyntaxError } from './regex-parser'
-import { assert, checkedAllCases, isOneOf } from './utils'
+import { assert, assertSubtype, checkedAllCases } from './utils'
 
 /**
  * TODO: docs
@@ -13,6 +13,10 @@ export type RepeatBounds =
   | { min: number, max?: number }
   | { min?: number, max: number }
 
+/**
+ * Abstract syntax tree for JavaScript regular expressions.
+ * This is what the parser produces.
+ */
 export type RegExpAST =
   | { type: "epsilon" }
   | { type: "literal", charset: CharSet.CharSet }
@@ -23,92 +27,188 @@ export type RegExpAST =
   | { type: "optional", inner: RegExpAST }
   | { type: "repeat", inner: RegExpAST, bounds: RepeatBounds }
   | { type: "capture-group", name?: string, inner: RegExpAST }
-  | { type: "lookahead", isPositive: boolean, inner: RegExpAST }
-  | { type: "lookbehind", isPositive: boolean, inner: RegExpAST }
+  | { type: "lookahead", isPositive: boolean, inner: RegExpAST, right: RegExpAST }
   | { type: "start-anchor", left: RegExpAST, right: RegExpAST }
   | { type: "end-anchor", left: RegExpAST, right: RegExpAST }
+
+type ExtRegexNode = {
+  type: "ext-regex",
+  content: RE.ExtRegex
+}
+
+/**
+ * Intermediate representation when transforming RegExpAST to ExtRegex.
+ * It's a supertype of RegExpAST that also allows ExtRegex subtrees.
+ */
+type InterAST_stage1 =
+  | ExtRegexNode
+  | { type: "epsilon" }
+  | { type: "literal", charset: CharSet.CharSet }
+  | { type: "concat", left: InterAST_stage1, right: InterAST_stage1 }
+  | { type: "union", left: InterAST_stage1, right: InterAST_stage1 }
+  | { type: "star", inner: InterAST_stage1 }
+  | { type: "plus", inner: InterAST_stage1 }
+  | { type: "optional", inner: InterAST_stage1 }
+  | { type: "repeat", inner: InterAST_stage1, bounds: RepeatBounds }
+  | { type: "capture-group", name?: string, inner: InterAST_stage1 }
+  | { type: "lookahead", isPositive: boolean, inner: InterAST_stage1, right: InterAST_stage1 }
+  | { type: "start-anchor", left: InterAST_stage1, right: InterAST_stage1 }
+  | { type: "end-anchor", left: InterAST_stage1, right: InterAST_stage1 }
+
+assertSubtype<RegExpAST, InterAST_stage1>()
+
+/**
+ * Stage 2:
+ * - "plus", "repeat", "optional", "capture-group" are desugared
+ * - "epsilon", "literal" are always converted to "ext-regex" nodes
+ * - nullable "lookahead" nodes are eliminated
+ * - "lookahead" nodes are always positive and have ExtRegex `inner` expressions.
+ */
+type InterAST_stage2 =
+  | ExtRegexNode
+  | { type: "concat", left: InterAST_stage2, right: InterAST_stage2 }
+  | { type: "union", left: InterAST_stage2, right: InterAST_stage2 }
+  | { type: "star", inner: InterAST_stage2 }
+  | { type: "lookahead", isPositive: true, inner: ExtRegexNode, right: InterAST_stage2 }
+  | { type: "start-anchor", left: InterAST_stage2, right: InterAST_stage2 }
+  | { type: "end-anchor", left: InterAST_stage2, right: InterAST_stage2 }
+
+assertSubtype<InterAST_stage2, InterAST_stage1>()
+
+/**
+ * Stage 3:
+ * - start- and end anchors are eliminated
+ */
+type InterAST_stage3 =
+  | ExtRegexNode
+  | { type: "concat", left: InterAST_stage3, right: InterAST_stage3 }
+  | { type: "union", left: InterAST_stage3, right: InterAST_stage3 }
+  | { type: "star", inner: InterAST_stage3 }
+  | { type: "lookahead", isPositive: true, inner: ExtRegexNode, right: InterAST_stage3 }
+
+assertSubtype<InterAST_stage3, InterAST_stage2>()
 
 export type RenderOptions = {
   useNonCapturingGroups: boolean
 }
 
-const dotStar = star(literal(CharSet.wildcard()))
-
 //////////////////////////////////////////////
 ///// Mapping: AST -> ExtRegex           /////
 //////////////////////////////////////////////
 
-function isNullable(ast: RegExpAST): boolean {
+function isNullable(ast: InterAST_stage2): boolean {
   switch (ast.type) {
-    case "epsilon": return true
-    case "literal": return false
+    case "ext-regex": return RE.isNullable(ast.content)
     case "concat": return isNullable(ast.left) && isNullable(ast.right)
     case "union": return isNullable(ast.left) || isNullable(ast.right)
     case "star": return true
-    case "plus": return isNullable(ast.inner)
-    case "optional": return true
-    case "repeat": {
-      if (typeof ast.bounds === 'number') {
-        return ast.bounds === 0 || isNullable(ast.inner)
-      } else {
-        const min = ast.bounds.min ?? 0
-        return min === 0 || isNullable(ast.inner)
-      }
-    }
-    case "capture-group": return isNullable(ast.inner)
-    case "lookahead": return isNullable(ast.inner) // TODO: is this correct?
-    case "lookbehind": return isNullable(ast.inner) // TODO: is this correct?
+    // case "lookahead": return (
+    //   isNullable(ast.right) &&
+    //   isNullable(ast.inner) === ast.isPositive
+    // )
+    case "lookahead": return false // in stage 2, `inner` is always non-nullable
     case "start-anchor": return isNullable(ast.left) && isNullable(ast.right)
     case "end-anchor": return isNullable(ast.left) && isNullable(ast.right)
   }
   checkedAllCases(ast)
 }
 
-export const sugarNodeTypes = [
-  'plus',
-  'repeat',
-  'optional',
-  'capture-group',
-] as const
+export function traverseDepthFirst(ast: RegExpAST, fn: (node: RegExpAST) => RegExpAST): RegExpAST {
+  const astNew = fn(ast)
+  switch (astNew.type) {
+    case 'epsilon': return astNew
+    case 'literal': return astNew
+    case 'concat': return concat(traverseDepthFirst(astNew.left, fn), traverseDepthFirst(astNew.right, fn))
+    case 'union': return union(traverseDepthFirst(astNew.left, fn), traverseDepthFirst(astNew.right, fn))
+    case 'star': return star(traverseDepthFirst(astNew.inner, fn))
+    case 'plus': return plus(traverseDepthFirst(astNew.inner, fn))
+    case 'optional': return optional(traverseDepthFirst(astNew.inner, fn))
+    case 'repeat': return repeat(traverseDepthFirst(astNew.inner, fn), astNew.bounds)
+    case 'capture-group': return captureGroup(traverseDepthFirst(astNew.inner, fn), astNew.name)
+    case 'lookahead': return lookahead(astNew.isPositive, traverseDepthFirst(astNew.inner, fn), traverseDepthFirst(astNew.right, fn))
+    case 'start-anchor': return startAnchor(traverseDepthFirst(astNew.left, fn), traverseDepthFirst(astNew.right, fn))
+    case 'end-anchor': return endAnchor(traverseDepthFirst(astNew.left, fn), traverseDepthFirst(astNew.right, fn))
+    default: checkedAllCases(astNew)
+  }
+}
 
-function desugar(ast: RegExpAST): RegExpAST {
+function simplify(ast: RegExpAST): InterAST_stage2 {
   switch (ast.type) {
-    case 'epsilon': return epsilon
-    case 'literal': return literal(ast.charset)
-    case 'concat': return concat(desugar(ast.left), desugar(ast.right))
-    case 'union': return union(desugar(ast.left), desugar(ast.right))
-    case 'star': return star(desugar(ast.inner))
-    case 'start-anchor': return startAnchor(desugar(ast.left), desugar(ast.right))
-    case 'end-anchor': return endAnchor(desugar(ast.left), desugar(ast.right))
-    case 'lookahead': return lookahead(ast.isPositive, desugar(ast.inner))
-    case 'lookbehind': return lookbehind(ast.isPositive, desugar(ast.inner))
-    // sugar nodes:
-    case 'capture-group': return desugar(ast.inner)
+    case 'epsilon': return extRegex(RE.epsilon)
+    case 'literal': return extRegex(RE.literal(ast.charset))
+    case 'concat': return concat(simplify(ast.left), simplify(ast.right))
+    case 'union': return union(simplify(ast.left), simplify(ast.right))
+    case 'star': return star(simplify(ast.inner))
+    case 'start-anchor': return startAnchor(simplify(ast.left), simplify(ast.right))
+    case 'end-anchor': return endAnchor(simplify(ast.left), simplify(ast.right))
+    case 'lookahead': {
+      // Don't know how to handle anchors inside lookaheads yet.
+      // So throwing an UnsupportedSyntaxError if we encounter any:
+      traverseDepthFirst(ast.inner, node => {
+        if (node.type === 'start-anchor')
+          throw new UnsupportedSyntaxError('start anchors inside lookaheads like (?=^a)')
+        else if (node.type === 'end-anchor')
+          throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$)')
+        else
+          return node
+      })
+
+      // Convert `ast.inner` to `ExtRegex` so we take its `complement`.
+      // That way, we can turn negative lookaheads into positive ones.
+      // Need to add start anchor to `ast.inner` otherwise `toExtRegex` will add a `.*` at the start.
+      // That's because a normal regex like /abc/ has an implicit `.*` at the start/end.
+      // But in a lookahead like `(?=abc)` the inner expression does not have an implicit `.*` at the start.
+      // It has one at the end though so we allow `toExtRegex` to add `.*` at the end.
+      const inner = toExtRegex(startAnchor(epsilon, ast.inner))
+
+      if (RE.isNullable(inner)) {
+        // If the inner expression is nullable then it can always match the empty string. So ...
+        if (ast.isPositive) {
+          // ... positive lookaheads like `(?=b*)c` always succeed.
+          // Thus, we can just ignore them:
+          return simplify(ast.right) // i.e. `c`
+        } else {
+          // ... negative lookaheads like `a(?!b*)c` always fail.
+          // Thus, the whole expression collapses to the empty set:
+          return empty()
+        }
+      } else {
+        const right = simplify(ast.right)
+        if (ast.isPositive) {
+          return lookahead(true, extRegex(inner), right)
+        } else {
+          // Normalize negative lookahead `(?!inner)` into positive lookahead `(?=~inner)`:
+          return lookahead(true, extRegex(RE.complement(inner)), right)
+        }
+      }
+    }
+    case 'capture-group': return simplify(ast.inner)
+    case 'optional':
+      // `a?` ==> `ε|a`
+      return union(extRegex(RE.epsilon), simplify(ast.inner))
     case 'plus': {
-      const inner = desugar(ast.inner)
+      const inner = simplify(ast.inner)
+      // `a+` ==> `aa*`
       return concat(inner, star(inner))
     }
-    case 'optional': {
-      const inner = desugar(ast.inner)
-      return union(epsilon, inner)
-    }
     case 'repeat': {
-      const inner = desugar(ast.inner)
-      if (ast.bounds === undefined) {
-        return desugarRepeat(inner, 0, Infinity)
-      } else if (typeof ast.bounds === 'number') {
-        return desugarRepeat(inner, ast.bounds, ast.bounds)
+      const inner = simplify(ast.inner)
+      if (typeof ast.bounds === 'number') {
+        // `a{3}` ==> `aaa`
+        return desugarRepeatNode(inner, ast.bounds, ast.bounds)
       } else {
+        // `a{1,2}` ==> `a(a|ε)`
+        // `a{,2}` ==> `(a|ε)(a|ε)`
+        // `a{1,}` ==> `aa*`
         const { min = 0, max = Infinity } = ast.bounds
         assert(0 <= min && min <= max)
-        return desugarRepeat(inner, min, max)
+        return desugarRepeatNode(inner, min, max)
       }
-
     }
   }
   checkedAllCases(ast)
 }
-function desugarRepeat(ast: RegExpAST, min: number, max: number): RegExpAST {
+function desugarRepeatNode(ast: InterAST_stage2, min: number, max: number): InterAST_stage2 {
   const requiredPrefix = seq(Array(min).fill(ast))
 
   if (max === Infinity)
@@ -116,16 +216,13 @@ function desugarRepeat(ast: RegExpAST, min: number, max: number): RegExpAST {
   else
     return concat(
       requiredPrefix,
-      seq(Array(max - min).fill(union(epsilon, ast)))
+      seq(Array(max - min).fill(union(extRegex(RE.epsilon), ast)))
     )
 }
 
-function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
-  assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
-
+function pullUpStartAnchor(ast: InterAST_stage2, isLeftClosed: boolean): InterAST_stage2 {
   switch (ast.type) {
-    case "epsilon": return ast
-    case "literal": return ast
+    case "ext-regex": return ast
     case "concat": {
       // Pull up start anchors on subexpressions first, so if they contain start
       // anchors then `left` and `right` will have the start anchor at the top.
@@ -138,12 +235,12 @@ function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
         if (isNullable(left)) {
           return right // i.e. `^r`
         } else {
-          return empty
+          return empty()
         }
       } else if (left.type === 'start-anchor') {
         // Expression has the form `(^l)r` where `r` does not contain a start anchor.
         // We can just pull up the start-anchor:
-        return startAnchor(undefined, concat(left.right, right)) // i.e. `^(lr)`
+        return startAnchor(extRegex(RE.epsilon), concat(left.right, right)) // i.e. `^(lr)`
       } else {
         // Neither the left- nor right subexpression contain start anchors.
         // Note, that `left` and `right` may still have been modified (e.g. turned into
@@ -154,24 +251,23 @@ function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
     case "union": {
       const left = pullUpStartAnchor(ast.left, isLeftClosed)
       const right = pullUpStartAnchor(ast.right, isLeftClosed)
-      if (left.type === 'start-anchor' && right.type === 'start-anchor') {
-        // Expression has the form `(^l|^r)`:
-        return startAnchor(undefined, union(left.right, right.right)) // i.e. `^(l|r)`
-      } else if (left.type === 'start-anchor') {
-        if (isLeftClosed) {
+      if (left.type === 'start-anchor') {
+        if (right.type === 'start-anchor')
+          // Expression has the form `(^l|^r)`:
+          return startAnchor(extRegex(RE.epsilon), union(left.right, right.right)) // i.e. `^(l|r)`
+        else if (isLeftClosed)
           // Expression has the form `p(^l|r)`:
           throw new UnsupportedSyntaxError('union with non-empty prefix where only some members have anchors like a(^b|c)')
-        } else {
+        else
           // Expression has the form `(^l|r)`:
-          return startAnchor(undefined, union(left.right, concat(dotStar, right))) // i.e. `^(l|.*r)`
-        }
+          return startAnchor(extRegex(RE.epsilon), union(left.right, concat(dotStar(), right))) // i.e. `^(l|.*r)`
       } else if (right.type === 'start-anchor') {
         if (isLeftClosed)
           // Expression has the form `p(l|^r)`:
           throw new UnsupportedSyntaxError('union with non-empty prefix where only some members have anchors like a(b|^c)')
         else
           // Expression has the form `(l|^r)`:
-          return startAnchor(undefined, union(concat(dotStar, left), right.right)) // i.e. `^(.*l|r)`
+          return startAnchor(extRegex(RE.epsilon), union(concat(dotStar(), left), right.right)) // i.e. `^(.*l|r)`
       } else {
         // Expression has the form `(l|r)`:
         return union(left, right)
@@ -200,9 +296,9 @@ function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
         //              == ε | (^r)
         //
         if (isLeftClosed)
-          throw new UnsupportedSyntaxError('start anchor inside quantifier with non-empty prefix like (^a)*')
+          throw new UnsupportedSyntaxError('start anchor inside quantifier with non-empty prefix like a(^b)*')
         else
-          return startAnchor(undefined, union(dotStar, inner.right)) // i.e. `^(.*|r)`
+          return startAnchor(extRegex(RE.epsilon), union(dotStar(), inner.right)) // i.e. `^(.*|r)`
       } else {
         // Expression has the form `r*` so no start anchor to deal with:
         return star(inner)
@@ -215,21 +311,21 @@ function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
       if (!isNullable(left)) {
         // Expression has the form `l^r` where `l` is not nullable. Thus, the whole
         // expression collapses to the empty set:
-        return empty
+        return empty()
       } else if (left.type === 'end-anchor') {
         // Expression has the form `(l$)^r`. This can (at most) match epsilon,
         // if `r` is also nullable. Otherwise, this can't match anything:
         if (isNullable(right))
-          return startAnchor(undefined, endAnchor(epsilon, undefined)) // i.e. `^$`
+          return startAnchor(extRegex(RE.epsilon), endAnchor(extRegex(RE.epsilon), extRegex(RE.epsilon))) // i.e. `^$`
         else
-          return empty
+          return empty()
       } else if (right.type === 'start-anchor') {
         // Expression has the form `^(^r)`. Multiple start anchor don't introduce
         // a contradiction as long as there is nothing between them:
         return right // i.e. `^r`
       } else {
         // Expression has the form `^r` where `r` contain no start anchor:
-        return startAnchor(undefined, right) // i.e. `^r`
+        return startAnchor(extRegex(RE.epsilon), right) // i.e. `^r`
       }
     }
     case "end-anchor": {
@@ -239,46 +335,41 @@ function pullUpStartAnchor(ast: RegExpAST, isLeftClosed: boolean): RegExpAST {
       if (!isNullable(ast.right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
         // expression collapses to the empty set:
-        return empty
+        return empty()
       } else if (right.type === 'start-anchor') {
         // Expression has the form `l$(^r)`. This can (at most) match epsilon,
         // if both `l` is also nullable:
         if (isNullable(left))
-          return startAnchor(undefined, endAnchor(epsilon, undefined)) // i.e `^$`
+          return startAnchor(extRegex(RE.epsilon), endAnchor(extRegex(RE.epsilon), extRegex(RE.epsilon))) // i.e `^$`
         else
-          return empty
+          return empty()
       } else if (left.type === 'start-anchor') {
         // Expression has the form `(^r)$`. We can just pull the start anchor to the top:
-        return startAnchor(undefined, endAnchor(left.right, undefined)) // i.e. `^(r$)`
+        return startAnchor(extRegex(RE.epsilon), endAnchor(left.right, extRegex(RE.epsilon))) // i.e. `^(r$)`
       } else {
         // Expression has the form `r$` where `r` contain no start anchor:
-        return endAnchor(left, undefined)
+        return endAnchor(left, extRegex(RE.epsilon))
       }
     }
-    case "lookahead":
-      // FIXME:
-      // const inner = pullUpStartAnchor(ast.inner, true)
-      // const right = pullUpStartAnchor(ast.right, isLeftClosed)
-      // if (inner.type === 'start-anchor') {
-      //   throw new UnsupportedSyntaxError('start anchors inside lookaheads like (?=^a)')
-      // } else if (right.type === 'start-anchor') {
-      //   return startAnchor(undefined, lookahead(ast.isPositive, ast.inner, right.right))
-      // } else {
-      //   return lookahead(ast.isPositive, inner, right)
-      // }
-      throw new UnsupportedSyntaxError('lookahead assertion')
-    case 'lookbehind':
-      throw new UnsupportedSyntaxError('lookbehind assertion')
+    case "lookahead": {
+      const right = pullUpStartAnchor(ast.right, true) // TODO: double-check if `true` is correct here
+      if (right.type === 'start-anchor') {
+        // Expression has the form `(?=i)(^r)`.
+        // After `simplify` all lookaheads should be non-nullable and positive.
+        // Thus, `i` can't match anything _before_ a start anchor and the whole expression collapses to the empty set.
+        return empty()
+      } else {
+        // Expression has the form `(?=i)r` so no start anchor to deal with:
+        return lookahead(ast.isPositive, ast.inner, right)
+      }
+    }
   }
-  checkedAllCases(ast.type)
+  checkedAllCases(ast)
 }
 
-function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
-  assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
-
+function pullUpEndAnchor(ast: InterAST_stage2, isRightClosed: boolean): InterAST_stage2 {
   switch (ast.type) {
-    case "epsilon": return ast
-    case "literal": return ast
+    case "ext-regex": return ast
     case "concat": {
       // Pull up end anchors on subexpressions first, so if they contain end
       // anchors then `left` and `right` will have the end anchor at the top.
@@ -291,12 +382,12 @@ function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
         if (isNullable(right)) {
           return left // i.e. `l$`
         } else {
-          return empty
+          return empty()
         }
       } else if (right.type === 'end-anchor') {
         // Expression has the form `l(r$)` where `l` does not contain an end anchor.
         // We can just pull up the end anchor:
-        return endAnchor(concat(left, right.left), undefined) // i.e. `(lr)$`
+        return endAnchor(concat(left, right.left), extRegex(RE.epsilon)) // i.e. `(lr)$`
       } else {
         // Neither the left- nor right subexpression contain end anchors.
         // Note, that `left` and `right` may still have been modified (e.g. turned into
@@ -307,23 +398,23 @@ function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
     case "union": {
       const left = pullUpEndAnchor(ast.left, isRightClosed)
       const right = pullUpEndAnchor(ast.right, isRightClosed)
-      if (left.type === 'end-anchor' && right.type === 'end-anchor') {
-        // Expression has the form `(l$|r$)`:
-        return endAnchor(union(left.left, right.left), undefined) // i.e. `(l$|r$)`
-      } else if (left.type === 'end-anchor') {
-        if (isRightClosed)
+      if (left.type === 'end-anchor') {
+        if (right.type === 'end-anchor')
+          // Expression has the form `(l$|r$)`:
+          return endAnchor(union(left.left, right.left), extRegex(RE.epsilon)) // i.e. `(l$|r$)`
+        else if (isRightClosed)
           // Expression has the form `(l$|r)s`:
           throw new UnsupportedSyntaxError('union with non-empty suffix where only some members have anchors like (a$|b)c')
         else
           // Expression has the form `(l$|r)`:
-          return endAnchor(union(left.left, concat(right, dotStar)), undefined) // i.e. `(l|r.*)$`
+          return endAnchor(union(left.left, concat(right, dotStar())), extRegex(RE.epsilon)) // i.e. `(l|r.*)$`
       } else if (right.type === 'end-anchor') {
         // Expression has the form `(l|r$)s`:
         if (isRightClosed)
           throw new UnsupportedSyntaxError('union with non-empty suffix where only some members have anchors like (a|b$)c')
         else
           // Expression has the form `(l|r$)`:
-          return endAnchor(union(concat(left, dotStar), right.left), undefined) // i.e. `(l.*|r)$`
+          return endAnchor(union(concat(left, dotStar()), right.left), extRegex(RE.epsilon)) // i.e. `(l.*|r)$`
       } else {
         // Expression has the form `(l|r)`:
         return union(left, right)
@@ -338,7 +429,7 @@ function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
           throw new UnsupportedSyntaxError('end anchors inside quantifiers with non-empty suffix like (a$)*b')
         else
           // Expression has the form `(l$)*`
-          return endAnchor(union(dotStar, inner.left), undefined) // i.e. `(.*|l)$`
+          return endAnchor(union(dotStar(), inner.left), extRegex(RE.epsilon)) // i.e. `(.*|l)$`
       else
         // Expression has the form `l*` so no end anchor to deal with:
         return star(inner)
@@ -350,20 +441,20 @@ function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
       if (!isNullable(left)) {
         // Expression has the form `l^r` where `r` is not nullable. Thus, the whole
         // expression collapses to the empty set:
-        return empty
+        return empty()
       } else if (left.type === 'end-anchor') {
         // Expression has the form `(l$)^r`. This can (at most) match epsilon,
         // if `r` is also nullable:
         if (isNullable(right))
-          return endAnchor(startAnchor(undefined, epsilon), undefined) // i.e `^$`
+          return endAnchor(startAnchor(extRegex(RE.epsilon), extRegex(RE.epsilon)), extRegex(RE.epsilon)) // i.e `^$`
         else
-          return empty
+          return empty()
       } else if (right.type === 'end-anchor') {
         // Expression has the form `^(r$)`. We can just pull the end anchor to the top:
-        return endAnchor(startAnchor(undefined, right.left), undefined) // i.e. `(^r)$`
+        return endAnchor(startAnchor(extRegex(RE.epsilon), right.left), extRegex(RE.epsilon)) // i.e. `(^r)$`
       } else {
         // Expression has the form `^r` where `r` contain no end anchor:
-        return startAnchor(undefined, right)
+        return startAnchor(extRegex(RE.epsilon), right)
       }
     }
     case "end-anchor": {
@@ -373,142 +464,208 @@ function pullUpEndAnchor(ast: RegExpAST, isRightClosed: boolean): RegExpAST {
       if (!isNullable(right)) {
         // Expression has the form `l$r` where `r` is not nullable. Thus, the whole
         // expression collapses to the empty set:
-        return empty
+        return empty()
       } else if (right.type === 'start-anchor') {
         // Expression has the form `l$(^r)`. This can (at most) match epsilon,
         // if `l` is also nullable. Otherwise, this can't match anything:
         if (isNullable(left))
-          return endAnchor(startAnchor(undefined, epsilon), undefined) // i.e. `^$`
+          return endAnchor(startAnchor(extRegex(RE.epsilon), extRegex(RE.epsilon)), extRegex(RE.epsilon)) // i.e. `^$`
         else
-          return empty
+          return empty()
       } else if (left.type === 'end-anchor') {
         // Expression has the form `(l$)$`. Multiple end anchor don't introduce
         // a contradiction as long as there is nothing between them:
         return left // i.e. `l$`
       } else {
         // Expression has the form `l$` where `l` contain no end anchor:
-        return endAnchor(left, undefined) // i.e. `l$`
+        return endAnchor(left, extRegex(RE.epsilon)) // i.e. `l$`
       }
     }
-    case "lookahead":
-      // FIXME:
-      // const inner = pullUpEndAnchor(ast.inner, false)
-      // const right = pullUpEndAnchor(ast.right, isRightClosed)
-      // if (inner.type === 'end-anchor') {
-      //   throw new UnsupportedSyntaxError('end anchors inside lookaheads like (?=a$)')
-      // } else if (right.type === 'end-anchor') {
-      //   return endAnchor(lookahead(ast.isPositive, ast.inner, right.left), undefined)
-      // } else {
-      //   return lookahead(ast.isPositive, inner, right)
-      // }
-      throw new UnsupportedSyntaxError('lookahead assertion')
-    case "lookbehind":
-      throw new UnsupportedSyntaxError('lookbehind assertion')
+    case "lookahead": {
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
+      if (right.type === 'end-anchor') {
+        // Expression has the form `(?=i)(r$)`.
+        // We can just pull the end anchor to the top:
+        return endAnchor(lookahead(ast.isPositive, ast.inner, right.left), extRegex(RE.epsilon)) // i.e. `(?=i)r$`
+      } else {
+        // Expression has the form `(?=i)r` so no end anchor to deal with:
+        return lookahead(ast.isPositive, ast.inner, right)
+      }
+    }
   }
-  checkedAllCases(ast.type)
+  checkedAllCases(ast)
 }
 
-export function toExtRegex(ast: RegExpAST): RE.ExtRegex {
+function intersection(nodeA: ExtRegexNode, nodeB: ExtRegexNode): ExtRegexNode {
+  return extRegex(RE.intersection(nodeA.content, nodeB.content))
+}
+
+/**
+ * Eliminates lookahead nodes by taking the intersection of the `inner`
+ * expression with the `right` expression. E.g.
+ *
+ *     (?=a)b   -->   a&b
+ *
+ * When there are multiple lookaheads then they are eliminated right-to-left, e.g.
+ *
+ *    (?=a)b(?=c)d   --->   (?=a)b(c&d)  --->  a&(b(c&d))
+ *
+ * ## Background:
+ *
+ * Lookaheads act on sibling nodes. For example, the lookahead in `((?=ab)a)b` only has "a"
+ * in it's `right` subtree but it also affects "b" which is in a sibling node.
+ * The equivalent intersection is `(ab)&(ab)` not `((ab)&a)b`.
+ * Thus, `eliminateLookaheads` needs access to it's entire `rightSibling` tree.
+ *
+ * Also, we can only compute the intersection of trees that are already lookahead-free
+ * (i.e. for the form `ExtRegexNode`). By eliminating lookaheads right-to-left,
+ * right subtrees are always lookahead-free.
+ */
+function eliminateLookaheads(ast: InterAST_stage3, rightSibling: ExtRegexNode): ExtRegexNode {
+  switch (ast.type) {
+    case "ext-regex": return concat(ast, rightSibling)
+    case "lookahead": {
+      const right = eliminateLookaheads(ast.right, rightSibling)
+      return intersection(ast.inner, right)
+    }
+    case "concat": {
+      const right = eliminateLookaheads(ast.right, rightSibling)
+      return eliminateLookaheads(ast.left, right)
+    }
+    case "union": {
+      const left = eliminateLookaheads(ast.left, rightSibling)
+      const right = eliminateLookaheads(ast.right, rightSibling)
+      return union(left, right)
+    }
+    case "star": {
+      // We can't handle lookaheads inside quantifiers,
+      // which must be the case if we encounter a "star" node here.
+      // We don't need to recursively check child nodes.
+      // That's because "star" nodes that don't contain lookaheads should be inside "extRegex" nodes.
+      throw new UnsupportedSyntaxError('lookahead inside quantifier like (?=a)*')
+    }
+  }
+  checkedAllCases(ast)
+}
+
+export function toExtRegex(baseAST: RegExpAST): RE.ExtRegex {
   // First eliminate nodes like `plus`, `optional`, etc.
-  ast = desugar(ast)
+  const astDesugared = simplify(baseAST)
 
   // Then eliminate start anchors by first pulling them to the top:
-  ast = pullUpStartAnchor(ast, false)
-  if (ast.type === 'start-anchor') {
+  let astNoAnchors = pullUpStartAnchor(astDesugared, false)
+  if (astNoAnchors.type === 'start-anchor') {
     // If the root node is indeed a start anchor now, then start anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
-    ast = ast.right
+    astNoAnchors = astNoAnchors.right
   } else {
     // If the root node is not a start anchor, then the expression contained
     // no start anchors anywhere and we have to prepend the implicit `.*`:
-    ast = concat(dotStar, ast)
+    astNoAnchors = concat(dotStar(), astNoAnchors)
   }
 
   // Then eliminate end anchors by first pulling them to the top:
-  ast = pullUpEndAnchor(ast, false)
-  if (ast.type === 'end-anchor') {
+  astNoAnchors = pullUpEndAnchor(astNoAnchors, false)
+  if (astNoAnchors.type === 'end-anchor') {
     // If the root node is indeed an end anchor now, then end anchors have been
     // eliminated from all sub-expressions and we can just drop the root-level one:
-    ast = ast.left
+    astNoAnchors = astNoAnchors.left
   } else {
     // If the root node is not a end anchor, then the expression contained
     // no end anchors anywhere and we have to append the implicit `.*`:
-    ast = concat(ast, dotStar)
+    astNoAnchors = concat(astNoAnchors, dotStar())
   }
 
-  return toExtRegexAux(ast)
-}
-function toExtRegexAux(ast: RegExpAST): RE.ExtRegex {
-  assert(!isOneOf(ast.type, sugarNodeTypes), `Got ${ast.type} node. Expected desugared AST.`)
-  assert(ast.type !== 'start-anchor', `Unexpected start anchor. Should already be eliminated.`)
-  assert(ast.type !== 'end-anchor', `Unexpected end anchor. Should already be eliminated.`)
-  switch (ast.type) {
-    case 'epsilon': return RE.epsilon
-    case 'literal': return RE.literal(ast.charset)
-    case 'concat': return RE.concat(toExtRegexAux(ast.left), toExtRegexAux(ast.right))
-    case 'union': return RE.union(toExtRegexAux(ast.left), toExtRegexAux(ast.right))
-    case 'star': return RE.star(toExtRegexAux(ast.inner))
-    case 'lookahead':
-      // FIXME:
-      //   const inner = toExtRegexAux(ast.inner)
-      //   const right = toExtRegexAux(ast.right)
-      //   if (ast.isPositive)
-      //     return RE.intersection(inner, right)
-      //   else
-      //     return RE.intersection(RE.complement(inner), right)
-      throw new UnsupportedSyntaxError('lookahead assertion')
-    case 'lookbehind':
-      throw new UnsupportedSyntaxError('lookbehind assertion')
-  }
-  checkedAllCases(ast.type)
+  // Then eliminate lookaheads by first pulling them to the top:
+  const astNoLookaheads = eliminateLookaheads(astNoAnchors as InterAST_stage3, extRegex(RE.epsilon)) // TODO: avoid `as`
+  return astNoLookaheads.content
 }
 
 //////////////////////////////////////////////
 ///// smart constructors                 /////
 //////////////////////////////////////////////
 
-export const epsilon: RegExpAST = { type: 'epsilon' }
-
-export function startAnchor(left: RegExpAST | undefined, right: RegExpAST | undefined): RegExpAST {
-  return { type: 'start-anchor', left: left ?? epsilon, right: right ?? epsilon }
+function extRegex(re: RE.ExtRegex): ExtRegexNode {
+  return { type: 'ext-regex', content: re }
 }
 
-export function endAnchor(left: RegExpAST | undefined, right: RegExpAST | undefined): RegExpAST {
-  return { type: 'end-anchor', left: left ?? epsilon, right: right ?? epsilon }
+export const epsilon: RegExpAST = { type: 'epsilon' }
+
+export function startAnchor(left: InterAST_stage2, right: InterAST_stage2): InterAST_stage2
+export function startAnchor(left: RegExpAST, right: RegExpAST): RegExpAST
+export function startAnchor(left: InterAST_stage1, right: InterAST_stage1): InterAST_stage1 {
+  return { type: 'start-anchor', left, right }
+}
+
+
+export function endAnchor(left: InterAST_stage3, right: InterAST_stage3): InterAST_stage3
+export function endAnchor(left: InterAST_stage2, right: InterAST_stage2): InterAST_stage2
+export function endAnchor(left: RegExpAST, right: RegExpAST): RegExpAST
+export function endAnchor(left: InterAST_stage1, right: InterAST_stage1): InterAST_stage1 {
+  return { type: 'end-anchor', left, right }
 }
 
 export function literal(charset: CharSet.CharSet): RegExpAST {
   return { type: 'literal', charset }
 }
 
-export const empty: RegExpAST = literal(CharSet.empty)
-
-export function concat(left: RegExpAST, right: RegExpAST): RegExpAST {
-  return { type: 'concat', left, right }
+function empty(): ExtRegexNode {
+  return extRegex(RE.empty)
 }
 
-export function seq(asts: RegExpAST[]): RegExpAST {
-  if (asts.length === 0)
-    return epsilon
+function dotStar(): ExtRegexNode {
+  return extRegex(RE.dotStar)
+}
+
+export function concat(left: ExtRegexNode, right: ExtRegexNode): ExtRegexNode
+export function concat(left: InterAST_stage3, right: InterAST_stage3): InterAST_stage3
+export function concat(left: InterAST_stage2, right: InterAST_stage2): InterAST_stage2
+export function concat(left: RegExpAST, right: RegExpAST): RegExpAST
+export function concat(left: InterAST_stage1, right: InterAST_stage1): InterAST_stage1 {
+  if (left.type === 'ext-regex' && right.type === 'ext-regex')
+    return extRegex(RE.concat(left.content, right.content))
   else
-    // Reducing right-to-left should trigger fewer normalization steps when converting to ExtRegex:
-    return asts.reduceRight((right, left) => concat(left, right))
+    return { type: 'concat', left, right }
+}
+
+function seq(array: InterAST_stage2[]): InterAST_stage2 {
+  if (array.length === 0)
+    return extRegex(RE.epsilon)
+  else
+    return array.reduceRight(concat)
 }
 
 export function string(chars: string): RegExpAST {
-  return seq(
-    [...chars].map(
-      char => RE.literal(CharSet.singleton(char))
-    )
-  )
+  if (chars.length === 0)
+    return epsilon
+  else
+    return [...chars]
+      .map(char => literal(CharSet.singleton(char)))
+      .reduceRight(concat)
 }
 
-export function union(left: RegExpAST | undefined, right: RegExpAST | undefined): RegExpAST {
-  return { type: 'union', left: left ?? epsilon, right: right ?? epsilon }
+export function union(left: ExtRegexNode | undefined, right: ExtRegexNode | undefined): ExtRegexNode
+export function union(left: InterAST_stage3 | undefined, right: InterAST_stage3 | undefined): InterAST_stage3
+export function union(left: InterAST_stage3 | undefined, right: InterAST_stage3 | undefined): InterAST_stage3
+export function union(left: InterAST_stage2 | undefined, right: InterAST_stage2 | undefined): InterAST_stage2
+export function union(left: RegExpAST | undefined, right: RegExpAST | undefined): RegExpAST
+export function union(left: InterAST_stage1 = epsilon, right: InterAST_stage1 = epsilon): InterAST_stage1 {
+  if (left.type === 'ext-regex' && right.type === 'ext-regex')
+    return extRegex(RE.union(left.content, right.content))
+  else
+    return { type: 'union', left, right }
 }
 
-export function star(inner: RegExpAST): RegExpAST {
-  return { type: 'star', inner }
+export function star(inner: ExtRegexNode): ExtRegexNode
+export function star(inner: InterAST_stage3): InterAST_stage3
+export function star(inner: InterAST_stage3): InterAST_stage3
+export function star(inner: InterAST_stage2): InterAST_stage2
+export function star(inner: RegExpAST): RegExpAST
+export function star(inner: InterAST_stage1): InterAST_stage1 {
+  if (inner.type === 'ext-regex')
+    return extRegex(RE.star(inner.content))
+  else
+    return { type: 'star', inner }
 }
 
 export function plus(inner: RegExpAST): RegExpAST {
@@ -527,18 +684,14 @@ export function captureGroup(inner: RegExpAST, name?: string): RegExpAST {
   return { type: 'capture-group', inner, name }
 }
 
-export function lookahead(
-  isPositive: boolean,
-  inner: RegExpAST,
-): RegExpAST {
-  return { type: 'lookahead', isPositive, inner }
-}
+// export enum AssertionSign { POSITIVE, NEGATIVE }
+// export enum AssertionDir { AHEAD, BEHIND }
 
-export function lookbehind(
-  isPositive: boolean,
-  inner: RegExpAST,
-): RegExpAST {
-  return { type: 'lookahead', isPositive, inner }
+export function lookahead(isPositive: true, inner: ExtRegexNode, right: InterAST_stage3): InterAST_stage3
+export function lookahead(isPositive: true, inner: ExtRegexNode, right: InterAST_stage2): InterAST_stage2
+export function lookahead(isPositive: boolean, inner: RegExpAST, right: RegExpAST): RegExpAST
+export function lookahead(isPositive: boolean, inner: InterAST_stage1, right: InterAST_stage1): InterAST_stage1 {
+  return { type: 'lookahead', isPositive, inner, right }
 }
 
 //////////////////////////////////////////////
@@ -559,44 +712,46 @@ function captureGroupToString(name: string | undefined, inner: RegExpAST, option
     return `(?<${name}>${toString(inner, options)})`
 }
 
-export function debugPrint(ast: RegExpAST): unknown {
+export function debugPrint(ast: InterAST_stage1): unknown {
   return console.debug(debugShow(ast))
 }
-export function debugShow(ast: RegExpAST): unknown {
-  return JSON.stringify(debugShow_(ast), null, 2)
+export function debugShow(ast: InterAST_stage1): unknown {
+  return JSON.stringify(debugShowAux(ast), null, 2)
 }
-function debugShow_(ast: RegExpAST): unknown {
+function debugShowAux(ast: InterAST_stage1): unknown {
   switch (ast.type) {
+    case 'ext-regex':
+      return RE.debugShowAux(ast.content)
     case 'epsilon':
       return '';
     case 'start-anchor':
-      return { type: 'start-anchor', left: debugShow_(ast.left), right: debugShow_(ast.right) }
+      return { type: 'start-anchor', left: debugShowAux(ast.left), right: debugShowAux(ast.right) }
     case 'end-anchor':
-      return { type: 'end-anchor', left: debugShow_(ast.left), right: debugShow_(ast.right) }
+      return { type: 'end-anchor', left: debugShowAux(ast.left), right: debugShowAux(ast.right) }
     case 'literal':
       return CharSet.toString(ast.charset)
     case 'concat':
-      return { type: 'concat', left: debugShow_(ast.left), right: debugShow_(ast.right) }
+      return { type: 'concat', left: debugShowAux(ast.left), right: debugShowAux(ast.right) }
     case 'union':
-      return { type: 'union', left: debugShow_(ast.left), right: debugShow_(ast.right) }
+      return { type: 'union', left: debugShowAux(ast.left), right: debugShowAux(ast.right) }
     case 'star':
-      return { type: 'star', inner: debugShow_(ast.inner) }
+      return { type: 'star', inner: debugShowAux(ast.inner) }
     case 'plus':
-      return { type: 'plus', inner: debugShow_(ast.inner) }
+      return { type: 'plus', inner: debugShowAux(ast.inner) }
     case 'optional':
-      return { type: 'optional', inner: debugShow_(ast.inner) }
+      return { type: 'optional', inner: debugShowAux(ast.inner) }
     case 'repeat':
-      return { type: 'repeat', inner: debugShow_(ast.inner), bounds: ast.bounds }
+      return { type: 'repeat', inner: debugShowAux(ast.inner), bounds: ast.bounds }
     case 'capture-group':
-      return { type: 'capture-group', name: ast.name, inner: debugShow_(ast.inner) }
+      return { type: 'capture-group', name: ast.name, inner: debugShowAux(ast.inner) }
     case 'lookahead':
-      return { type: 'lookahead', isPositive: ast.isPositive, inner: debugShow_(ast.inner) }
-    case 'lookbehind':
-      return { type: 'lookbehind', isPositive: ast.isPositive, inner: debugShow_(ast.inner) }
+      return { type: 'lookahead', isPositive: ast.isPositive, inner: debugShowAux(ast.inner), right: debugShowAux(ast.right) }
   }
   checkedAllCases(ast)
 }
 
+// TODO:
+// - skip `^.*` and `.*$`
 export function toString(ast: RegExpAST, options: RenderOptions): string {
   switch (ast.type) {
     case 'epsilon':
@@ -652,17 +807,11 @@ export function toString(ast: RegExpAST, options: RenderOptions): string {
       return captureGroupToString(ast.name, ast.inner, options)
     case 'lookahead': {
       const inner = toString(ast.inner, options)
+      const right = maybeWithParens(ast.right, ast, options)
       if (ast.isPositive)
-        return '(?=' + inner + ')'
+        return '(?=' + inner + ')' + right
       else
-        return '(?!' + inner + ')'
-    }
-    case 'lookbehind': {
-      const inner = toString(ast.inner, options)
-      if (ast.isPositive)
-        return '(?<=' + inner + ')'
-      else
-        return '(?<!' + inner + ')'
+        return '(?!' + inner + ')' + right
     }
   }
   checkedAllCases(ast)
@@ -674,8 +823,6 @@ function precLevel(nodeType: RegExpAST['type']) {
     case 'epsilon': return 10
     case 'literal': return 10
     case 'capture-group': return 10
-    case 'lookahead': return 10
-    case 'lookbehind': return 10
 
     case 'star': return 5
     case 'plus': return 5
@@ -683,6 +830,8 @@ function precLevel(nodeType: RegExpAST['type']) {
     case 'repeat': return 5
 
     case 'concat': return 4
+
+    case 'lookahead': return 3
 
     case 'start-anchor': return 2
     case 'end-anchor': return 2
