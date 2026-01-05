@@ -17,7 +17,7 @@ function toStdRegex_ignoreBlowUp(regex: RE.ExtRegex) {
       fc.pre(false)
     } else {
       throw e
-    }     
+    }
   }
 }
 
@@ -46,12 +46,12 @@ describe('toString', () => {
           assert.equal(inputRegex.hash, outputRegex.hash)
         }
       ),
-    )   
-  }) 
+    )
+  })
 
 })
 
-describe('enumerate', () => { 
+describe('enumerate', () => {
 
   // soundness
   it('output strings match the input regex', () => {
@@ -128,7 +128,7 @@ describe('sample', () => {
         (regex, seed) => {
           const gen1 = RE.sample(regex, seed)
           const gen2 = RE.sample(regex, seed)
-        
+
           assert.deepEqual(
             [...gen1.take(10)],
             [...gen2.take(10)],
@@ -148,22 +148,22 @@ describe('sample', () => {
 describe('size', () => {
 
   it('returns 1 for ∅ *', () => {
-    const regex = RE.star(RE.empty) 
+    const regex = RE.star(RE.empty)
     assert.equal(RE.size(regex), 1n)
   })
 
   it('returns 1 for ε*', () => {
-    const regex = RE.star(RE.empty) 
+    const regex = RE.star(RE.empty)
     assert.equal(RE.size(regex), 1n)
   })
 
   it('returns undefined for a*', () => {
-    const regex = RE.star(RE.singleChar('a')) 
+    const regex = RE.star(RE.singleChar('a'))
     assert.equal(RE.size(regex), undefined)
   })
 
   it('returns 1 for (a|a)', () => {
-    const regex = RE.union(RE.singleChar('a'), RE.singleChar('a')) 
+    const regex = RE.union(RE.singleChar('a'), RE.singleChar('a'))
     assert.equal(RE.size(regex), 1n)
   })
 
@@ -178,14 +178,14 @@ describe('size', () => {
   it('returns 260 for [a-z][0-9]', () => {
     const regex = RE.concat(
       RE.literal(CharSet.charRange('a', 'z')),
-      RE.literal(CharSet.charRange('0', '9')) 
+      RE.literal(CharSet.charRange('0', '9'))
     )
     assert.equal(RE.size(regex), 260n)
   })
 
   it('returns 26**60 for [a-z]{60}', () => {
     const regex = RE.repeat(RE.literal(CharSet.charRange('a', 'z')), 60)
-    assert.equal(RE.size(regex), 26n**60n)
+    assert.equal(RE.size(regex), 26n ** 60n)
   })
 
   it('is same as length of exhausitve enumeration', () => {
@@ -198,9 +198,9 @@ describe('size', () => {
 
           const allWords = [...RE.enumerate(stdRegex)]
           assert.equal(predicatedSize, BigInt(allWords.length))
-        }       
+        }
       )
-    )   
+    )
   })
 
 })
@@ -249,15 +249,16 @@ describe('rewrite rules', () => {
     [/^(a*b*)*$/, /^[ab]*$/],
     [/^()*$/, /^$/],
   ] as const
-  
+
   for (const [source, target] of rewriteCases) {
     it(`rewrites ${source} to ${target}`, () => {
       const parsed = AST.toExtRegex(parseRegExp(source))
       assert(RE.isStdRegex(parsed))
-      assert.deepEqual(RE.toRegExp(parsed), target)
+      // compare `source` field to ignore regex flag changes:
+      assert.equal(RE.toRegExp(parsed).source, target.source)
     })
   }
-  
+
 })
 
 describe('derivative', () => {
@@ -269,13 +270,14 @@ describe('derivative', () => {
     [/^(a(a{3})*|(aa*)?)$/, 'a', /^((aaa)*|a*)$/],
     [/^(a{2}(a{3})*|(aa*)?)$/, 'a', /^(a(aaa)*|a*)$/],
   ] as const
-  
+
   for (const [input, str, expected] of derivativeCases) {
     it(`of ${input} with respect to "${str}" is ${expected}`, () => {
       const actual = RE.derivative(str, AST.toExtRegex(parseRegExp(input)))
       assert(RE.isStdRegex(actual))
-      assert.deepEqual(RE.toRegExp(actual), expected)
+      // compare `source` field to ignore regex flag changes:
+      assert.equal(RE.toRegExp(actual).source, expected.source)
     })
   }
-  
+
 })

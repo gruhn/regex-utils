@@ -2,25 +2,31 @@ import * as AST from "./ast"
 import * as P from "./parser"
 import * as CharSet from './char-set'
 import * as Range from './char-code-range'
-import { assert } from "./utils"
+import { isOneOf } from "./utils"
 import { failure } from "./parser"
 
-const regExpFlags = [
-  'hasIndices',
-  'global',
-  'ignoreCase',
-  'multiline',
-  'dotAll',
-  'unicode',
-  'unicodeSets',
-  'sticky',
-] as const
+const REGEXP_FLAGS = {
+  d: 'hasIndices',
+  g: 'global',
+  i: 'ignoreCase',
+  m: 'multiline',
+  s: 'dotAll',
+  u: 'unicode',
+  v: 'unicodeSets',
+  y: 'sticky',
+} as const
 
-// type RegExpFlag = typeof regExpFlags[number]
+// TODO: `ignoreCase` should also be doable
+const SUPPORTED_REGEXP_FLAGS_SHORT = ['d', 'g', 's'] as const
 
-const wildcard = P.string('.').map(
-  () => AST.literal(CharSet.wildcard())
-)
+type RegExpFlagShort = keyof typeof REGEXP_FLAGS
+type RegExpFlagLong = typeof REGEXP_FLAGS[RegExpFlagShort]
+
+function wildcard(flags: Set<RegExpFlagLong>) {
+  return P.string('.').map(
+    () => AST.literal(CharSet.wildcard({ dotAll: flags.has('dotAll') }))
+  )
+}
 
 const unescapedCharInsideBrackets = P.satisfy(char => !Range.mustBeEscapedInsideBrackets(char))
 
@@ -30,7 +36,7 @@ const unescapedCharOutsideBrackets = P.satisfy(char => !Range.mustBeEscapedOutsi
 export class UnsupportedSyntaxError extends Error {
   name = "UnsupportedSyntaxError"
   constructor(details: string) {
-    super('Syntax is valid but not supported yet: ' + details)
+    super('Syntax is valid but not supported: ' + details)
   }
 }
 
@@ -134,30 +140,50 @@ const captureGroupName =
     return firstChar + restChars.join('')
   })
 
-const group = P.choice([
-  // non-capture group:
-  P.between(
-    P.string('(?:'),
-    P.string(')'),
-    regex()
-  ), // returns inner directly
-  // named capture group:
-  P.sequence([
-    P.string('(?<'),
-    captureGroupName,
-    P.string('>'),
-    regex(),
-    P.string(')')
-  ]).map(([_, name, __, inner, ___]) =>
-    AST.captureGroup(inner, name)
-  ),
-  // regular capture group:
-  P.between(
-    P.string('('),
-    P.string(')'),
-    regex()
-  ).map(AST.captureGroup)
-])
+const regExpFlags: P.Parser<Set<RegExpFlagLong>> = P.many(
+  P.satisfy(char => char in REGEXP_FLAGS).map(char => {
+    if (isOneOf(char, SUPPORTED_REGEXP_FLAGS_SHORT)) {
+      return REGEXP_FLAGS[char]
+    } else {
+      throw new UnsupportedSyntaxError(`${char}-flag`)
+    }
+  })
+).map(flags => new Set(flags))
+
+function group(flags: Set<RegExpFlagLong>) {
+  return P.choice([
+    // named capture group like /(?<foo>...)/
+    P.sequence([
+      P.string('(?<'),
+      captureGroupName,
+      P.string('>'),
+      regex(flags),
+      P.string(')')
+    ]).map(([_, name, __, inner, ___]) =>
+      AST.captureGroup(inner, name)
+    ),
+    // non-capture group with optional modifier flags like /(?ms-gi:...)/
+    P.sequence([
+      P.string('(?'),
+      regExpFlags,
+      P.optional(P.string('-'))
+        .andThen(_ => regExpFlags)
+        .map(flags => flags ?? new Set()),
+      P.string(':'),
+    ]).andThen(([_, flagsToggledOn, flagsToggledOff, __]) => {
+      const localFlags = flags.union(flagsToggledOn).difference(flagsToggledOff)
+      return regex(localFlags).andThen(
+        inner => P.string(')').map(_ => inner)
+      )
+    }),
+    // regular capture group:
+    P.between(
+      P.string('('),
+      P.string(')'),
+      regex(flags)
+    ).map(AST.captureGroup)
+  ])
+}
 
 // Need to backtrack on bounded quantifier because if the curly bracket is
 // not terminated (e.g. "a{2,3") then all characters are interpreted literally.
@@ -188,22 +214,23 @@ const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrac
   )
 )
 
-const lookbehind: P.Parser<AST.RegExpAST> =
-  P.between(
+function lookbehind(flags: Set<RegExpFlagLong>): P.Parser<AST.RegExpAST> {
+  return P.between(
     P.choice([
       P.string('(?<='),
       P.string('(?<!'),
     ]),
     P.string(')'),
-    regex(),
+    regex(flags),
   ).map(_ => {
     throw new UnsupportedSyntaxError('lookbehind assertions')
   })
+}
 
-function regexTerm() {
+function regexTerm(flags: Set<RegExpFlagLong>) {
   return P.choice([
-    wildcard,
-    P.tryElseBacktrack(group),
+    wildcard(flags),
+    P.tryElseBacktrack(group(flags)),
 
     // Char class and escaped char both start with slash,
     // so need to backtrack when the first fails:
@@ -212,7 +239,7 @@ function regexTerm() {
 
     charSetInBrackets.map(AST.literal),
     unescapedCharOutsideBrackets.map(AST.literal),
-    lookbehind,
+    lookbehind(flags),
   ])
 }
 
@@ -232,11 +259,11 @@ function regexTerm() {
  *     aaa (?=bbb)
  *     aaa (?=bbb) (?!ccc) ddd
  */
-function positiveLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+function positiveLookAhead(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
   return P.between(
     P.string('(?='),
     P.string(')'),
-    regex(),
+    regex(flags),
   ).map(inner => (left, right) => {
     const lookaheadNode = AST.lookahead(true, inner, right ?? AST.epsilon)
     if (left === undefined) {
@@ -246,11 +273,11 @@ function positiveLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, A
     }
   })
 }
-function negativeLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+function negativeLookAhead(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
   return P.between(
     P.string('(?!'),
     P.string(')'),
-    regex(),
+    regex(flags),
   ).map(inner => (left, right) => {
     const lookaheadNode = AST.lookahead(false, inner, right ?? AST.epsilon)
     if (left === undefined) {
@@ -261,17 +288,17 @@ function negativeLookAhead(): P.Expr.BinaryOperator<AST.RegExpAST | undefined, A
   })
 }
 
-function regex(): P.Parser<AST.RegExpAST> {
+function regex(flags: Set<RegExpFlagLong>): P.Parser<AST.RegExpAST> {
   const nonEmptyRegex = P.lazy(() => P.Expr.makeExprParser<AST.RegExpAST>(
-    regexTerm(),
+    regexTerm(flags),
     [
       { type: 'postfix', op: P.string('*').map(_ => AST.star) },
       { type: 'postfix', op: boundedQuantifier },
       { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
       { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
-      { type: 'infixRightOptional', op: negativeLookAhead() },
-      { type: 'infixRightOptional', op: positiveLookAhead() },
+      { type: 'infixRightOptional', op: negativeLookAhead(flags) },
+      { type: 'infixRightOptional', op: positiveLookAhead(flags) },
       { type: 'infixRightOptional', op: P.string('$').map(_ => (left, right) => AST.endAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('^').map(_ => (left, right) => AST.startAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },
@@ -288,8 +315,9 @@ function regex(): P.Parser<AST.RegExpAST> {
 
 export function parseRegExpString(
   regexStr: string,
+  flags: Set<RegExpFlagLong> = new Set()
 ): AST.RegExpAST {
-  const { value, restInput } = regex().run(regexStr)
+  const { value, restInput } = regex(flags).run(regexStr)
   if (restInput === '') {
     return value
   } else {
@@ -303,9 +331,6 @@ export function parseRegExpString(
  * @public
  */
 export function parseRegExp(regexp: RegExp): AST.RegExpAST {
-  for (const flag of regExpFlags) {
-    assert(!regexp[flag], `[regex-utils] RegExp flags not supported`)
-  }
-
-  return parseRegExpString(regexp.source)
+  const { value: flags } = regExpFlags.run(regexp.flags)
+  return parseRegExpString(regexp.source, flags)
 }

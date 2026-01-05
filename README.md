@@ -48,14 +48,21 @@ import { RB } from '@gruhn/regex-utils'
 | Lookahead | ⚠️<sup>3</sup> | `(?=...)`, `(?!...)` |
 | Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
 | Word boundary | ❌ | `\b`, `\B` |
-| Global flags | ❌ | `/.../g`, `/.../i`, `/.../m`, ... |
-| Local flags | ❌ | `(?i:...)`, ... |
 | Unicode property escapes | ❌ | `\p{...}`, `\P{...}` |
 | Backreferences | ❌ | `\1` `\2` ... |
+| `dotAll` flag | ✅ | `/.../s`, `(?s:...)` |
+| `global` flag | ✅<sup>4</sup> | `/.../g` |
+| `hasIndices` flag | ✅<sup>4</sup> | `/.../d` |
+| `ignoreCase` flags | ❌ | `/.../i` `(?i:...)` |
+| `multiline` flags | ❌ | `/.../m` `(?m:...)` |
+| `unicode` flag | ❌ | `/.../u` |
+| `unicodeSets` flag | ❌ | `/.../v` |
+| `sticky` flags | ❌ | `/.../y` |
 
 1. Both capturing- and non-capturing groups are just treated as parenthesis, because this library is never doing string extraction.
 2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)+`.
 3. Anchors inside lookaheads like `(?=^a)` are not supported.
+4. Flag is simply ignored because it does not affect the behavior of this library.
 
 An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
 The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.

@@ -200,7 +200,7 @@ export function deleteRange(set: CharSet, range: Range.CharCodeRange): CharSet {
   } else if (set.type === 'empty') {
     return empty
   } else if (set.type === 'node') {
-    const [rangeBeforeStart, _rangeRest1] = Range.splitAt(set.range.start-1, range)
+    const [rangeBeforeStart, _rangeRest1] = Range.splitAt(set.range.start - 1, range)
     const [rangeRest2, rangeAfterEnd] = Range.splitAt(set.range.end, range)
 
     const newLeft = deleteRange(set.left, rangeBeforeStart)
@@ -231,7 +231,7 @@ export function intersectRange(set: CharSet, range: Range.CharCodeRange): Range.
   if (set.type === 'empty' || Range.isEmpty(range)) {
     return []
   } else if (set.type === 'node') {
-    const [rangeBeforeStart, rangeRest1] = Range.splitAt(set.range.start-1, range)
+    const [rangeBeforeStart, rangeRest1] = Range.splitAt(set.range.start - 1, range)
     const [rangeRest2, rangeAfterEnd] = Range.splitAt(set.range.end, rangeRest1)
     return [
       ...intersectRange(set.left, rangeBeforeStart),
@@ -305,7 +305,7 @@ export function toString(set: CharSet): string {
   } else if (isSingleton(set)) {
     // If the set contains only a single char then no brackets are needed:
     return Range.toString(set.range)
-  } else if (2*size(set) > size(alphabet)) {
+  } else if (2 * size(set) > size(alphabet)) {
     // If the set contains more than half the characters of the
     // entire alphabet then it's more compact to render the complement. E.g. [^a].
     const ranges = [...getRanges(complement(set))].map(Range.toString).join('')
