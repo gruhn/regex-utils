@@ -55,11 +55,11 @@ import { RB } from '@gruhn/regex-utils'
 | `dotAll` flag | ✅ | `/.../s`, `(?s:...)` |
 | `global` flag | ✅<sup>4</sup> | `/.../g` |
 | `hasIndices` flag | ✅<sup>4</sup> | `/.../d` |
-| `ignoreCase` flags | ❌ | `/.../i` `(?i:...)` |
-| `multiline` flags | ❌ | `/.../m` `(?m:...)` |
+| `ignoreCase` flag | ❌ | `/.../i` `(?i:...)` |
+| `multiline` flag | ❌ | `/.../m` `(?m:...)` |
 | `unicode` flag | ❌ | `/.../u` |
 | `unicodeSets` flag | ❌ | `/.../v` |
-| `sticky` flags | ❌ | `/.../y` |
+| `sticky` flag | ❌ | `/.../y` |
 
 1. Both capturing- and non-capturing groups are just treated as parenthesis, because this library is never doing string extraction.
 2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)+`.
