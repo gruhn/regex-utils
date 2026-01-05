@@ -1,5 +1,5 @@
 
-  error ratio      : 10 / 749
-  total parse time : 6552ms
-  avg parse time   : 8.866035182679296ms
-  max parse time   : 954ms
+  error ratio      : 17 / 749
+  total parse time : 10207ms
+  avg parse time   : 13.943989071038251ms
+  max parse time   : 1788ms
