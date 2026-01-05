@@ -26,7 +26,7 @@ describe('parseRegExp', () => {
   const astTestCases = [
     [/a/, char('a')],
     [/(a)/, group(char('a'))],
-    // [/./s, AST.literal(CharSet.wildcard({ dotAll: true }))],
+    [/./, AST.literal(CharSet.wildcard({ dotAll: false }))],
     [/a*/, AST.star(char('a'))],
     [/a+/, AST.plus(char('a'))],
     [/a?/, AST.optional(char('a'))],
@@ -76,6 +76,11 @@ describe('parseRegExp', () => {
     // [/(?<=a)/, AST.positiveLookbehind(char('a'))],
     // TODO: negative lookbehind
     // [/(?<!a)/, AST.negativeLookbehind(char('a'))],
+
+    // regex flags:
+    [/./s, AST.literal(CharSet.wildcard({ dotAll: true }))],
+    [/(?s:.)/, AST.literal(CharSet.wildcard({ dotAll: true }))],
+    [/(?-s:.)/s, AST.literal(CharSet.wildcard({ dotAll: false }))],
   ] as const
 
   for (const [regexp, expected] of astTestCases) {

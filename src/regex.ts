@@ -327,11 +327,9 @@ export function complement(inner: ExtRegex): ExtRegex {
 
 /**
  * Regex that matches any single character.
- * Equivalent to the dot: `.`.
- *
- * @public
+ * Equivalent to the dot `.` when the dotAll-flag is set.
  */
-export const anySingleChar: StdRegex = literal(CharSet.wildcard())
+export const anySingleChar: StdRegex = literal(CharSet.wildcard({ dotAll: true }))
 
 /**
  * Regex that matches the single given character.
@@ -681,7 +679,9 @@ export class VeryLargeSyntaxTreeError extends Error {
  * @public
  */
 export function toRegExp(regex: StdRegex): RegExp {
-  return new RegExp(toString(regex))
+  // s-flag (aka. dotAll) always is set because `.` is assumed to represent any
+  // character.
+  return new RegExp(toString(regex), 's')
 }
 
 export function toString(regex: StdRegex): string {

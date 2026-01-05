@@ -17,7 +17,7 @@ export class ParseError extends Error {
 
 export class Parser<T> {
 
-  constructor(public readonly run: (input: string) => ParseResult<T>) {}
+  constructor(public readonly run: (input: string) => ParseResult<T>) { }
 
   andThen<U>(restParser: (result: T) => Parser<U>): Parser<U> {
     return new Parser(input => {
@@ -78,7 +78,7 @@ export function char(char: string): Parser<string> {
 }
 
 export function between<T>(open: Parser<unknown>, close: Parser<unknown>, middle: Parser<T>): Parser<T> {
-  return sequence([ open, middle, close ])
+  return sequence([open, middle, close])
     .map(([_open, value, _close]) => value)
 }
 
@@ -152,7 +152,7 @@ export function count<T>(n: number, parser: Parser<T>): Parser<T[]> {
   if (n === 0)
     return pure([])
   else // n > 0
-    return parser.andThen(first => count(n-1, parser)
+    return parser.andThen(first => count(n - 1, parser)
       .map(rest => [first, ...rest])
     )
 }
@@ -229,7 +229,7 @@ export namespace Expr {
 
   export type UnaryOperator<T> = Parser<(inner: T) => T>
 
-  export type BinaryOperator<T, R=T> = Parser<(left: T, right: T) => R>
+  export type BinaryOperator<T, R = T> = Parser<(left: T, right: T) => R>
 
   function prefixOp<T>(
     operator: UnaryOperator<T>,

@@ -155,6 +155,12 @@ describe('toExtRegex', () => {
     /(?<=a$)/,
     /(?<!^a)/,
     /(?<!a$)/,
+    // regex flags:
+    /.../i,
+    /.../m,
+    /.../u,
+    /.../v,
+    /.../y,
     // word boundary assertions:
     /\b/,
     /\B/,
