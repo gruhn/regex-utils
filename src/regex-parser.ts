@@ -57,6 +57,7 @@ const escapedChar: P.Parser<string> =
       case 'f': return P.pure('\f') // form feed
       case '0': return P.pure('\0') // NUL character
       case 'b': throw new UnsupportedSyntaxError('\b word-boundary assertion')
+      case 'B': throw new UnsupportedSyntaxError('\B non-word-boundary assertion')
       case 'c': throw new UnsupportedSyntaxError('\cX control characters')
       case 'x': return P.choice([
         P.between(P.char('{'), P.char('}'), P.count(4, P.hexChar)), // e.g. \x{06fa}

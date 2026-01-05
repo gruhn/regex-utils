@@ -155,6 +155,9 @@ describe('toExtRegex', () => {
     /(?<=a$)/,
     /(?<!^a)/,
     /(?<!a$)/,
+    // word boundary assertions:
+    /\b/,
+    /\B/,
   ] as const
 
   for (const regexp of testCasesUnsupported) {
