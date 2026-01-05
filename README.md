@@ -10,21 +10,23 @@ These are surprisingly hard to come by for any programming language. ✨
 
 ## API Overview 🚀
 
-- 🔗 Set-like operations:
+- 🔗 Set-style operations:
   - [.and(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#and) - Compute intersection of two regex.
   - [.not()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#not) - Compute the complement of a regex.
   - [.without(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#without) - Compute the difference of two regex.
-- ✅ Set-like predicates:
+- ✅ Set-style predicates:
   - [.isEquivalent(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isEquivalent) - Check whether two regex match the same strings.
   - [.isSubsetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSubsetOf)
   - [.isSupersetOf(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isSupersetOf)
   - [.isDisjointFrom(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isDisjointFrom)
+  - [.isEmpty()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#isEmpty) - Check whether a regex matches no strings.
 - 📜 Generate strings:
   - [.sample(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#sample) - Generate random strings matching a regex.
   - [.enumerate()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#enumerate) - Exhaustively enumerate strings matching a regex.
 - 🔧 Miscellaneous:
   - [.size()](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#size) - Count the number of strings that a regex matches.
   - [.derivative(...)](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html#derivative) - Compute a Brzozowski derivative of a regex.
+- and others...
 
 ## Installation 📦
 
@@ -43,7 +45,7 @@ import { RB } from '@gruhn/regex-utils'
 | Alternation | ✅ | `a\|b` |
 | Character classes | ✅ | `.`, `\w`, `[a-zA-Z]`, ... |
 | Escaping | ✅ | `\$`, `\.`, ... |
-| (Non-)capturing groups | ✅<sup>1</sup> | `(?...)`, `(...)` |
+| (Non-)capturing groups | ✅<sup>1</sup> | `(?:...)`, `(...)` |
 | Start/end anchors | ⚠️<sup>2</sup> | `^`, `$` |
 | Lookahead | ⚠️<sup>3</sup> | `(?=...)`, `(?!...)` |
 | Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
@@ -87,9 +89,9 @@ try {
 }
 ```
 
-## Example Use Cases 💡
+## Example use cases 💡
 
-### Generate random strings from Regex 📜
+### Generate test data from regex 📜
 
 Generate 5 random email addresses:
 ```typescript
@@ -121,33 +123,53 @@ kopfpstjlnbq@lal.nmi
 vrskllsvblqb@gemi.wc
 ```
 
-### Refactor Regex then Check Equivalence 🔄
+### Refactor regex then check equivalence 🔄
 
-Say we identified a regex in the codebase that is prone to
-[catastrophic backtracking](https://stackoverflow.com/questions/45463148/fixing-catastrophic-backtracking-in-regular-expression)
-and came up with a new version:
+[**ONLINE DEMO**](https://gruhn.github.io/regex-utils/equiv-checker.html?regexp1=%5Ea%7Cb%24&regexp2=%5E%5Bab%5D%24)
 
+Say we found this incredibly complicated regex somewhere in the codebase:
 ```typescript
-const oldRegex = /^(?:[a-zA-Z]\:\\|\\\\)([^\\\/\:\*\?\<\>\"\|]+(\\){0,1})+$/
-const newRegex = /^(?:[a-zA-Z]:\\|\\\\)([^\\\/\:*?<>"|]+\\?)+$/
+const oldRegex = /^a|b$/
 ```
 
-Using `.isEquivalent` we can verify that the refactored version matches exactly the same strings as the old version.
+This can be simplified, right?
+```typescript
+const newRegex = /^[ab]$/
+```
+
+But to double-check we can use `.isEquivalent` to verify that the new version matches exactly the same strings as the old version.
 That is, whether `oldRegex.test(str) === newRegex.test(str)` for every possible input string:
 
 ```typescript
-RB(oldRegex).isEquivalent(newRegex) // true
+RB(oldRegex).isEquivalent(newRegex) // false
 ```
 
-There is also a [web interface](https://gruhn.github.io/regex-utils/equiv-checker.html) for checking regex equivalence
-which also shows counterexample strings if the two regular expressions are not equivalent.
-The source code is a single HTML file: [./equiv-checker.html](./equiv-checker.html).
+Looks like we made some mistake.
+We can generate counterexamples using `.without(...)` and `.sample(...)`.
+First, we derive new regex that match exactly what `newRegex` matches but not `oldRegex` and vice versa:
+```typescript
+const onlyNew = RB(newRegex).without(oldRegex)
+const onlyOld = RB(oldRegex).without(newRegex)
+```
+`onlyNew` turns out to be empty (`onlyNew.isEmpty() === true`) but `onlyOld` has some matches:
+```typescript
+for (const str of onlyOld.sample().take(5)) {
+  console.log(str)
+}
+```
+```
+aaba
+aa
+aba
+bab
+aababa
+```
+Why does `oldRegex` match all these strings with multiple characters?
+Shouldn't it only match "a" or "b" like `newRegex`?
+Turns out we thought that  `oldRegex` is the same as `^(a|b)$`
+but in reality it's the same as `(^a)|(b$)`.
 
-<a href="https://gruhn.github.io/regex-utils/equiv-checker.html">
-  <img alt="Screenshot RegExp equivalence checker" src="./equiv-checker-screenshot.png" />
-</a>
-
-### Comment Regex using Complement 💬
+### Comment regex using complement 💬
 
 How do you write a regex that matches HTML comments like:
 ```
@@ -183,7 +205,9 @@ comment.toRegExp()
 /^<!--(---*[^->]|-?[^-])*---*>$/
 ```
 
-### Password Regex using Intersections 🔐
+### Password regex using intersections 🔐
+
+[**ONLINE DEMO**](https://gruhn.github.io/regex-utils/password-generator.html?constraints=%5E.%7B16%2C32%7D%24%0A%5E%5B%5Cx21-%5Cx7E%5D*%24%0A%5B0-9%5D%0A%5Ba-z%5D%0A%5BA-Z%5D)
 
 It's difficult to write a single regex for multiple independent constraints.
 For example, to specify a valid password.
@@ -193,9 +217,9 @@ But with regex intersections it's very natural:
 import { RB } from '@gruhn/regex-utils'
 
 const passwordRegex = RB(/^[a-zA-Z0-9]{12,32}$/) // 12-32 alphanumeric characters
-  .and(/[0-9]/) // at least one number
-  .and(/[A-Z]/) // at least one upper case letter
-  .and(/[a-z]/) // at least one lower case letter
+  .and(/[0-9]/) // contains a number
+  .and(/[A-Z]/) // contains an upper case letter
+  .and(/[a-z]/) // contains a lower case letter
 ```
 
 We can convert this back to a native JavaScript RegExp with:
@@ -232,7 +256,6 @@ UOTQBLVOTZQWFSAJYBXZNQBEeom0l
 afgpnxqwUK5B
 ```
 
-
 ### Solve _Advent Of Code 2023 - Day 12_ 🎄
 
 In the coding puzzle [Advent Of Code 2023 - Day 12](https://adventofcode.com/2023/day/12)
@@ -245,7 +268,7 @@ The `?` stands for either `.` or `#`.
 This can be written as a regular expression:
 
  - for `#` we simply write `#`
- - for `.` we write `o` (since `.` has a special meaning in regular expressions)
+ - for `.` we write `o` (since `.` is a reserved symbol in regular expressions)
  - for `?` we write `(o|#)`
 
 So the pattern `.??..??...?##.` would be written as:
