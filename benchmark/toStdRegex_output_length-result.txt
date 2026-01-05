@@ -1,6 +1,7 @@
 
 failed instances:
-- parseError         : 56
+- parseError         : 1
+- unsupportedSyntax  : 55
 - cacheOverflow      : 101
 - veryLargeSyntaTree : 28
 - stackOverflow      : 12
@@ -13,5 +14,5 @@ size multipliers:
 - min    : 0.0021570319240724763
 
 memory:
-- max heap used : 2219.7348098754883 MB
-- max rss       : 2963.6953125 MB
+- max heap used : 2229.916061401367 MB
+- max rss       : 2942.07421875 MB

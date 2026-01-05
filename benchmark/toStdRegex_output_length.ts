@@ -39,10 +39,11 @@ function run(inputRegExp: RegExp, index: number) {
     multiplier          : ${mult}
     heap used           : ${heapUsed/1024**2} MB
     rss                 : ${rss/1024**2} MB
-  `) 
+  `)
 }
 
 let parseError = 0
+let unsupportedSyntaxError = 0
 let cacheOverflow = 0
 let veryLargeSyntaTree = 0
 let stackOverflow = 0
@@ -52,8 +53,10 @@ fullRegexDataset.forEach((regex, i) => {
   try {
     run(regex, i)
   } catch (e) {
-    if (e instanceof ParseError || e instanceof UnsupportedSyntaxError) {
+    if (e instanceof ParseError) {
       parseError++
+    } else if (e instanceof UnsupportedSyntaxError) {
+      unsupportedSyntaxError++
     } else if (e instanceof RE.CacheOverflowError) {
       cacheOverflow++
     } else if (e instanceof RE.VeryLargeSyntaxTreeError) {
@@ -77,6 +80,7 @@ const best = mults.reduce((a,b) => Math.min(a,b), Infinity)
 const summary = `
 failed instances:
 - parseError         : ${parseError}
+- unsupportedSyntax  : ${unsupportedSyntaxError}
 - cacheOverflow      : ${cacheOverflow}
 - veryLargeSyntaTree : ${veryLargeSyntaTree}
 - stackOverflow      : ${stackOverflow}
