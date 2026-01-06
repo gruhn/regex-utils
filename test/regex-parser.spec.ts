@@ -41,6 +41,11 @@ describe('parseRegExp', () => {
     [/a{3}/, AST.repeat(char('a'), 3)],
     [/a{3,}/, AST.repeat(char('a'), { min: 3 })],
     [/a{3,5}/, AST.repeat(char('a'), { min: 3, max: 5 })],
+    // lazy quantifiers (treated the same as regular quantifiers):
+    [/a*?/, AST.star(char('a'))],
+    [/a+?/, AST.plus(char('a'))],
+    [/a??/, AST.optional(char('a'))],
+    [/a{3}?/, AST.repeat(char('a'), 3)],
     // if curly bracket is not terminated the whole thing is interpreted literally:
     [/a{3,5/, str('a{3,5')],
     // same if max value is given but min value is missing:

@@ -288,14 +288,23 @@ function negativeLookAhead(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AS
   })
 }
 
+/**
+ * Any quantifiers can be made "lazy" by appending "?".
+ * In this library the difference between lazy and regular
+ * quantifiers does not matter so we just ignore them.
+ */
+function lazyModifier<T>(value: T): P.Parser<T> {
+  return P.optional(P.string('?')).map(_ => value)
+}
+
 function regex(flags: Set<RegExpFlagLong>): P.Parser<AST.RegExpAST> {
   const nonEmptyRegex = P.lazy(() => P.Expr.makeExprParser<AST.RegExpAST>(
     regexTerm(flags),
     [
-      { type: 'postfix', op: P.string('*').map(_ => AST.star) },
-      { type: 'postfix', op: boundedQuantifier },
-      { type: 'postfix', op: P.string('+').map(_ => AST.plus) },
-      { type: 'postfix', op: P.string('?').map(_ => AST.optional) },
+      { type: 'postfix', op: P.string('*').map(_ => AST.star).andThen(lazyModifier) },
+      { type: 'postfix', op: boundedQuantifier.andThen(lazyModifier) },
+      { type: 'postfix', op: P.string('+').map(_ => AST.plus).andThen(lazyModifier) },
+      { type: 'postfix', op: P.string('?').map(_ => AST.optional).andThen(lazyModifier) },
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
       { type: 'infixRightOptional', op: negativeLookAhead(flags) },
       { type: 'infixRightOptional', op: positiveLookAhead(flags) },

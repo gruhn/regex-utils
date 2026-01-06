@@ -42,29 +42,28 @@ import { RB } from '@gruhn/regex-utils'
 | Feature | Support | Examples |
 |---------|---------|-------------|
 | Quantifiers | ✅ | `a*`, `a+`, `a{3,10}`, `a?` |
+| Lazy Quantifiers | ✅ | `a*?`, `a+?`, `a{3,10}?`, `a??` |
 | Alternation | ✅ | `a\|b` |
 | Character classes | ✅ | `.`, `\w`, `[a-zA-Z]`, ... |
 | Escaping | ✅ | `\$`, `\.`, ... |
-| (Non-)capturing groups | ✅<sup>1</sup> | `(?:...)`, `(...)` |
-| Start/end anchors | ⚠️<sup>2</sup> | `^`, `$` |
-| Lookahead | ⚠️<sup>3</sup> | `(?=...)`, `(?!...)` |
+| (Non-)capturing groups | ✅ | `(?:...)`, `(...)` |
+| Start/end anchors | ⚠️<sup>1</sup> | `^`, `$` |
+| Lookahead | ✅ | `(?=...)`, `(?!...)` |
 | Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
 | Word boundary | ❌ | `\b`, `\B` |
 | Unicode property escapes | ❌ | `\p{...}`, `\P{...}` |
 | Backreferences | ❌ | `\1` `\2` ... |
 | `dotAll` flag | ✅ | `/.../s`, `(?s:...)` |
-| `global` flag | ✅<sup>4</sup> | `/.../g` |
-| `hasIndices` flag | ✅<sup>4</sup> | `/.../d` |
+| `global` flag | ✅ | `/.../g` |
+| `hasIndices` flag | ✅ | `/.../d` |
 | `ignoreCase` flag | ❌ | `/.../i` `(?i:...)` |
 | `multiline` flag | ❌ | `/.../m` `(?m:...)` |
 | `unicode` flag | ❌ | `/.../u` |
 | `unicodeSets` flag | ❌ | `/.../v` |
 | `sticky` flag | ❌ | `/.../y` |
 
-1. Both capturing- and non-capturing groups are just treated as parenthesis, because this library is never doing string extraction.
-2. Some pathological patterns are not supported like anchors inside quantifiers `(^a)+`.
-3. Anchors inside lookaheads like `(?=^a)` are not supported.
-4. Flag is simply ignored because it does not affect the behavior of this library.
+1. Some complex patterns are not supported like anchors inside quantifiers `(^a)+`
+   or anchors inside lookaheads like `(?=^a)`.
 
 An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
 The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.
