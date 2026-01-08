@@ -2,6 +2,7 @@ import * as AST from "./ast"
 import * as P from "./parser"
 import * as CharSet from './char-set'
 import * as Range from './char-code-range'
+import * as SetUtils from './set'
 import { isOneOf } from "./utils"
 import { failure } from "./parser"
 
@@ -171,7 +172,8 @@ function group(flags: Set<RegExpFlagLong>) {
         .map(flags => flags ?? new Set()),
       P.string(':'),
     ]).andThen(([_, flagsToggledOn, flagsToggledOff, __]) => {
-      const localFlags = flags.union(flagsToggledOn).difference(flagsToggledOff)
+      // Use custom Set utilities for browser compatibility (Set.union/difference not widely supported)
+      const localFlags = SetUtils.difference(SetUtils.union(flags, flagsToggledOn), flagsToggledOff)
       return regex(localFlags).andThen(
         inner => P.string(')').map(_ => inner)
       )

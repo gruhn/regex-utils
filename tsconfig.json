@@ -2,7 +2,7 @@
   "compilerOptions": {
     // project options
     "lib": [
-      "ESNext",
+      "ES2023",
       "dom"
     ], // specifies which default set of type definitions to use ("DOM", "ES6", etc)
     "target": "ESNext", // Target environment. Most modern browsers support ES6, but you may want to set it to newer or older. (defaults to ES3)

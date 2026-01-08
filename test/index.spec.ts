@@ -6,7 +6,6 @@ import * as RE from "../src/regex"
 import { RB, RegexBuilder } from "../src/index"
 import * as Arb from './arbitrary-regex'
 import { toStdRegex } from "src/dfa"
-import { parseRegExp } from "src/regex-parser"
 
 /**
  * Stochastically verifies that `regex1` is a subset of `regex2`.
@@ -29,7 +28,7 @@ function expectSubsetOf(regex1: RegexBuilder, regex2: RegexBuilder, maxSamples =
       fc.pre(false)
     } else {
       throw e
-    }     
+    }
   }
 }
 
@@ -51,7 +50,7 @@ describe('toStdRegex', () => {
               fc.pre(false)
             } else {
               throw e
-            }     
+            }
           }
         }
       ),
@@ -112,7 +111,7 @@ test('A ∩ ¬A = ∅', () => {
             fc.pre(false)
           } else {
             throw e
-          }     
+          }
         }
       },
     ),
@@ -132,7 +131,7 @@ test('B ⊆ (A ∪ B) ∩ (B ∪ C)', () => {
         expectSubsetOf(RB(regexB), interRegex)
       }
     ),
-  )   
+  )
 })
 
 test('intersection with regex /^.{N}$/ has only words of length N', () => {
@@ -154,9 +153,9 @@ test('intersection with regex /^.{N}$/ has only words of length N', () => {
             fc.pre(false)
           } else {
             throw e
-          }     
+          }
         }
       }
     ),
-  )   
+  )
 })
