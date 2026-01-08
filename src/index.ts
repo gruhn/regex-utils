@@ -204,9 +204,25 @@ class RegexBuilder {
   }
 
   /**
-   * Compute a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the given `RegExp`.
+   * Computes a [Brzozowski derivative](https://en.wikipedia.org/wiki/Brzozowski_derivative) of the given `RegExp`.
    *
-   * TODO: examples.
+   * Brzozowski derivatives are a way to "partially match a string".
+   * For example, the string `"ab"` does not match the regex `/^abc$/`.
+   * But it's a prefix of a matching string.
+   * We can take the derivative of the two and obtain the new regex `/^c$/`.
+   * That is, the returned regex encodes what is "left to be matched".
+   *
+   * @example
+   * ```typescript
+   * RB(/^abc$/).derivative('ab') // like /^c$/
+   * RB(/^abc$/).derivative('abc') // like /^$/
+   * RB(/^abc*$/).derivative('abcccccc') // like /^c*$/
+   *
+   * RB(/^abc$/).derivative('b').isEmpty() === true // empty regex that matches nothing
+   *
+   * RB(/^(a|b)c$/).derivative('a') // like /^c$/
+   * RB(/^(a|b)c$/).derivative('b') // like /^c$/
+   * ```
    *
    * @public
    */
