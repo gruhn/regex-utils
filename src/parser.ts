@@ -280,6 +280,25 @@ export namespace Expr {
   }
 
   /**
+   * Left-associative infix operator where both left- and right
+   * operand can be optional.
+   */
+  export function infixOpLeftAssocOptional<T>(
+    left: T | undefined,
+    operatorParser: BinaryOperator<T | undefined, T>,
+    rightParser: Parser<T>,
+  ): Parser<T> {
+    return operatorParser.andThen(op =>
+      optional(rightParser).andThen(right =>
+        choice([
+          infixOpLeftAssocOptional(op(left, right), operatorParser, rightParser),
+          pure(op(left, right))
+        ])
+      )
+    )
+  }
+
+  /**
    * Right-associative infix operator where both left- and right
    * operand can be optional.
    */
@@ -303,6 +322,7 @@ export namespace Expr {
     | { type: 'postfix', op: Expr.UnaryOperator<T> }
     | { type: 'infixLeft', op: Expr.BinaryOperator<T> }
     | { type: 'infixRight', op: Expr.BinaryOperator<T> }
+    | { type: 'infixLeftOptional', op: Expr.BinaryOperator<T | undefined, T> }
     | { type: 'infixRightOptional', op: Expr.BinaryOperator<T | undefined, T> }
   >
 
@@ -335,6 +355,16 @@ export namespace Expr {
             pure(left)
           ])
         )
+      case 'infixLeftOptional':
+        return optional(termParser).andThen(left => {
+          if (left === undefined)
+            return infixOpLeftAssocOptional(left, operator.op, termParser)
+          else
+            return choice([
+              infixOpLeftAssocOptional(left, operator.op, termParser),
+              pure(left)
+            ])
+        })
       case 'infixRightOptional':
         return optional(termParser).andThen(left => {
           if (left === undefined)

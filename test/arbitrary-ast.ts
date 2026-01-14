@@ -60,9 +60,15 @@ function captureGroup(innerArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary
     .map(([inner, name]) => AST.captureGroup(inner, name))
 }
 
-function lookahead(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
-  return fc.tuple(fc.boolean(), childArb(), childArb())
-    .map(([isPositive, inner, right]) => AST.lookahead(isPositive, inner, right))
+function assertion(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
+  return fc.tuple(
+    fc.constantFrom(AST.AssertionDir.AHEAD, AST.AssertionDir.BEHIND),
+    fc.constantFrom(AST.AssertionSign.POSITIVE, AST.AssertionSign.NEGATIVE),
+    childArb(),
+    childArb()
+  ).map(
+    ([dir, sign, inner, outer]) => AST.assertion(dir, sign, inner, outer)
+  )
 }
 
 function startAnchor(childArb: () => fc.Arbitrary<AST.RegExpAST>): fc.Arbitrary<AST.RegExpAST> {
@@ -127,7 +133,7 @@ function regexpAST_(size: number): fc.Arbitrary<AST.RegExpAST> {
       { arbitrary: optional(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: repeat(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: captureGroup(() => regexpAST_(childSize)), weight: 2 },
-      { arbitrary: lookahead(() => regexpAST_(childSize)), weight: 1 },
+      { arbitrary: assertion(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: startAnchor(() => regexpAST_(childSize)), weight: 1 },
       { arbitrary: endAnchor(() => regexpAST_(childSize)), weight: 1 }
     )

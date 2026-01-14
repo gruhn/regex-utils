@@ -216,19 +216,6 @@ const boundedQuantifier: P.Expr.UnaryOperator<AST.RegExpAST> = P.tryElseBacktrac
   )
 )
 
-function lookbehind(flags: Set<RegExpFlagLong>): P.Parser<AST.RegExpAST> {
-  return P.between(
-    P.choice([
-      P.string('(?<='),
-      P.string('(?<!'),
-    ]),
-    P.string(')'),
-    regex(flags),
-  ).map(_ => {
-    throw new UnsupportedSyntaxError('lookbehind assertions')
-  })
-}
-
 function regexTerm(flags: Set<RegExpFlagLong>) {
   return P.choice([
     wildcard(flags),
@@ -241,7 +228,6 @@ function regexTerm(flags: Set<RegExpFlagLong>) {
 
     charSetInBrackets.map(AST.literal),
     unescapedCharOutsideBrackets.map(AST.literal),
-    lookbehind(flags),
   ])
 }
 
@@ -267,11 +253,16 @@ function positiveLookAhead(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AS
     P.string(')'),
     regex(flags),
   ).map(inner => (left, right) => {
-    const lookaheadNode = AST.lookahead(true, inner, right ?? AST.epsilon)
+    const node = AST.assertion(
+      AST.AssertionDir.AHEAD,
+      AST.AssertionSign.POSITIVE,
+      inner,
+      right ?? AST.epsilon
+    )
     if (left === undefined) {
-      return lookaheadNode
+      return node
     } else {
-      return AST.concat(left, lookaheadNode)
+      return AST.concat(left, node)
     }
   })
 }
@@ -281,11 +272,54 @@ function negativeLookAhead(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AS
     P.string(')'),
     regex(flags),
   ).map(inner => (left, right) => {
-    const lookaheadNode = AST.lookahead(false, inner, right ?? AST.epsilon)
+    const node = AST.assertion(
+      AST.AssertionDir.AHEAD,
+      AST.AssertionSign.NEGATIVE,
+      inner,
+      right ?? AST.epsilon
+    )
     if (left === undefined) {
-      return lookaheadNode
+      return node
     } else {
-      return AST.concat(left, lookaheadNode)
+      return AST.concat(left, node)
+    }
+  })
+}
+function positiveLookBehind(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?<='),
+    P.string(')'),
+    regex(flags),
+  ).map(inner => (left, right) => {
+    const node = AST.assertion(
+      AST.AssertionDir.BEHIND,
+      AST.AssertionSign.POSITIVE,
+      inner,
+      left ?? AST.epsilon
+    )
+    if (right === undefined) {
+      return node
+    } else {
+      return AST.concat(node, right)
+    }
+  })
+}
+function negativeLookBehind(flags: Set<RegExpFlagLong>): P.Expr.BinaryOperator<AST.RegExpAST | undefined, AST.RegExpAST> {
+  return P.between(
+    P.string('(?<!'),
+    P.string(')'),
+    regex(flags),
+  ).map(inner => (left, right) => {
+    const node = AST.assertion(
+      AST.AssertionDir.BEHIND,
+      AST.AssertionSign.NEGATIVE,
+      inner,
+      left ?? AST.epsilon
+    )
+    if (right === undefined) {
+      return node
+    } else {
+      return AST.concat(node, right)
     }
   })
 }
@@ -310,6 +344,8 @@ function regex(flags: Set<RegExpFlagLong>): P.Parser<AST.RegExpAST> {
       { type: 'infixRight', op: P.string('').map(_ => AST.concat) },
       { type: 'infixRightOptional', op: negativeLookAhead(flags) },
       { type: 'infixRightOptional', op: positiveLookAhead(flags) },
+      { type: 'infixLeftOptional', op: negativeLookBehind(flags) },
+      { type: 'infixLeftOptional', op: positiveLookBehind(flags) },
       { type: 'infixRightOptional', op: P.string('$').map(_ => (left, right) => AST.endAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('^').map(_ => (left, right) => AST.startAnchor(left ?? AST.epsilon, right ?? AST.epsilon)) },
       { type: 'infixRightOptional', op: P.string('|').map(_ => AST.union) },

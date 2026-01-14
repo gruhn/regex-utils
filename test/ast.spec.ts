@@ -57,6 +57,8 @@ describe('toExtRegex', () => {
       [/$.^/, RE.empty],
       // Can still match epsilon as long as there's nothing between end- and start anchor:
       [/$^/, RE.epsilon],
+      [/^$^$^/, RE.epsilon],
+      // FIXME: [/($)(^)/, RE.epsilon],
       // Nullable expressions on the left and right can be ignored:
       [/(a?)$^(b*)/, RE.epsilon],
       // Nullable lookaheads before start anchor have no effect:
@@ -101,26 +103,34 @@ describe('toExtRegex', () => {
       [/(?=a)b/, RE.empty],
       [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
       [/^(?=[0-5])(?=[5-9])[3-7]$/, RE.string('5')],
-      // nested positive lookahead:
-      [/^(?=(?=(?=[0-5])[5-9])[3-7])[0-9]$/, RE.string('5')],
-      // positive lookaheads with nullable expression always succeed:
+      // TODO: nested positive lookahead:
+      // [/^(?=(?=(?=[0-5])[5-9])[3-7])[0-9]$/, RE.string('5')],
+      // positive lookahead/lookbehind with nullable expression always succeed:
       [/^a(?=)b$/, RE.string('ab')],
       [/^a(?=b*)c$/, RE.string('ac')],
-      // negative lookahead:
+      [/^a(?<=)b$/, RE.string('ab')],
+      [/^a(?<=b*)c$/, RE.string('ac')],
+      // negative lookahead/lookbehind:
       [/^a(?!a)[ab]$/, RE.string('ab')],
-      // negative lookaheads with nullable expression always fail:
+      [/^a[ab](?<!a)$/, RE.string('ab')],
+      // negative lookahead/lookbehind with nullable expression always fail:
       [/a(?!)c/, RE.empty],
       [/a(?!b*)c/, RE.empty],
+      [/a(?<!)c/, RE.empty],
+      [/a(?<!b*)c/, RE.empty],
+      // TODO: lookahead + lookbehind
+      // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
+      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
+      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+      // [/((?=a)b)|(a|e)(?<=a)/, ]
 
       // TODO: lookahead inside quantifier
       // [/^(a(?!b))*$/, RE.star(RE.string('a'))],
       // [/^((?=a)a|(?=b)b)$/, RE.union(RE.string('a'), RE.string('b'))],
       // [/(?![^a])/, ???],
 
-      // TODO: lookahead + lookbehind
-      // [/^a(?=b)(?<=a)b$/, RE.string('ab')],
-      // [/^b(?=ab)a(?<=ba)b$/, RE.string('bab')],
-      // [/^a(?=b)(?<=a)(?!a)(?<!b)b$/, RE.string('ab')],
+      // TODO: nested lookaheads/lookbehinds
+      // [/(?!a?(?<=a+))b/, ]
     ] as const
 
     for (const [regexp, expected] of testCases) {

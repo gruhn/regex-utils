@@ -48,8 +48,8 @@ import { RB } from '@gruhn/regex-utils'
 | Escaping | ✅ | `\$`, `\.`, ... |
 | (Non-)capturing groups | ✅ | `(?:...)`, `(...)` |
 | Start/end anchors | ⚠️<sup>1</sup> | `^`, `$` |
-| Lookahead | ✅ | `(?=...)`, `(?!...)` |
-| Lookbehind | ❌ | `(?<=...)`, `(?<!...)` |
+| Lookahead | ⚠️<sup>2</sup> | `(?=...)`, `(?!...)` |
+| Lookbehind | ⚠️<sup>2</sup> | `(?<=...)`, `(?<!...)` |
 | Word boundary | ❌ | `\b`, `\B` |
 | Unicode property escapes | ❌ | `\p{...}`, `\P{...}` |
 | Backreferences | ❌ | `\1` `\2` ... |
@@ -62,8 +62,8 @@ import { RB } from '@gruhn/regex-utils'
 | `unicodeSets` flag | ❌ | `/.../v` |
 | `sticky` flag | ❌ | `/.../y` |
 
-1. Some complex patterns are not supported like anchors inside quantifiers `(^a)+`
-   or anchors inside lookaheads like `(?=^a)`.
+1. Some complex patterns are not supported like anchors inside quantifiers `(^a)+` or anchors inside lookaheads `(?=^a)`.
+2. Not supported are nested lookaheads/lookbehinds like `(?=a(?=b))` and lookaheads/lookbehinds combinations like `(?=a)b(?<=c)`.
 
 An `UnsupportedSyntaxError` is thrown when unsupported patterns are detected.
 The library **SHOULD ALWAYS** either throw an error or respect the regex specification exactly.

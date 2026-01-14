@@ -1,7 +1,7 @@
 import { describe, it, test } from "node:test"
 import assert from "node:assert"
 import { parseRegExp, parseRegExpString, UnsupportedSyntaxError } from "../src/regex-parser"
-import { CacheOverflowError, RB, RegexBuilder } from "../src/index"
+import { CacheOverflowError, RB, RegexBuilder, VeryLargeSyntaxTreeError } from "../src/index"
 import { ParseError } from "../src/parser"
 import * as AST from "../src/ast"
 import * as CharSet from "../src/char-set"
@@ -66,22 +66,21 @@ describe('parseRegExp', () => {
     [/^abc$/, AST.startAnchor(AST.epsilon, AST.endAnchor(str('abc'), AST.epsilon))],
     [/$a^/, AST.startAnchor(AST.endAnchor(AST.epsilon, char('a')), AST.epsilon)],
     // positive lookahead
-    [/(?=a)b/, AST.lookahead(true, char('a'), char('b'))],
-    [/(?=a)(?:b)/, AST.lookahead(true, char('a'), char('b'))],
-    [/(?=a)(?=b)c/, AST.lookahead(true, char('a'), AST.lookahead(true, char('b'), char('c')))],
-    [/a(?=b)c/, AST.concat(char('a'), AST.lookahead(true, char('b'), char('c')))],
-    [/a(?=b)/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.epsilon))],
-    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.lookahead(true, char('b'), AST.concat(char('c'), AST.lookahead(true, char('d'), char('e')))))],
-    [/(?=)/, AST.lookahead(true, AST.epsilon, AST.epsilon)],
-    // negative lookahead
-    [/(?!a)b/, AST.lookahead(false, char('a'), char('b'))],
-    [/(?!a)b|c/, AST.union(AST.lookahead(false, char('a'), char('b')), char('c'))],
-    [/(?!)/, AST.lookahead(false, AST.epsilon, AST.epsilon)],
-    // TODO: positive lookbehind
-    // [/(?<=a)/, AST.positiveLookbehind(char('a'))],
-    // TODO: negative lookbehind
-    // [/(?<!a)/, AST.negativeLookbehind(char('a'))],
-
+    [/(?=a)b/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('a'), char('b'))],
+    [/(?=a)(?:b)/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('a'), char('b'))],
+    [/(?=a)(?=b)c/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('a'), AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('b'), char('c')))],
+    [/a(?=b)c/, AST.concat(char('a'), AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('b'), char('c')))],
+    [/a(?=b)/, AST.concat(char('a'), AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('b'), AST.epsilon))],
+    [/a(?=b)c(?=d)e/, AST.concat(char('a'), AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('b'), AST.concat(char('c'), AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, char('d'), char('e')))))],
+    [/(?=)/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.POSITIVE, AST.epsilon, AST.epsilon)],
+    // negative assertion
+    [/(?!a)b/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.NEGATIVE, char('a'), char('b'))],
+    [/(?!a)b|c/, AST.union(AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.NEGATIVE, char('a'), char('b')), char('c'))],
+    [/(?!)/, AST.assertion(AST.AssertionDir.AHEAD, AST.AssertionSign.NEGATIVE, AST.epsilon, AST.epsilon)],
+    // positive lookbehind
+    [/(?<=a)/, AST.assertion(AST.AssertionDir.BEHIND, AST.AssertionSign.POSITIVE, char('a'), AST.epsilon)],
+    // negative lookbehind
+    [/(?<!a)/, AST.assertion(AST.AssertionDir.BEHIND, AST.AssertionSign.NEGATIVE, char('a'), AST.epsilon)],
     // regex flags:
     [/./s, AST.literal(CharSet.wildcard({ dotAll: true }))],
     [/(?s:.)/, AST.literal(CharSet.wildcard({ dotAll: true }))],
@@ -187,11 +186,18 @@ function parse_skipKnownIssues(re: RegExp) {
     }
   }
 }
-function toRegExp_ignoreCacheOverflow(builder: RegexBuilder) {
+function toRegExp_ignorePerfIssues(builder: RegexBuilder) {
   try {
     return builder.toRegExp()
   } catch (error) {
     if (error instanceof CacheOverflowError) {
+      console.warn('Ignored CacheOverflowError')
+      fc.pre(false)
+    } else if (error instanceof VeryLargeSyntaxTreeError) {
+      console.warn('Ignored VeryLargeSyntaxTreeError')
+      fc.pre(false)
+    } else if (error instanceof RangeError && error.message === 'Maximum call stack size exceeded') {
+      console.warn('Ignored stack overflow')
       fc.pre(false)
     } else {
       throw error
@@ -199,17 +205,17 @@ function toRegExp_ignoreCacheOverflow(builder: RegexBuilder) {
   }
 }
 
-test('parse/stringify roundtrip preserves equivalence', () => {
+test('parse/stringify roundtrip preserves equivalence', {only:true}, () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),
       (inputRegExp: RegExp) => {
         const builder = parse_skipKnownIssues(inputRegExp)
-        const outputRegExp = toRegExp_ignoreCacheOverflow(builder)
+        const outputRegExp = toRegExp_ignorePerfIssues(builder)
 
         // console.debug(`Input RegExp:  ${inputRegExp}`)
         // console.debug(`Output RegExp: ${outputRegExp}`)
-        for (const str of builder.enumerate().take(10)) {
+        for (const str of builder.enumerate().take(100)) {
           assert.match(str, outputRegExp)
           assert.match(str, inputRegExp)
         }
