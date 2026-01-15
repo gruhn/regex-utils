@@ -1,18 +1,18 @@
 
 failed instances:
 - parseError         : 0
-- unsupportedSyntax  : 55
-- cacheOverflow      : 101
+- unsupportedSyntax  : 54
+- cacheOverflow      : 100
 - veryLargeSyntaTree : 29
 - stackOverflow      : 12
 - regexSyntaxError   : 0
 
 size multipliers:
-- mean   : 255.1921357803836
-- median : 0.8181818181818182
+- mean   : 254.8937930157915
+- median : 0.9
 - max    : 83596.04347826086
 - min    : 0.0021570319240724763
 
 memory:
-- max heap used : 2466.1258087158203 MB
-- max rss       : 2801.85546875 MB
+- max heap used : 2375.846336364746 MB
+- max rss       : 2795.4765625 MB
