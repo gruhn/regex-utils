@@ -58,7 +58,7 @@ describe('toExtRegex', () => {
       // Can still match epsilon as long as there's nothing between end- and start anchor:
       [/$^/, RE.epsilon],
       [/^$^$^/, RE.epsilon],
-      // FIXME: [/($)(^)/, RE.epsilon],
+      [/($)(^)/, RE.epsilon],
       // Nullable expressions on the left and right can be ignored:
       [/(a?)$^(b*)/, RE.epsilon],
       // Nullable lookaheads before start anchor have no effect:
@@ -74,6 +74,8 @@ describe('toExtRegex', () => {
       [/(^)*a$/, suffix(RE.singleChar('a'))],
       [/(b|^)a$/, RE.concat(RE.optional(suffix(RE.singleChar('b'))), RE.singleChar('a'))],
       [/(^a)*$/, RE.union(RE.dotStar, RE.singleChar('a'))], // (^a)*$ == (^a)?$ == ^(.*|a)$
+      [/(i$)+s/, RE.empty],
+      [/(i$){3,}s/, RE.empty],
       // TODO:
       // [/(^)+a$/, RE.singleChar('a')],
       // [/(^a*)+b$/, suffix(RE.singleChar('b'))],
@@ -149,13 +151,11 @@ describe('toExtRegex', () => {
     /p(^i)*/,
     /p(^i)+/,
     /p(^i){3,}/,
-    // end anchor inside single union member with non-empty prefix:
+    // end anchor inside single union member with non-empty suffix:
     /(l$|r)s/,
     /(l|r$)s/,
-    // end anchor inside unbounded quantifier with non-empty prefix:
+    // end anchor inside unbounded quantifier with non-empty suffix:
     /(i$)*s/,
-    /(i$)+s/,
-    /(i$){3,}s/,
     // anchors inside lookaheads:
     /(?=^a)/,
     /(?=a$)/,

@@ -205,7 +205,7 @@ function toRegExp_ignorePerfIssues(builder: RegexBuilder) {
   }
 }
 
-test('parse/stringify roundtrip preserves equivalence', {only:true}, () => {
+test('parse/stringify roundtrip preserves equivalence', () => {
   fc.assert(
     fc.property(
       Arbitrary.regexp(),

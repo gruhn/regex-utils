@@ -239,20 +239,17 @@ function pullUpStartAnchor(ast: InterAST_stage2, isLeftClosed: boolean): InterAS
   switch (ast.type) {
     case "ext-regex": return ast
     case "concat": {
-      // Pull up start anchors on subexpressions first, so if they contain start
-      // anchors then `left` and `right` will have the start anchor at the top.
-      const left = pullUpStartAnchor(ast.left, isLeftClosed)
-      const right = pullUpStartAnchor(ast.right, true) // TODO: maybe more like `hasPrefix || left != epsilon`
+      const right = pullUpStartAnchor(ast.right, true)
       if (right.type === 'start-anchor') {
-        // Expression has the form `l^r` where `r` contains no start anchor.
-        // `l` may contain one but it does not matter. `l` can at most match epsilon,
-        // otherwise the whole expression is contradictory and collapses to the empty set.
-        if (isNullable(left)) {
-          return right // i.e. `^r`
-        } else {
-          return empty()
-        }
-      } else if (left.type === 'start-anchor') {
+        // Expression has the form `l(rl^rr)`.
+        // Pull up the anchor directly (i.e. `lrl^rr`) then call `pullUpStartAnchor` again
+        // to re-use the logic in the "startAnchor" case:
+        return pullUpStartAnchor(startAnchor(concat(ast.left, right.left), right.right), isLeftClosed)
+      }
+
+      // Otherwise, `right` is start-anchor free. Check if `left` contains any:
+      const left = pullUpStartAnchor(ast.left, isLeftClosed)
+      if (left.type === 'start-anchor') {
         // Expression has the form `(^l)r` where `r` does not contain a start anchor.
         // We can just pull up the start-anchor:
         return startAnchor(extRegex(RE.epsilon), concat(left.right, right)) // i.e. `^(lr)`
@@ -398,20 +395,17 @@ function pullUpEndAnchor(ast: InterAST_stage2, isRightClosed: boolean): InterAST
   switch (ast.type) {
     case "ext-regex": return ast
     case "concat": {
-      // Pull up end anchors on subexpressions first, so if they contain end
-      // anchors then `left` and `right` will have the end anchor at the top.
       const left = pullUpEndAnchor(ast.left, true) // TODO: rather `isRightClosed || right != epsilon`
-      const right = pullUpEndAnchor(ast.right, isRightClosed)
       if (left.type === 'end-anchor') {
-        // Expression has the form `l$r` where `l` contains no end anchor.
-        // `r` may contain one but it does not matter. `r` can at most match epsilon,
-        // otherwise the whole expression is contradictory and collapses to the empty set.
-        if (isNullable(right)) {
-          return left // i.e. `l$`
-        } else {
-          return empty()
-        }
-      } else if (right.type === 'end-anchor') {
+        // Expression has the form `(ll$lr)r`.
+        // Pull up the anchor directly (i.e. `ll$lrr`) then call `pullUpEndAnchor` again
+        // to re-use the logic in the "endAnchor" case:
+        return pullUpEndAnchor(endAnchor(left.left, concat(left.right, ast.right)), isRightClosed)
+      }
+
+      // Otherwise, `left` is end-anchor free. Check if `right` contains any:
+      const right = pullUpEndAnchor(ast.right, isRightClosed)
+      if (right.type === 'end-anchor') {
         // Expression has the form `l(r$)` where `l` does not contain an end anchor.
         // We can just pull up the end anchor:
         return endAnchor(concat(left, right.left), extRegex(RE.epsilon)) // i.e. `(lr)$`

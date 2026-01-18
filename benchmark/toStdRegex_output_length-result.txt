@@ -14,5 +14,5 @@ size multipliers:
 - min    : 0.0021570319240724763
 
 memory:
-- max heap used : 2375.846336364746 MB
-- max rss       : 2795.4765625 MB
+- max heap used : 2366.3108978271484 MB
+- max rss       : 2918.63671875 MB
