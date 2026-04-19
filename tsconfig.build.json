@@ -1,10 +1,14 @@
 {
-  "extends": "./src/tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["ES2023", "dom"],
     "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
     "noUnusedLocals": false, // don't fail build because of unused local variables.
     "noUnusedParameters": false //  don't fail build because of unused parameters in functions
   },
+  "include": ["./src/*.ts"],
   "tsc-alias": {
     "resolveFullPaths": true,
     "verbose": false
