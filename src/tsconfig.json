@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "dom"],
+    "outDir": "../dist",
+    "declaration": true,
+    "composite": true // required for project references
+  },
+  "include": ["./*.ts"]
+}

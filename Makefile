@@ -14,7 +14,7 @@ docs/.stamp: dist/.stamp tsconfig.build.json demos/*.html
 
 dist/.stamp: tsconfig.build.json src/*.ts
 	npx tsc --project tsconfig.build.json
-	npx tsc-alias
+	npx tsc-alias --project tsconfig.build.json
 	touch $@
 
 node_modules/.stamp: package-lock.json

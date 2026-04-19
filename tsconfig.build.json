@@ -1,8 +1,12 @@
 {
-  "extends": "./tsconfig.json",
-  "include": [ "./src/*.ts" ],
+  "extends": "./src/tsconfig.json",
   "compilerOptions": {
+    "outDir": "./dist",
     "noUnusedLocals": false, // don't fail build because of unused local variables.
-    "noUnusedParameters": false, //  don't fail build because of unused parameters in functions
+    "noUnusedParameters": false //  don't fail build because of unused parameters in functions
+  },
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": false
   }
 }

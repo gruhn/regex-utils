@@ -5,7 +5,7 @@ import { CacheOverflowError, VeryLargeSyntaxTreeError } from '../src/regex'
 import * as RE from "../src/regex"
 import { RB, RegexBuilder } from "../src/index"
 import * as Arb from './arbitrary-regex'
-import { toStdRegex } from "src/dfa"
+import { toStdRegex } from "../src/dfa"
 
 /**
  * Stochastically verifies that `regex1` is a subset of `regex2`.

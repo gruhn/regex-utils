@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    // project options
+    "target": "ESNext",
+    "module": "ESNext",
+
+    "removeComments": true, // Strips all comments from TypeScript files when converting into JavaScript- you rarely read compiled code so this saves space
+
+    // Source Map
+    "sourceMap": true, // enables the use of source maps for debuggers and error reporting etc
+    "sourceRoot": "/", // Specify the location where a debugger should locate TypeScript files instead of relative source locations.
+
+    // Module resolution
+    "esModuleInterop": true, // fixes some issues TS originally had with the ES6 spec where TypeScript treats CommonJS/AMD/UMD modules similar to ES6 module
+    "moduleResolution": "node", // Pretty much always node for modern JS. Other option is "classic"
+
+    // Strict Checks
+    "strict": true, // enable all of the strict mode family options
+    "allowUnreachableCode": true, // pick up dead code paths
+
+    // Linter Checks
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": false, // accessing index must always check for undefined
+    "noUnusedLocals": true, // report errors on unused local variables.
+    "noUnusedParameters": true // report errors on unused parameters in functions
+  },
+  "exclude": ["node_modules", "dist", ".direnv"]
+}

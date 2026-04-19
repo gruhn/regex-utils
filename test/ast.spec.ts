@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert"
 import * as RE from "../src/regex"
 import * as AST from "../src/ast"
 import { parseRegExp, UnsupportedSyntaxError } from "../src/regex-parser"
-import { toStdRegex } from "src/dfa"
+import { toStdRegex } from "../src/dfa"
 
 describe('toExtRegex', () => {
 
