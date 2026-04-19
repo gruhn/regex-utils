@@ -6,7 +6,7 @@ These are surprisingly hard to come by for any programming language. ✨
 - [Documentation](https://gruhn.github.io/regex-utils/interfaces/RegexBuilder.html)
 - Online demos:
   - [RegExp Equivalence Checker](https://gruhn.github.io/regex-utils/equiv-checker.html)
-  - [Random Password Generator](https://gruhn.github.io/regex-utils/password-generator.html)
+  - [Random Password Generator]([https://gruhn.github.io/regex-utils/password-generator.html](https://gruhn.github.io/regex-utils/password-generator.html?constraints=%5E%5B%5Cx21-%5Cx7E%5D%7B16%7D%24%0A%5BA-Z%5D%0A%5Ba-z%5D%0A%5B0-9%5D))
 
 ## API Overview 🚀
 
