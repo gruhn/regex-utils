@@ -810,18 +810,34 @@ function enumerateMemoizedAux(
   }
 }
 
+export type SampleOptions = {
+  seed: number
+  /**
+   * Controls the average length of sampled strings by affecting
+   * how often quantifiers like `a*` are expanded.
+   * We _stop_ expanding with probability `1/lengthWeight`.
+   * E.g. for `lengthWeight=2` and regex `a*` we stop at:
+   *
+   * - "" with probability `1/2`
+   * - "a" with probability `1/4`
+   * - "aa" with probability `1/8`
+   * - "aaa" with probability `1/16`
+   * - ...
+   *
+   * So bigger values for `lengthWeight` make stopping less likely and therefore produce
+   * longer strings on average.
+   */
+  lengthWeight: number
+}
+
 /**
  * Generates random strings that match the given regex using a deterministic seed.
  * Unlike enumerate(), this produces a stream of random samples rather than
  * a fair enumeration of all possible matches.
- *
- * @param re - The regex to sample from
- * @param seed - Deterministic seed for random generation (default: 42)
- * @returns Generator yielding random matching strings
- *
- * @public
  */
-export function* sample(re: StdRegex, seed: number): Generator<string> {
+export function* sample(re: StdRegex, options?: Partial<SampleOptions>): Generator<string> {
+  const { seed = Date.now(), lengthWeight = 2 } = options ?? {}
+
   if (isEmpty(re)) {
     // otherwise generator does not terminate:
     return
@@ -829,24 +845,21 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
 
   const rng = new PRNG(seed)
 
-  // We weight union branch probabilities by the number of strings in each subtree (via `size`).
-  // This gives uniform sampling over the matched strings. For subtrees matching infinitely many
-  // strings (i.e. containing `star`), `size` returns `undefined`; in that case we fall back to
-  // weighting by node count.
-  const cachedNodeCount = new Map<number, number>()
-  nodeCountAux(re, cachedNodeCount)
-  const lookupNodeCount = (subExpr: StdRegex): number => {
-    const count = cachedNodeCount.get(subExpr.hash)
-    assert(count !== undefined, 'logic error: node count cache should be populated for all subexpressions')
+  // We weight union branch probabilities by the number of strings in each subtree.
+  // This gives uniform sampling over the matched strings. That doesn't work though,
+  // if one of the subtrees matches infinitely many string (e.g. (a|b*)).
+  // As a workaround, we simply ignore star nodes when counting matches.
+  // That way, size is always finite.
+  const cachedSize = new Map<number, bigint>()
+  sizeIgnoreStar(re, cachedSize)
+  const lookupSize = (subExpr: StdRegex) => {
+    const count = cachedSize.get(subExpr.hash)
+    assert(count !== undefined, 'logic error: node size cache should be populated for all subexpressions')
     return count
   }
 
-  const cachedSize = new Map<number, bigint | undefined>()
-  sizeMemoized(re, cachedSize)
-  const lookupSize = (subExpr: StdRegex): bigint | undefined => cachedSize.get(subExpr.hash)
-
   while (true) {
-    const result = sampleAux(re, rng, lookupNodeCount, lookupSize)
+    const result = sampleAux(re, lengthWeight, rng, lookupSize)
     if (result !== null) {
       yield result
     }
@@ -854,9 +867,9 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
 }
 function sampleAux(
   regex: StdRegex,
+  lengthWeight: number,
   rng: PRNG,
-  lookupNodeCount: (subExpr: StdRegex) => number,
-  lookupSize: (subExpr: StdRegex) => bigint | undefined
+  lookupSize: (subExpr: StdRegex) => bigint
 ): string | null {
   switch (regex.type) {
     case 'epsilon':
@@ -867,67 +880,56 @@ function sampleAux(
     }
 
     case 'concat': {
-      const leftSample = sampleAux(regex.left, rng, lookupNodeCount, lookupSize)
+      const leftSample = sampleAux(regex.left, lengthWeight, rng, lookupSize)
       if (leftSample === null) return null
-      const rightSample = sampleAux(regex.right, rng, lookupNodeCount, lookupSize)
+      const rightSample = sampleAux(regex.right, lengthWeight, rng, lookupSize)
       if (rightSample === null) return null
       return leftSample + rightSample
     }
 
     case 'union': {
-      let chooseLeft: boolean
-
       // For unions we randomly sample from the left- or right subtree.
       // The probability is weighted by size of the subtree (in terms of strings matched).
       // Consider the expression /^(aa|(bb|cc))$/ which matches the three strings: "aa", "bb", "cc".
       // If we would give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
-      // However, weighting by size only works if both subtrees match finitely many strings.
-      // E.g. in /^(a|b*)$/ the right branch matches infinitely many strings.
-      // We don't want to give the left branch zero probability, so instead we fallback to weighing
-      // by the number of nodes in the subtree.
       const leftSize = lookupSize(regex.left)
       const rightSize = lookupSize(regex.right)
-      if (leftSize !== undefined && rightSize !== undefined) {
-        const total = leftSize + rightSize
-        if (total === 0n) {
-          // Both subtrees are empty. Constructing full sample string is impossbile.
-          return null
-        } else {
-          // We want:
-          //
-          //     chooseLeft = rng.next() < leftSize / total
-          //
-          // but `leftSize` and `total` are bigint so `leftSize / total` is always zero.
-          // Converting both to float can cause overflow. So instead we scale both sides
-          // by 2**53 (max safe int) and then compare:
-          chooseLeft = BigInt(2**53 * rng.next()) < (2n**53n * leftSize) / total
-        }
-      } else {
-        const leftCount = lookupNodeCount(regex.left)
-        const rightCount = lookupNodeCount(regex.right)
-        chooseLeft = rng.next() < leftCount / (leftCount + rightCount)
+      const totalSize = leftSize + rightSize
+
+      if (totalSize === 0n) {
+        // Both subtrees are empty. Constructing full sample string is impossible,
+        // so we stop here. Also, would otherwise get division by zero in the next step.
+        return null
       }
 
+      // We want:
+      //
+      //     const chooseLeft = rng.next() < leftSize / total
+      //
+      // but `leftSize` and `total` are bigint so `leftSize / total` is always zero.
+      // Converting both to float can cause overflow. So instead we scale both sides
+      // by 2**53 (max safe int) and then compare:
+      const chooseLeft = BigInt(2**53 * rng.next()) < (2n**53n * leftSize) / totalSize
+
       if (chooseLeft) {
-        return sampleAux(regex.left, rng, lookupNodeCount, lookupSize)
+        return sampleAux(regex.left, lengthWeight, rng, lookupSize)
       } else {
-        return sampleAux(regex.right, rng, lookupNodeCount, lookupSize)
+        return sampleAux(regex.right, lengthWeight, rng, lookupSize)
       }
     }
 
     case 'star': {
       // Randomly choose whether to stop repetition or to continue:
-      const chooseStop = rng.next() < 0.5
+      const chooseStop = rng.next() < 1 / lengthWeight
       if (chooseStop) {
         return ""
       } else {
-        const innerSample = sampleAux(regex.inner, rng, lookupNodeCount, lookupSize)
+        const innerSample = sampleAux(regex.inner, lengthWeight, rng, lookupSize)
         if (innerSample === null) return null
-        const restSample = sampleAux(regex, rng, lookupNodeCount, lookupSize)
+        const restSample = sampleAux(regex, lengthWeight, rng, lookupSize)
         if (restSample === null) return null
         return innerSample + restSample
       }
-
     }
   }
 
@@ -943,7 +945,7 @@ export function size(regex: StdRegex): bigint | undefined {
 
 // For handwritten regex, memoizing the size of sub-expressions
 // is probably irrelevant but output regex from `intersection`
-// can often have a lot of duplicate sub-expressions. There
+// can often have a lot of duplicate sub-expressions. There,
 // memoization can speed up `size` a lot:
 function sizeMemoized(
   regex: StdRegex,
@@ -994,6 +996,40 @@ function sizeMemoizedAux(
         // since we normalize that away in the smart constructors.
         return undefined
     }
+  }
+}
+
+// Like `size` but star nodes are ignored,
+// which otherwise cause result to be infinite.
+function sizeIgnoreStar(
+  regex: StdRegex,
+  cache: Map<number, bigint>
+): bigint {
+  const cached = cache.get(regex.hash)
+  if (cached !== undefined) {
+    return cached
+  } else {
+    const result = sizeIgnoreStarAux(regex, cache)
+    cache.set(regex.hash, result)
+    return result
+  }
+}
+function sizeIgnoreStarAux(
+  regex: StdRegex,
+  cache: Map<number, bigint>
+): bigint {
+  switch (regex.type) {
+    case 'epsilon':
+      return 1n
+    case 'literal':
+      return BigInt(CharSet.size(regex.charset))
+    case 'concat':
+      return sizeIgnoreStar(regex.left, cache) * sizeIgnoreStar(regex.right, cache)
+    case 'union':
+      return sizeIgnoreStar(regex.left, cache) + sizeIgnoreStar(regex.right, cache)
+    case 'star':
+      // Ignore impact of star node. Just return size of inner expression:
+      return sizeIgnoreStar(regex.inner, cache)
   }
 }
 

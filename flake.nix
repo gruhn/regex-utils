@@ -8,14 +8,14 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
-      let 
-        pkgs = nixpkgs.legacyPackages.${system}; 
-      in 
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            nodejs_23
-            nodePackages.typescript-language-server
+            nodejs_24
+            typescript-language-server
             ripgrep
           ];
         };

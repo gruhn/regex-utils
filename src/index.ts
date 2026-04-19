@@ -331,18 +331,22 @@ class RegexBuilder {
    * const emailRegex = /^[a-z]+@[a-z]+\.[a-z]{2,}$/
    *
    * // Generate 10 random email examples with seed 42
-   * for (const sample of RB(emailRegex).sample(42).take(10)) {
+   * for (const sample of RB(emailRegex).sample({ seed: 42 }).take(10)) {
    *   console.log(sample)
    * }
    * ```
    *
-   * @param seed - Optional seed to make sampling deterministic.
+   * @param options - Optional config options like seed and sample length weights.
    * @returns Generator yielding random matching strings
    *
    * @public
    */
-  sample(seed: number = Date.now()) {
-    return RE.sample(this.getStdRegex(), seed)
+  sample(options?: number | Partial<RE.SampleOptions>) {
+    if (typeof options === 'number') {
+      options = { seed: options }
+    }
+
+    return RE.sample(this.getStdRegex(), options)
   }
 
   /**

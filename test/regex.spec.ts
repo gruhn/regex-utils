@@ -110,7 +110,7 @@ describe('sample', () => {
         fc.integer({ min: 0, max: 1000 }),
         (inputRegex, seed) => {
           const regexp = RE.toRegExp(inputRegex)
-          const samples = RE.sample(inputRegex, seed)
+          const samples = RE.sample(inputRegex, { seed })
 
           for (const sample of samples.take(50)) {
             assert.match(sample, regexp)
@@ -126,8 +126,8 @@ describe('sample', () => {
         Arb.stdRegex(),
         fc.nat(),
         (regex, seed) => {
-          const gen1 = RE.sample(regex, seed)
-          const gen2 = RE.sample(regex, seed)
+          const gen1 = RE.sample(regex, { seed })
+          const gen2 = RE.sample(regex, { seed })
 
           assert.deepEqual(
             [...gen1.take(10)],
@@ -139,7 +139,7 @@ describe('sample', () => {
   })
 
   it('terminates for empty regex', () => {
-    const samples = [...RE.sample(RE.empty, 42)]
+    const samples = [...RE.sample(RE.empty, { seed: 42 })]
     assert.deepEqual(samples, [])
   })
 
