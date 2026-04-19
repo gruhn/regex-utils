@@ -829,9 +829,10 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
 
   const rng = new PRNG(seed)
 
-  // To reduce sampling bias, we weight probabilities by number of nodes in a sub-expression.
-  // To not re-compute these counts, we traverse the tree once and populate a cache of node
-  // counts at every node:
+  // We weight union branch probabilities by the number of strings in each subtree (via `size`).
+  // This gives uniform sampling over the matched strings. For subtrees matching infinitely many
+  // strings (i.e. containing `star`), `size` returns `undefined`; in that case we fall back to
+  // weighting by node count.
   const cachedNodeCount = new Map<number, number>()
   nodeCountAux(re, cachedNodeCount)
   const lookupNodeCount = (subExpr: StdRegex): number => {
@@ -840,8 +841,12 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
     return count
   }
 
+  const cachedSize = new Map<number, bigint | undefined>()
+  sizeMemoized(re, cachedSize)
+  const lookupSize = (subExpr: StdRegex): bigint | undefined => cachedSize.get(subExpr.hash)
+
   while (true) {
-    const result = sampleAux(re, rng, lookupNodeCount)
+    const result = sampleAux(re, rng, lookupNodeCount, lookupSize)
     if (result !== null) {
       yield result
     }
@@ -850,7 +855,8 @@ export function* sample(re: StdRegex, seed: number): Generator<string> {
 function sampleAux(
   regex: StdRegex,
   rng: PRNG,
-  lookupNodeCount: (subExpr: StdRegex) => number
+  lookupNodeCount: (subExpr: StdRegex) => number,
+  lookupSize: (subExpr: StdRegex) => bigint | undefined
 ): string | null {
   switch (regex.type) {
     case 'epsilon':
@@ -861,29 +867,51 @@ function sampleAux(
     }
 
     case 'concat': {
-      const leftSample = sampleAux(regex.left, rng, lookupNodeCount)
+      const leftSample = sampleAux(regex.left, rng, lookupNodeCount, lookupSize)
       if (leftSample === null) return null
-      const rightSample = sampleAux(regex.right, rng, lookupNodeCount)
+      const rightSample = sampleAux(regex.right, rng, lookupNodeCount, lookupSize)
       if (rightSample === null) return null
       return leftSample + rightSample
     }
 
     case 'union': {
+      let chooseLeft: boolean
+
       // For unions we randomly sample from the left- or right subtree.
-      // The probability is weighted by the number of nodes in the subtree.
+      // The probability is weighted by size of the subtree (in terms of strings matched).
       // Consider the expression /^(aa|(bb|cc))$/ which matches the three strings: "aa", "bb", "cc".
-      // If we give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
-      // Weighting by node count does not eliminate this problem completely.
-      // We could also weight by the number of strings matched by the subtrees (computed using `size`).
-      // But what do we do if one of the subtrees matches infinitely many strings (e.g. /^(a|b*)$/)?
-      const leftCount = lookupNodeCount(regex.left)
-      const rightCount = lookupNodeCount(regex.right)
-      const chooseLeft = rng.next() < leftCount / (leftCount + rightCount)
+      // If we would give equal probability to all branches, we sample 50% "aa", 25% "bb" and 25% "cc".
+      // However, weighting by size only works if both subtrees match finitely many strings.
+      // E.g. in /^(a|b*)$/ the right branch matches infinitely many strings.
+      // We don't want to give the left branch zero probability, so instead we fallback to weighing
+      // by the number of nodes in the subtree.
+      const leftSize = lookupSize(regex.left)
+      const rightSize = lookupSize(regex.right)
+      if (leftSize !== undefined && rightSize !== undefined) {
+        const total = leftSize + rightSize
+        if (total === 0n) {
+          // Both subtrees are empty. Constructing full sample string is impossbile.
+          return null
+        } else {
+          // We want:
+          //
+          //     chooseLeft = rng.next() < leftSize / total
+          //
+          // but `leftSize` and `total` are bigint so `leftSize / total` is always zero.
+          // Converting both to float can cause overflow. So instead we scale both sides
+          // by 2**53 (max safe int) and then compare:
+          chooseLeft = BigInt(2**53 * rng.next()) < (2n**53n * leftSize) / total
+        }
+      } else {
+        const leftCount = lookupNodeCount(regex.left)
+        const rightCount = lookupNodeCount(regex.right)
+        chooseLeft = rng.next() < leftCount / (leftCount + rightCount)
+      }
 
       if (chooseLeft) {
-        return sampleAux(regex.left, rng, lookupNodeCount)
+        return sampleAux(regex.left, rng, lookupNodeCount, lookupSize)
       } else {
-        return sampleAux(regex.right, rng, lookupNodeCount)
+        return sampleAux(regex.right, rng, lookupNodeCount, lookupSize)
       }
     }
 
@@ -893,9 +921,9 @@ function sampleAux(
       if (chooseStop) {
         return ""
       } else {
-        const innerSample = sampleAux(regex.inner, rng, lookupNodeCount)
+        const innerSample = sampleAux(regex.inner, rng, lookupNodeCount, lookupSize)
         if (innerSample === null) return null
-        const restSample = sampleAux(regex, rng, lookupNodeCount)
+        const restSample = sampleAux(regex, rng, lookupNodeCount, lookupSize)
         if (restSample === null) return null
         return innerSample + restSample
       }
