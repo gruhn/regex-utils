@@ -40,19 +40,7 @@
     }
 
     h4 {
-      margin: 10px 0px 5px 0px;
-    }
-
-    .input-container {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 25px;
-    }
-
-    .input-group {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+      margin: 14px 0 6px 0;
     }
 
     label {
@@ -63,59 +51,55 @@
       font-size: 1.1rem;
     }
 
-    .regex-input-wrapper {
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .regex-field {
       display: flex;
       align-items: center;
       border: 2px solid #e1e5e9;
       border-radius: 8px;
       background: white;
       transition: border-color 0.3s ease;
+      padding: 0 12px;
     }
 
-    .regex-input-wrapper:focus-within {
+    .regex-field:focus-within {
       border-color: #667eea;
     }
 
     .regex-slash {
-      padding: 15px 8px;
-      font-size: 1.2rem;
+      color: #999;
       font-family: 'Courier New', monospace;
-      font-weight: bold;
+      font-size: 1.4rem;
       user-select: none;
     }
 
-    input[type="text"] {
+    .regex-field input {
       flex: 1;
-      padding: 15px 8px;
       border: none;
       outline: none;
+      padding: 14px 8px;
       font-size: 1rem;
       font-family: 'Courier New', monospace;
       background: transparent;
     }
 
-    ul {
-      list-style-position: outside;
-      padding-left: 20px;
-    }
-
-    @media (max-width: 768px) {
-      .input-container {
-        flex-direction: column;
-        gap: 25px;
-      }
+    .regex-field input::placeholder {
+      color: #bbb;
     }
 
     .button-container {
       text-align: center;
-      margin: 30px 0;
+      margin: 25px 0;
     }
 
-    button {
+    button.check-btn {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
-      padding: 15px 40px;
+      padding: 14px 36px;
       border-radius: 25px;
       font-size: 1.1rem;
       font-weight: 500;
@@ -123,21 +107,57 @@
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    button:hover {
+    button.check-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     }
 
-    button:active {
+    button.check-btn:active {
       transform: translateY(0);
     }
 
-    .result {
-      margin-top: 30px;
-      padding: 20px;
-      border-radius: 10px;
-      font-size: 1.1rem;
+    .banner {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      line-height: 1.5;
       display: none;
+    }
+
+    .banner.show {
+      display: block;
+    }
+
+    .banner.info {
+      background: #e7f3ff;
+      border: 1px solid #b8daff;
+      color: #004085;
+    }
+
+    .banner.warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+    }
+
+    .banner code {
+      background: rgba(0, 0, 0, 0.06);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 24px;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      display: none;
+    }
+
+    .result.show {
+      display: block;
     }
 
     .result.equivalent {
@@ -146,137 +166,106 @@
       color: #155724;
     }
 
+    .result.subset,
+    .result.superset,
     .result.not-equivalent {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      color: #333;
+    }
+
+    .result.error {
       background: #f8d7da;
       border: 1px solid #f5c6cb;
       color: #721c24;
     }
 
-    .result.subset {
-      background: #cce5ff;
-      border: 1px solid #99ccff;
-      color: #003d7a;
+    .result .verdict {
+      font-size: 1.1rem;
+      line-height: 1.5;
+      margin-bottom: 16px;
     }
 
-    .result.superset {
-      background: #e5ccff;
-      border: 1px solid #cc99ff;
-      color: #4d0080;
+    .venn {
+      display: block;
+      margin: 18px auto;
     }
 
-    .venn-container {
+    .examples {
       display: flex;
-      justify-content: center;
-      margin: 20px 0;
+      gap: 18px;
+      margin-top: 18px;
+      flex-wrap: wrap;
     }
 
-    .venn-diagram {
-      max-width: 300px;
-      width: 100%;
+    .example-group {
+      flex: 1;
+      min-width: 220px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 14px;
     }
 
-    .result code {
-      background: #e9ecef;
-      padding: 4px 6px;
-      border-radius: 3px;
+    .example-group h5 {
+      margin: 0 0 10px 0;
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    .example-group ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .example-group li {
+      padding: 6px 8px;
+      margin: 4px 0;
+      background: #f8f9fa;
+      border-radius: 4px;
       font-family: 'Courier New', monospace;
-      display: inline;
+      font-size: 0.9rem;
       word-break: break-all;
     }
 
-    .result li {
-      margin: 10px 0px;
-    }
-
-    .result.error {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      color: #856404;
-    }
-
-    .counterexamples {
-      margin-top: 15px;
-      padding: 15px;
-      background: #fff8dc;
-      border: 1px solid #f0e68c;
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-
-    .counterexamples h4 {
-      margin-bottom: 10px;
-      color: #8b4513;
-      font-size: 1rem;
-    }
-
-    .examples-list {
-      background: #f8f9fa;
-      border-radius: 5px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-
-    .examples-list code {
-      background: #e9ecef;
-      padding: 2px 6px;
-      border-radius: 3px;
+    .example-group code {
       font-family: 'Courier New', monospace;
-      margin: 2px;
-      display: inline-block;
     }
 
-    .regex-counterexamples {
-      margin-top: 15px;
-      display: none;
-    }
-
-    .info {
+    .info-block {
       margin-top: 30px;
-      padding: 15px;
+      padding: 18px;
       background: #e9ecef;
       border-radius: 8px;
       font-size: 0.9rem;
       color: #666;
+      line-height: 1.5;
     }
 
-    .mismatch-warning {
-      background: #fff3cd;
-      border: 2px solid #ffeaa7;
-      color: #856404;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .info-block ul {
+      list-style-position: outside;
+      padding-left: 22px;
+      margin: 6px 0;
     }
 
-    .mismatch-warning::before {
-      content: "⚠️";
-      font-size: 1.2rem;
+    .info-block li {
+      margin: 4px 0;
     }
 
-    .anchor-info {
-      background: #d1ecf1;
-      border: 2px solid #bee5eb;
-      color: #0c5460;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .info-block code {
+      background: #d6dadd;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
     }
 
-    .anchor-info::before {
-      content: "ℹ️";
-      font-size: 1.2rem;
+    .info-block a {
+      color: #667eea;
+      text-decoration: none;
     }
 
-    .anchor-info code {
-      white-space: nowrap;
+    .info-block a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -285,69 +274,37 @@
   <div class="container">
     <h1>RegExp Equivalence Checker</h1>
 
-    <div class="input-container">
-      <div class="input-group">
-        <label for="regex1">RegExp 1:</label>
-        <div class="regex-input-wrapper">
-          <span class="regex-slash">/</span>
-          <input type="text" id="regex1" placeholder="^a{1,3}$" />
-          <span class="regex-slash">/</span>
-        </div>
-        <div class="regex-counterexamples" id="counterexamples1"></div>
+    <div class="input-group">
+      <label for="regexp1">RegExp 1:</label>
+      <div class="regex-field">
+        <span class="regex-slash">/</span>
+        <input type="text" id="regexp1" placeholder="^a{1,3}$" spellcheck="false" autocomplete="off" />
+        <span class="regex-slash">/</span>
       </div>
+    </div>
 
-      <div class="input-group">
-        <label for="regex2">RegExp 2:</label>
-        <div class="regex-input-wrapper">
-          <span class="regex-slash">/</span>
-          <input type="text" id="regex2" placeholder="^(a|aa|aaa)$" />
-          <span class="regex-slash">/</span>
-        </div>
-        <div class="regex-counterexamples" id="counterexamples2"></div>
+    <div class="input-group">
+      <label for="regexp2">RegExp 2:</label>
+      <div class="regex-field">
+        <span class="regex-slash">/</span>
+        <input type="text" id="regexp2" placeholder="^(a|aa|aaa)$" spellcheck="false" autocomplete="off" />
+        <span class="regex-slash">/</span>
       </div>
     </div>
 
     <div class="button-container">
-      <button id="check-equiv-button">Check Equivalence</button>
+      <button class="check-btn" id="check-button">Check Equivalence</button>
     </div>
 
-    <div class="anchor-info" id="anchor-info-banner" style="display: none;">
-      <b>Note, without <code>^</code> (start) and <code>$</code> (end) anchors RegExp match substrings.</b>
-      That can lead to surprising results.
-      For example, <code>/a+/</code> is technically equivalent to <code>/a/</code> because <code>/a+/</code>
-      is the same as <code>/^.*a+.*$/</code> which matches exactly the same strings as <code>/^.*a.*$/</code> (i.e. <code>/a/</code>).
-    </div>
+    <div class="banner info" id="anchor-banner"></div>
+    <div class="banner warning" id="validation-banner"></div>
+    <div class="result" id="result"></div>
 
-    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-superset" style="display: none;">
-      <circle cx="100" cy="100" r="60" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#e9ecef"></circle>
-      <circle cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#764ba2" cx="120" r="30"></circle>
-      <text x="70" y="80" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
-      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="115" y="105">2</text>
-    </svg>
-
-    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-subset" style="display: none;">
-      <circle cx="80" cy="100" r="30" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#667eea"></circle>
-      <circle cx="100" cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#e9ecef" r="60"></circle>
-      <text x="75" y="105" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
-      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="120" y="80">2</text>
-    </svg>
-
-    <svg viewBox="0 0 300 200" class="venn-diagram venn-diagram-intersection" style="display: none;">
-      <circle cx="80" cy="100" r="60" stroke="#667eea" stroke-width="2" fill-opacity="0.3" fill="#667eea"></circle>
-      <circle cx="140" cy="100" stroke="#764ba2" stroke-width="2" fill-opacity="0.3" fill="#764ba2" r="60"></circle>
-      <text x="50" y="105" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#667eea">1</text>
-      <text font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#764ba2" x="150" y="80">2</text>
-    </svg>
-
-    <div class="result" id="result">
-
-    </div>
-
-    <div class="info">
+    <div class="info-block">
       <h4>How to use:</h4>
       Enter two JavaScript regular expressions (without the surrounding slashes) and click "Check Equivalence".
-      The tool determines whether the two expression match exactly the same strings.
-      Otherwise, example strings are shown that match either expression but not both.
+      The tool determines whether the two expressions match exactly the same strings. Otherwise, example
+      strings are shown that match either expression but not both.
 
       <h4>Examples:</h4>
       <ul>
@@ -357,281 +314,259 @@
       </ul>
 
       <h4>Powered by:</h4>
-      <a href="https://github.com/gruhn/regex-utils" target="_blank" style="color: #667eea; text-decoration: none;">
-        📦 @gruhn/regex-utils
-      </a> - TypeScript library for regex equivalence, intersection, complement and other utilities
+      <a href="https://github.com/gruhn/regex-utils" target="_blank">@gruhn/regex-utils</a>
+      — TypeScript library for regex equivalence, intersection, complement and other utilities.
     </div>
   </div>
 
   <script type="module">
-    // Import the regex-utils library from CDN
     import {
       RB,
       ParseError,
+      UnsupportedSyntaxError,
       VeryLargeSyntaxTreeError,
-      CacheOverflowError
+      CacheOverflowError,
     } from './dist/index.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const input1 = document.getElementById('regexp1');
+    const input2 = document.getElementById('regexp2');
+    const checkButton = document.getElementById('check-button');
+    const resultEl = document.getElementById('result');
+    const anchorBanner = document.getElementById('anchor-banner');
+    const validationBanner = document.getElementById('validation-banner');
 
-      const regex1Input = document.getElementById('regex1');
-      const regex2Input = document.getElementById('regex2');
-      const checkEquivButton = document.getElementById('check-equiv-button');
-      const resultDiv = document.getElementById('result');
-      const counterexamples1 = document.getElementById('counterexamples1');
-      const counterexamples2 = document.getElementById('counterexamples2');
-      const anchorInfoBanner = document.getElementById('anchor-info-banner');
+    const ANCHOR_BANNER_HTML =
+      'Without <code>^</code> (start) and <code>$</code> (end) anchors, RegExp match substrings. ' +
+      'That can lead to surprising results. For example, <code>/a+/</code> is technically equivalent to ' +
+      '<code>/a/</code> because <code>/a+/</code> is the same as <code>/^.*a+.*$/</code> which matches ' +
+      'exactly the same strings as <code>/^.*a.*$/</code> (i.e. <code>/a/</code>).';
 
-      // Load initial values from URL parameters
-      function loadFromURL() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const regex1 = urlParams.get('regexp1');
-        const regex2 = urlParams.get('regexp2');
+    const VALIDATION_BANNER_HTML =
+      'Something went wrong. The presented example strings don\'t match the regex as claimed. ' +
+      'Please <a href="https://github.com/gruhn/regex-utils/issues" target="_blank">file an issue on GitHub</a> ' +
+      'with your input regex.';
 
-        if (regex1) regex1Input.value = regex1;
-        if (regex2) regex2Input.value = regex2;
+    function encode(text) {
+      const explicitUnicode = JSON.stringify(text)
+        .slice(1, -1)
+        .replaceAll('\\"', '"')
+        .replaceAll('\\\\', '\\');
+      const div = document.createElement('div');
+      div.textContent = explicitUnicode;
+      return div.innerHTML;
+    }
 
-        // Auto-check equivalence if both parameters are present
-        if (regex1 && regex2) {
-          setTimeout(checkEquivalence, 100);
-        }
+    function renderExample(str) {
+      if (str === '') {
+        return '<i>the empty string</i>';
+      }
+      return `<code>${encode(str)}</code>`;
+    }
+
+    function clearOutput() {
+      resultEl.className = 'result';
+      resultEl.innerHTML = '';
+      anchorBanner.className = 'banner info';
+      anchorBanner.innerHTML = '';
+      validationBanner.className = 'banner warning';
+      validationBanner.innerHTML = '';
+    }
+
+    function showResult(kind, html) {
+      resultEl.className = `result ${kind} show`;
+      resultEl.innerHTML = html;
+    }
+
+    function showAnchorBanner() {
+      anchorBanner.className = 'banner info show';
+      anchorBanner.innerHTML = ANCHOR_BANNER_HTML;
+    }
+
+    function showValidationBanner() {
+      validationBanner.className = 'banner warning show';
+      validationBanner.innerHTML = VALIDATION_BANNER_HTML;
+    }
+
+    function vennSVG(kind) {
+      // kind: 'subset' (1 inside 2), 'superset' (2 inside 1), 'not-equivalent' (overlap)
+      if (kind === 'subset') {
+        return `
+          <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: circle 1 inside circle 2">
+            <circle cx="130" cy="80" r="70" fill="#c3a6e8" fill-opacity="0.45" stroke="#764ba2" stroke-width="2"/>
+            <circle cx="110" cy="80" r="35" fill="#a3bffa" fill-opacity="0.6" stroke="#667eea" stroke-width="2"/>
+            <text x="110" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
+            <text x="180" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
+          </svg>`;
+      }
+      if (kind === 'superset') {
+        return `
+          <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: circle 2 inside circle 1">
+            <circle cx="130" cy="80" r="70" fill="#a3bffa" fill-opacity="0.5" stroke="#667eea" stroke-width="2"/>
+            <circle cx="150" cy="80" r="35" fill="#c3a6e8" fill-opacity="0.6" stroke="#764ba2" stroke-width="2"/>
+            <text x="80" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
+            <text x="150" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
+          </svg>`;
+      }
+      // not-equivalent (overlapping)
+      return `
+        <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: two overlapping circles">
+          <circle cx="100" cy="80" r="60" fill="#a3bffa" fill-opacity="0.5" stroke="#667eea" stroke-width="2"/>
+          <circle cx="160" cy="80" r="60" fill="#c3a6e8" fill-opacity="0.5" stroke="#764ba2" stroke-width="2"/>
+          <text x="70" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
+          <text x="190" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
+        </svg>`;
+    }
+
+    function renderExamples(only1, only2) {
+      const groups = [];
+      if (only1.length > 0) {
+        const items = only1.map(s => `<li>${renderExample(s)}</li>`).join('');
+        groups.push(`<div class="example-group"><h5>RegExp 1 only</h5><ul>${items}</ul></div>`);
+      }
+      if (only2.length > 0) {
+        const items = only2.map(s => `<li>${renderExample(s)}</li>`).join('');
+        groups.push(`<div class="example-group"><h5>RegExp 2 only</h5><ul>${items}</ul></div>`);
+      }
+      if (groups.length === 0) return '';
+      return `<div class="examples">${groups.join('')}</div>`;
+    }
+
+    function runCheck() {
+      clearOutput();
+
+      const pattern1 = input1.value.trim();
+      const pattern2 = input2.value.trim();
+
+      if (pattern1 === '' || pattern2 === '') {
+        showResult('error', 'Please enter both regular expressions.');
+        return;
       }
 
-      // Update URL parameters when inputs change
-      function updateURL() {
-        const urlParams = new URLSearchParams();
-        const regex1 = regex1Input.value.trim();
-        const regex2 = regex2Input.value.trim();
-
-        if (regex1) urlParams.set('regexp1', regex1);
-        if (regex2) urlParams.set('regexp2', regex2);
-
-        const newURL = urlParams.toString() ?
-          `${window.location.pathname}?${urlParams.toString()}` :
-          window.location.pathname;
-
-        window.history.replaceState(null, '', newURL);
+      const missingAnchors =
+        !pattern1.includes('^') || !pattern1.includes('$') ||
+        !pattern2.includes('^') || !pattern2.includes('$');
+      if (missingAnchors) {
+        showAnchorBanner();
       }
 
-      // Load initial values
-      loadFromURL();
+      let regexA, regexB;
+      try {
+        regexA = new RegExp(pattern1);
+        regexB = new RegExp(pattern2);
 
-      function clearResults() {
-        resultDiv.style.display = 'none';
-        resultDiv.className = 'result';
-        counterexamples1.style.display = 'none';
-        counterexamples1.innerHTML = '';
-        counterexamples2.style.display = 'none';
-        counterexamples2.innerHTML = '';
-        anchorInfoBanner.style.display = 'none';
-      }
+        const diffAB = RB(regexA).without(regexB);
+        const diffBA = RB(regexB).without(regexA);
+        const diffABEmpty = diffAB.isEmpty();
+        const diffBAEmpty = diffBA.isEmpty();
 
-      // clear results on new input and update URL:
-      regex1Input.addEventListener('input', () => {
-        clearResults()
-        updateURL()
-      })
-      regex2Input.addEventListener('input', () => {
-        clearResults()
-        updateURL()
-      })
+        let only1 = [];
+        let only2 = [];
+        let outcome;
 
-      function checkEquivalence() {
-        const pattern1 = regex1Input.value.trim();
-        const pattern2 = regex2Input.value.trim();
-
-        // Clear previous results
-        clearResults()
-
-        // Validate input
-        if (!pattern1 || !pattern2) {
-          showResult('Please enter both regular expressions.', 'error');
-          return;
-        }
-
-        // Check for missing anchors and show info banner
-        const hasStartAnchor1 = pattern1.includes('^');
-        const hasEndAnchor1 = pattern1.includes('$');
-        const hasStartAnchor2 = pattern2.includes('^');
-        const hasEndAnchor2 = pattern2.includes('$');
-
-        const shouldShowAnchorInfo = !hasStartAnchor1 || !hasEndAnchor1 || !hasStartAnchor2 || !hasEndAnchor2;
-
-        // Show/hide anchor info banner
-        if (shouldShowAnchorInfo) {
-          anchorInfoBanner.style.display = 'block';
-        }
-
-        try {
-          // First, validate that both patterns are valid JavaScript regex syntax
-          const regexA = new RegExp(pattern1);
-          const regexB = new RegExp(pattern2);
-
-          // Compute differences between the two regex
-          const diffAB = RB(regexA).without(regexB); // strings in A but not B
-          const diffBA = RB(regexB).without(regexA); // strings in B but not A
-
-          const diffABEmpty = diffAB.isEmpty();
-          const diffBAEmpty = diffBA.isEmpty();
-
-          if (diffABEmpty && diffBAEmpty) {
-            // Equivalent: both differences are empty
-            showResultWithDiagram('✅ The regular expressions are equivalent! Both expressions match exactly the same strings.', 'equivalent');
-          } else if (diffABEmpty && !diffBAEmpty) {
-            // A is subset of B: no strings in A that aren't in B
-            const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            const hasValidationIssue = !stringsMatchingBButNotA.every(str => regexB.test(str) && !regexA.test(str));
-            const examples = stringsMatchingBButNotA.length > 0 ? {regex2Only: stringsMatchingBButNotA} : null;
-            showResultWithDiagram('📊 RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.', 'subset', examples, hasValidationIssue);
-          } else if (!diffABEmpty && diffBAEmpty) {
-            // B is subset of A: no strings in B that aren't in A
-            const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            const hasValidationIssue = !stringsMatchingAButNotB.every(str => regexA.test(str) && !regexB.test(str));
-            const examples = stringsMatchingAButNotB.length > 0 ? {regex1Only: stringsMatchingAButNotB} : null;
-            showResultWithDiagram('📊 RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.', 'superset', examples, hasValidationIssue);
-          } else {
-            // Neither subset nor equivalent: both differences are non-empty
-            const stringsMatchingAButNotB = Array.from(diffAB.enumerate().take(5));
-            const stringsMatchingBButNotA = Array.from(diffBA.enumerate().take(5));
-            const hasValidationIssue = !(
-              stringsMatchingAButNotB.every(str => regexA.test(str) && !regexB.test(str)) &&
-              stringsMatchingBButNotA.every(str => regexB.test(str) && !regexA.test(str))
-            );
-            const examples = {
-              regex1Only: stringsMatchingAButNotB.length > 0 ? stringsMatchingAButNotB : null,
-              regex2Only: stringsMatchingBButNotA.length > 0 ? stringsMatchingBButNotA : null
-            };
-            showResultWithDiagram('❌ The two RegExp are not equivalent. Neither matches a subset of the other.', 'not-equivalent', examples, hasValidationIssue);
-          }
-        } catch (error) {
-          if (error instanceof SyntaxError) {
-            showResult(`❌ Invalid regex syntax: ${encode(error.message)}<br>Please check that your regular expressions use valid JavaScript regex syntax.`, 'error');
-          } else if (error instanceof ParseError) {
-            showResult(`🚧 Unsupported regex syntax: The syntax is valid but not yet supported by the tool.<br/><br/>${encode(error.message)}`, 'error');
-          } else if (error instanceof VeryLargeSyntaxTreeError || error instanceof CacheOverflowError) {
-            showResult(`☠️ Excessive resource use detected: This example might be computationally hard.`, 'error');
-          } else {
-            showResult(`❌ Unexpected error: ${encode(error.message)}`, 'error');
-          }
-        }
-      };
-
-      checkEquivButton.addEventListener('click', () => {
-        checkEquivalence();
-      });
-      regex1Input.addEventListener('keyup', (event) => {
-        if (event.key === "Enter") {
-          checkEquivalence();
-        }
-      })
-      regex2Input.addEventListener('keyup', () => {
-        if (event.key === "Enter") {
-          checkEquivalence();
-        }
-      })
-
-      function showResult(message, type) {
-        const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = message;
-        resultDiv.className = `result ${type}`;
-        resultDiv.style.display = 'block';
-      }
-
-      const renderExample = (str) => {
-        if (str === '') {
-          return '<i>the empty string</i>';
+        if (diffABEmpty && diffBAEmpty) {
+          outcome = 'equivalent';
+        } else if (diffABEmpty && !diffBAEmpty) {
+          outcome = 'subset';
+          only2 = Array.from(diffBA.enumerate().take(5));
+        } else if (!diffABEmpty && diffBAEmpty) {
+          outcome = 'superset';
+          only1 = Array.from(diffAB.enumerate().take(5));
         } else {
-          return `<code>${encode(str)}</code>`;
+          outcome = 'not-equivalent';
+          only1 = Array.from(diffAB.enumerate().take(5));
+          only2 = Array.from(diffBA.enumerate().take(5));
         }
-      };
 
-      const renderExampleList = array => {
-        return `<ul>${array.map(renderExample).map(str => `<li>${str}</li>`).join('')}</ul>`;
-      }
-
-      function showResultWithDiagram(message, type, examples = null, hasValidationIssue = false) {
-        const resultDiv = document.getElementById('result');
-
-        // Build the complete HTML structure
-        let html = '';
-
-        // Add warning banner if there's a validation issue
+        let hasValidationIssue = false;
+        for (const s of only1) {
+          if (!(regexA.test(s) && !regexB.test(s))) {
+            hasValidationIssue = true;
+            break;
+          }
+        }
+        if (!hasValidationIssue) {
+          for (const s of only2) {
+            if (!(regexB.test(s) && !regexA.test(s))) {
+              hasValidationIssue = true;
+              break;
+            }
+          }
+        }
         if (hasValidationIssue) {
-          html += '<div class="mismatch-warning">Something went wrong. The presented example strings don\'t match the regex as claimed. Please file an issue on GitHub with your input regex.</div>';
+          showValidationBanner();
         }
 
-        html += message;
-
-        // Add Venn diagram (only for subset/superset/not-equivalent cases)
-        if (type !== 'equivalent') {
-          html += '<div class="venn-container"></div>';
+        let verdict;
+        if (outcome === 'equivalent') {
+          verdict = 'The regular expressions are equivalent! Both match exactly the same strings.';
+        } else if (outcome === 'subset') {
+          verdict = 'RegExp 1 matches a subset of RegExp 2. Every string matched by RegExp 1 is also matched by RegExp 2, but not vice versa.';
+        } else if (outcome === 'superset') {
+          verdict = 'RegExp 1 matches a superset of RegExp 2. Every string matched by RegExp 2 is also matched by RegExp 1, but not vice versa.';
+        } else {
+          verdict = 'The two RegExp are not equivalent. Neither matches a subset of the other.';
         }
 
-        // Add examples if provided
-        if (examples) {
-          html += '<p>Example strings matched by one RegExp but not the other:</p>'
-          html += '<div style="display: flex; gap: 20px; margin-top: 15px;">';
-
-          // Left column for RegExp 1 examples
-          html += '<div style="flex: 1;">';
-          if (examples.regex1Only && examples.regex1Only.length > 0) {
-            html += `<p>
-              <h4>RegExp 1 only</h4>
-              ${renderExampleList(examples.regex1Only)}
-            </p>`;
-          }
-          html += '</div>';
-
-          // Right column for RegExp 2 examples
-          html += '<div style="flex: 1;">';
-          if (examples.regex2Only && examples.regex2Only.length > 0) {
-            html += `<p>
-              <h4>RegExp 2 only</h4>
-              ${renderExampleList(examples.regex2Only)}
-            </p>`;
-          }
-          html += '</div>';
-
-          html += '</div>';
+        let html = `<div class="verdict">${verdict}</div>`;
+        if (outcome !== 'equivalent') {
+          html += vennSVG(outcome);
+          html += renderExamples(only1, only2);
         }
-
-        resultDiv.innerHTML = html;
-
-        // Show/hide the appropriate hardcoded SVG
-        if (type !== 'equivalent') {
-          const vennContainer = resultDiv.querySelector('.venn-container');
-          let targetDiagram;
-
-          if (type === 'subset') {
-            targetDiagram = document.querySelector('.venn-diagram-subset');
-          } else if (type === 'superset') {
-            targetDiagram = document.querySelector('.venn-diagram-superset');
-          } else if (type === 'not-equivalent') {
-            targetDiagram = document.querySelector('.venn-diagram-intersection');
-          }
-
-          if (targetDiagram) {
-            const clonedDiagram = targetDiagram.cloneNode(true);
-            clonedDiagram.style.display = 'block';
-            vennContainer.appendChild(clonedDiagram);
-          }
+        showResult(outcome, html);
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          showResult('error', `Invalid regex syntax: ${encode(error.message)}. Please check that your regular expressions use valid JavaScript regex syntax.`);
+        } else if (error instanceof ParseError || error instanceof UnsupportedSyntaxError) {
+          showResult('error', `Unsupported regex syntax: The syntax is valid but not yet supported by the tool. ${encode(error.message)}`);
+        } else if (error instanceof VeryLargeSyntaxTreeError || error instanceof CacheOverflowError) {
+          showResult('error', 'Excessive resource use detected: This example might be computationally hard.');
+        } else {
+          showResult('error', `Unexpected error: ${encode(error.message)}`);
         }
-
-        resultDiv.className = `result ${type}`;
-        resultDiv.style.display = 'block';
       }
+    }
 
-      function encode(text) { // <code id="3">\u0000</code>
-        const explicitUnicode = JSON.stringify(text) // "<code id=\"3\">\\u0000</code>"
-          .slice(1, -1) // <code id=\"3\">\\u0000</code>
-          .replaceAll('\\"', '"') // <code id="3">\\u0000</code>
+    function updateURL() {
+      const params = new URLSearchParams();
+      const v1 = input1.value;
+      const v2 = input2.value;
+      if (v1) params.set('regexp1', v1);
+      if (v2) params.set('regexp2', v2);
+      const qs = params.toString();
+      const newURL = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      window.history.replaceState(null, '', newURL);
+    }
 
-        const div = document.createElement('div');
-        div.textContent = explicitUnicode;
-        return div.innerHTML; // &lt;code id="3"&gt;\\u0000&lt;/code&gt;
+    function loadFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const v1 = params.get('regexp1');
+      const v2 = params.get('regexp2');
+      if (v1 !== null) input1.value = v1;
+      if (v2 !== null) input2.value = v2;
+      if (v1 && v2) {
+        runCheck();
       }
+    }
 
-    })
+    function onInput() {
+      clearOutput();
+      updateURL();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runCheck();
+      }
+    }
+
+    input1.addEventListener('input', onInput);
+    input2.addEventListener('input', onInput);
+    input1.addEventListener('keydown', onKeydown);
+    input2.addEventListener('keydown', onKeydown);
+    checkButton.addEventListener('click', runCheck);
+
+    loadFromURL();
   </script>
 </body>
 
