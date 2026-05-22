@@ -8,7 +8,12 @@
   "type": "module",
   "scripts": {
     "test": "node --test --import=tsx",
-    "build": "make",
+    "build": "tsc --project tsconfig.build.json && tsc-alias --project tsconfig.build.json",
+    "build:docs": "npm run build && typedoc --tsconfig tsconfig.build.json && cp -r dist/ docs/dist/ && cp demos/*.html docs/",
+    "bench": "npm run bench:aoc2023-day12 && npm run bench:parser && npm run bench:toStdRegex-output-length",
+    "bench:aoc2023-day12": "tsx benchmark/aoc2023-day12.ts",
+    "bench:parser": "tsx benchmark/parser-bench.ts",
+    "bench:toStdRegex-output-length": "tsx benchmark/toStdRegex_output_length.ts",
     "serve": "http-server docs -p 8080",
     "profile": "0x --output-dir prof"
   },
