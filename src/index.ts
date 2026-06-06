@@ -11,6 +11,8 @@ export { CacheOverflowError, VeryLargeSyntaxTreeError } from './regex'
 
 export { type RegexBuilder }
 
+export { globalConfig } from './global-config'
+
 /**
  * Union of types which can be converted to a `RegexBuilder` instance.
  *

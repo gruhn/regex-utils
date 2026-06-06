@@ -4,6 +4,7 @@ import * as Stream from './stream'
 import * as Table from './table'
 import * as AST from './ast'
 import { PRNG } from './prng'
+import { globalConfig } from './global-config'
 
 /**
  * TODO
@@ -485,8 +486,7 @@ function charCodeDerivativeAux(charCode: number, regex: ExtRegex, cache: Table.T
   if (cachedResult === undefined) {
     // Rather throw an error when cache grows too large than getting OOM killed.
     // At least errors can be caught and handled. The limit is somewhat arbitrary.
-    // TODO: maybe make this user configurable:
-    if (Table.size(cache) >= 10_000) {
+    if (Table.size(cache) >= globalConfig.CACHE_OVERFLOW_ERROR_THRESHOLD) {
       throw new CacheOverflowError('while computing DFA transitions.')
     }
 
@@ -577,8 +577,7 @@ function allNonEmptyIntersections(
 
   // Rather throw an error when cache grows too large than getting OOM killed.
   // At least errors can be caught and handled. The limit is somewhat arbitrary.
-  // TODO: maybe make this user configurable:
-  if (Table.size(cache) >= 10_000) {
+  if (Table.size(cache) >= globalConfig.CACHE_OVERFLOW_ERROR_THRESHOLD) {
     throw new CacheOverflowError()
   }
 
@@ -651,8 +650,7 @@ function derivativeClassesAux(
   if (cachedResult === undefined) {
     // Rather throw an error when cache grows too large than getting OOM killed.
     // At least errors can be caught and handled. The limit is somewhat arbitrary.
-    // TODO: maybe make this user configurable:
-    if (cache.classes.size >= 10_000) {
+    if (cache.classes.size >= globalConfig.CACHE_OVERFLOW_ERROR_THRESHOLD) {
       throw new CacheOverflowError()
     }
 
@@ -686,9 +684,9 @@ export function toRegExp(regex: StdRegex): RegExp {
 
 export function toString(regex: StdRegex): string {
   const size = nodeCount(regex)
-  if (size > 1_000_000) {
+  if (size > globalConfig.VERY_LARGE_SYNTAX_TREE_ERROR_THRESHOLD) {
     throw new VeryLargeSyntaxTreeError(
-      "Won't try to convert to RegExp. Syntax tree has over 1_000_000 nodes."
+      `Won't try to convert to RegExp. Syntax tree has over ${globalConfig.VERY_LARGE_SYNTAX_TREE_ERROR_THRESHOLD} nodes.`
     )
   }
 

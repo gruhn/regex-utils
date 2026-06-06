@@ -326,6 +326,7 @@
       UnsupportedSyntaxError,
       VeryLargeSyntaxTreeError,
       CacheOverflowError,
+      globalConfig,
     } from './dist/index.js';
 
     const input1 = document.getElementById('regexp1');
@@ -527,7 +528,7 @@
     }
 
     function updateURL() {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(window.location.search);
       const v1 = input1.value;
       const v2 = input2.value;
       if (v1) params.set('regexp1', v1);
@@ -541,8 +542,12 @@
       const params = new URLSearchParams(window.location.search);
       const v1 = params.get('regexp1');
       const v2 = params.get('regexp2');
+      const maxCache = params.get('max-cache');
       if (v1 !== null) input1.value = v1;
       if (v2 !== null) input2.value = v2;
+      if (maxCache) {
+        globalConfig.CACHE_OVERFLOW_ERROR_THRESHOLD = parseInt(maxCache)
+      }
       if (v1 && v2) {
         runCheck();
       }
