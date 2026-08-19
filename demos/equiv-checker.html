@@ -14,7 +14,7 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #eef0f3;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -25,7 +25,8 @@
     .container {
       background: white;
       border-radius: 15px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e1e5e9;
+      box-shadow: 0 4px 20px rgba(31, 41, 55, 0.06);
       padding: 40px;
       max-width: 800px;
       width: 100%;
@@ -66,7 +67,7 @@
     }
 
     .regex-field:focus-within {
-      border-color: #667eea;
+      border-color: #4f6b8a;
     }
 
     .regex-slash {
@@ -96,7 +97,7 @@
     }
 
     button.check-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #4f6b8a;
       color: white;
       border: none;
       padding: 14px 36px;
@@ -104,12 +105,13 @@
       font-size: 1.1rem;
       font-weight: 500;
       cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     button.check-btn:hover {
+      background: #3f5872;
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 6px 14px rgba(31, 41, 55, 0.15);
     }
 
     button.check-btn:active {
@@ -260,7 +262,7 @@
     }
 
     .info-block a {
-      color: #667eea;
+      color: #4f6b8a;
       text-decoration: none;
     }
 
@@ -393,8 +395,8 @@
       if (kind === 'subset') {
         return `
           <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: circle 1 inside circle 2">
-            <circle cx="130" cy="80" r="70" fill="#c3a6e8" fill-opacity="0.45" stroke="#764ba2" stroke-width="2"/>
-            <circle cx="110" cy="80" r="35" fill="#a3bffa" fill-opacity="0.6" stroke="#667eea" stroke-width="2"/>
+            <circle cx="130" cy="80" r="70" fill="#c2d3c8" fill-opacity="0.6" stroke="#6f8f7d" stroke-width="2"/>
+            <circle cx="110" cy="80" r="35" fill="#b7c8d8" fill-opacity="0.7" stroke="#4f6b8a" stroke-width="2"/>
             <text x="110" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
             <text x="180" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
           </svg>`;
@@ -402,8 +404,8 @@
       if (kind === 'superset') {
         return `
           <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: circle 2 inside circle 1">
-            <circle cx="130" cy="80" r="70" fill="#a3bffa" fill-opacity="0.5" stroke="#667eea" stroke-width="2"/>
-            <circle cx="150" cy="80" r="35" fill="#c3a6e8" fill-opacity="0.6" stroke="#764ba2" stroke-width="2"/>
+            <circle cx="130" cy="80" r="70" fill="#b7c8d8" fill-opacity="0.6" stroke="#4f6b8a" stroke-width="2"/>
+            <circle cx="150" cy="80" r="35" fill="#c2d3c8" fill-opacity="0.7" stroke="#6f8f7d" stroke-width="2"/>
             <text x="80" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
             <text x="150" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
           </svg>`;
@@ -411,8 +413,8 @@
       // not-equivalent (overlapping)
       return `
         <svg class="venn" width="260" height="160" viewBox="0 0 260 160" aria-label="Venn diagram: two overlapping circles">
-          <circle cx="100" cy="80" r="60" fill="#a3bffa" fill-opacity="0.5" stroke="#667eea" stroke-width="2"/>
-          <circle cx="160" cy="80" r="60" fill="#c3a6e8" fill-opacity="0.5" stroke="#764ba2" stroke-width="2"/>
+          <circle cx="100" cy="80" r="60" fill="#b7c8d8" fill-opacity="0.6" stroke="#4f6b8a" stroke-width="2"/>
+          <circle cx="160" cy="80" r="60" fill="#c2d3c8" fill-opacity="0.6" stroke="#6f8f7d" stroke-width="2"/>
           <text x="70" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">1</text>
           <text x="190" y="86" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#333">2</text>
         </svg>`;
